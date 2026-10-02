@@ -1,0 +1,22 @@
+---
+import PaperArt from "./art/PaperArt.astro";
+import FoldArt from "./art/FoldArt.astro";
+import StairsArt from "./art/StairsArt.astro";
+import { HOW_TO } from "../content/home";
+const ART = { paper: PaperArt, fold: FoldArt, stairs: StairsArt };
+---
+<section class="band tone tone-mist" aria-labelledby="path-title">
+  <div class="band-head">
+    <h2 id="path-title">How to get to 1</h2>
+  </div>
+  <ol class="path">
+    {HOW_TO.map((s) => { const Art = ART[s.art]; return (
+      <li>
+        <Art />
+        <span class="step">{s.step}</span>
+        <h3>{s.title}</h3>
+        <p>{s.text}</p>
+      </li>
+    ); })}
+  </ol>
+</section>

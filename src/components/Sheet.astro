@@ -1,0 +1,17 @@
+---
+/* Idea page. On /econsul/ etc. it ships open and filled in; elsewhere the Sheet island fills it on demand. */
+import type { Idea } from "../content/ideas";
+import { factsHtml, ideaMediaHtml, ideaEyebrow, ideaLinkText } from "../lib/views";
+const { idea } = Astro.props as { idea?: Idea };
+---
+<div class:list={["sheet", { open: !!idea }]} id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden={!idea}>
+  <div class="sheet-inner">
+    <button class="back" id="back" type="button">← Back to the sky</button>
+    <div class="eyebrow" id="sheet-eyebrow">{idea && ideaEyebrow(idea)}</div>
+    <div class="sheet-title-row"><img class="sheet-icon" id="sheet-icon" alt="" src={idea?.icon} hidden={!idea?.icon}><h2 id="sheet-title">{idea?.title}</h2></div>
+    <p class="lede" id="sheet-lede">{idea?.lede}</p>
+    <a class="sheet-link" id="sheet-link" target="_blank" rel="noopener" href={idea?.url} hidden={!idea?.url}>{idea?.url && ideaLinkText(idea)}</a>
+    <dl class="facts" id="sheet-facts" set:html={idea ? factsHtml(idea.facts) : ""} />
+    <div class="sheet-media" id="sheet-media" set:html={idea ? ideaMediaHtml(idea) : ""} />
+  </div>
+</div>

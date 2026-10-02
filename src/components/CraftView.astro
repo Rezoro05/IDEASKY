@@ -1,0 +1,34 @@
+---
+import { CRAFT_INTRO, KEY_WORK, ADS, ADS_NOTE, PRINTS, CREDENTIAL } from "../content/craft";
+const { hidden } = Astro.props as { hidden: boolean };
+---
+<main id="view-craft" hidden={hidden}>
+  <section class="page-head">
+    <h1>Craft</h1>
+    <p>{CRAFT_INTRO}</p>
+  </section>
+  <section class="craft-key" aria-label="Key work">
+    <figure class="key-visual"><img width={KEY_WORK.img.w} height={KEY_WORK.img.h} src={KEY_WORK.img.src} alt={KEY_WORK.img.alt}></figure>
+    <div class="key-copy">
+      <span class="chip">{KEY_WORK.chip}</span>
+      <p>{KEY_WORK.text}</p>
+    </div>
+  </section>
+  <section class="band tone tone-stone" aria-labelledby="films-title">
+    <div class="band-head"><h2 id="films-title">Ads</h2><p>{ADS_NOTE}</p></div>
+    <div class="ad-grid">
+      {ADS.map((ad, i) => (
+        <article class:list={["ad-card", { "ad-lead": i === 0 }]}><a class="ad-media" href={`https://www.youtube.com/watch?v=${ad.youtubeId}`} target="_blank" rel="noopener" aria-label={`Play ${ad.title} on YouTube`}><img src={`https://i.ytimg.com/vi/${ad.youtubeId}/hqdefault.jpg`} alt="" loading="lazy" onerror="this.remove()"><span class="ad-fallback">{ad.title}</span><span class="play" aria-hidden="true"></span></a><div class="ad-meta"><h3>{ad.title}</h3><p class="brief">{ad.brief}</p><span class="role">{ad.role}</span></div></article>
+      ))}
+    </div>
+  </section>
+  <section class="band" aria-labelledby="print-title">
+    <div class="band-head"><h2 id="print-title">Print and strategy</h2></div>
+    <div class="print-grid">
+      {PRINTS.map((p) => (
+        <article class="print-card"><figure class="poster"><img width={p.img.w} height={p.img.h} src={p.img.src} alt={p.img.alt} loading="lazy"></figure><div class="print-meta"><span class="chip">{p.chip}</span><h3>{p.title}</h3><p class="brief">{p.brief}</p><span class="role">{p.role}</span></div></article>
+      ))}
+    </div>
+  </section>
+  <p class="credential">{CREDENTIAL}</p>
+</main>

@@ -1,0 +1,17 @@
+---
+import { LOGOS } from "../content/home";
+---
+<section class="logos" aria-labelledby="logos-title">
+  <h2 id="logos-title" class="logos-title">Built and worked with</h2>
+  <ul class="logo-row">
+    {LOGOS.map((l) => (
+      <li class="logo-slot"><a href={l.href} target="_blank" rel="noopener">
+        {l.img
+          ? <img width={l.img.w} height={l.img.h} src={l.img.src} alt={l.name} loading="lazy" />
+          : <span class="logo-name">{l.name}</span>}
+        {l.onDark && <img width={l.img?.w} height={l.img?.h} class="on-dark" fetchpriority="low" src={l.onDark} alt="" aria-hidden="true" />}
+        <span class="logo-role">{l.role}</span><span class="sr-only"> (opens in a new tab)</span>
+      </a></li>
+    ))}
+  </ul>
+</section>

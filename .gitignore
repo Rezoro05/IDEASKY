@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-preview/
+.astro/
+test-results/
+playwright-report/
+tests/parity/current/
+tests/parity/diff/

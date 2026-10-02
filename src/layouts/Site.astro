@@ -1,0 +1,78 @@
+---
+/* Every page is the whole site with one view shown, so moving between pages needs no reload once the script runs.
+   The page that was asked for ships with its content already in the HTML (works without JavaScript, readable by search engines). */
+import css from "../styles/site.css?raw";
+import Loader from "../components/Loader.astro";
+import Header from "../components/Header.astro";
+import Hero from "../components/Hero.astro";
+import Logos from "../components/Logos.astro";
+import Who from "../components/Who.astro";
+import HowTo from "../components/HowTo.astro";
+import Closing from "../components/Closing.astro";
+import CraftView from "../components/CraftView.astro";
+import AboutView from "../components/AboutView.astro";
+import Footer from "../components/Footer.astro";
+import Sheet from "../components/Sheet.astro";
+import Overlays from "../components/Overlays.astro";
+import { PREVIEW } from "../build-mode";
+import { SITE, type PageMeta } from "../content/site";
+import type { Idea } from "../content/ideas";
+import type { View } from "../lib/routing";
+
+type Props = { view: View; meta: PageMeta; path: string; idea?: Idea; image?: string; extraLd?: object[]; noindex?: boolean };
+const { view, meta, path, idea, image, extraLd = [], noindex = false } = Astro.props as Props;
+const url = SITE.url + path;
+const ogImage = image ?? SITE.url + SITE.ogImage;
+const person = {
+  "@type": "Person", name: SITE.owner, alternateName: SITE.shortName, url: SITE.url, image: SITE.url + "about/rez-portrait.jpg",
+  jobTitle: SITE.jobTitle, homeLocation: { "@type": "Place", name: SITE.city }, sameAs: [SITE.linkedin],
+};
+const ld = { "@context": "https://schema.org", "@graph": [person, { "@type": "WebPage", name: meta.title, url, description: meta.description }, ...extraLd] };
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+{!PREVIEW && <base href="/">}
+{!PREVIEW && <meta name="site-mode" content="paths">}
+<title>{meta.title}</title>
+<meta name="description" content={meta.description}>
+{noindex ? <meta name="robots" content="noindex"> : <link rel="canonical" href={url}>}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content={SITE.owner}>
+<meta property="og:title" content={meta.title}>
+<meta property="og:description" content={meta.description}>
+<meta property="og:url" content={url}>
+<meta property="og:image" content={ogImage}>
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json" set:html={JSON.stringify(ld)} />
+<link rel="preload" href="fonts/poppins-latin-300-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/ibm-plex-sans-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/poppins-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style is:inline set:html={css}></style>
+</head>
+<body>
+<Loader />
+<div class="wrap">
+  <Header />
+  <main id="view-home" hidden={view !== "home"}>
+    <Hero />
+    <Logos />
+    <Who />
+    <HowTo />
+    <Closing />
+  </main>
+  <CraftView hidden={view !== "craft"} />
+  <AboutView hidden={view !== "about"} />
+  <Footer />
+</div>
+<Sheet idea={idea} />
+<Overlays />
+<script>
+  import { startSite } from "../islands/app";
+  startSite();
+</script>
+</body>
+</html>

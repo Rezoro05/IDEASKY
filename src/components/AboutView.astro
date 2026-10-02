@@ -1,0 +1,37 @@
+---
+import { STOPS } from "../content/stops";
+import { ABOUT_STORY } from "../content/home";
+import { SITE } from "../content/site";
+const { hidden } = Astro.props as { hidden: boolean };
+---
+<main id="view-about" hidden={hidden}>
+  <section class="page-head">
+    <h1>About</h1>
+    <p>{ABOUT_STORY.intro}</p>
+  </section>
+  <section class="band tone tone-mist" aria-labelledby="lineage-title">
+    <div class="band-head"><h2 id="lineage-title">The path so far</h2></div>
+    <ol class="lineage">
+      {STOPS.map((s) => (
+        <li class:list={["node", { now: s.isNow }]}><button class="node-btn" type="button" data-stop={s.id} aria-expanded="false" aria-controls="stop-panel"><span class="yr">{s.year}</span><span class="dot" aria-hidden="true"></span><span class="n-name">{s.name}</span><span class="n-desc">{s.desc}</span><span class="n-more" aria-hidden="true">Details +</span></button>{s.branches && (
+          <ul class="branches">{s.branches.map((b) => <li class="branch"><button class="b-link panel-link" type="button" data-target={b.target}><span class="b-name">{b.name}</span><span class="b-desc">{b.desc}</span></button></li>)}</ul>
+        )}</li>
+      ))}
+    </ol>
+    <div class="stop-panel" id="stop-panel" role="region" aria-live="polite"><div class="panel-clip"><div class="stop-inner" id="stop-inner"></div></div></div>
+  </section>
+  <section class="prose">
+    <h2>It started with games</h2>
+    <p>{ABOUT_STORY.started}</p>
+    <figure class="prose-photo"><img width="727" height="960" src="about/childhood-keyboard.jpg" alt="Rez as a young boy typing at a computer keyboard" loading="lazy"><figcaption>Where it started.</figcaption></figure>
+    <h2>A fresh start</h2>
+    <p>{ABOUT_STORY.fresh}</p>
+  </section>
+  <section class="band closing tone tone-cobalt about-closing">
+    <div>
+      <h2>Contact me</h2>
+      <div class="actions"><a class="btn" href={SITE.booking} target="_blank" rel="noopener" id="book4">Book a call</a></div>
+    </div>
+    <figure class="about-portrait"><img width="921" height="905" src="about/rez-cutout.webp" alt="Rez smiling at his phone, wearing glasses and a purple sweater" loading="lazy"></figure>
+  </section>
+</main>

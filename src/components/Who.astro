@@ -1,0 +1,18 @@
+---
+import MultiTool from "./art/MultiTool.astro";
+import { WHO_I_AM, SKILLS } from "../content/home";
+---
+<section class="band tone tone-stone who" aria-labelledby="who-title">
+  <div class="who-grid">
+    <div class="who-text">
+      <h2 id="who-title" class="who-title">Who I am</h2>
+      <p>{WHO_I_AM}</p>
+    </div>
+    <div class="who-side">
+      <div class="mt-wrap"><MultiTool /></div>
+      <ul class="skills" aria-label="Skills">
+        {SKILLS.map((s) => <li>{s}</li>)}
+      </ul>
+    </div>
+  </div>
+</section>

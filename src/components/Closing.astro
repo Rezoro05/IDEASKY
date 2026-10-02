@@ -1,0 +1,42 @@
+---
+/* "Have an Idea?": the Idea Note. The Composer island moves this same form into the hero overlay when "Share Your Ideas" is clicked. */
+import { SITE } from "../content/site";
+import { NOTE_LIMITS } from "../lib/notes";
+---
+<section class="band closing board tone tone-cobalt" aria-labelledby="call-title">
+  <div class="closing-grid">
+    <div class="closing-copy">
+      <h2 id="call-title">Have an Idea?</h2>
+      <p>Share your idea with everyone who visits this page. Fold it into a paper plane and it takes off to the top, where anyone can catch it and read it.</p>
+      <p class="closing-sub">Rather keep it between us? <a class="closing-book" href={SITE.booking} target="_blank" rel="noopener">Book a call</a> and we’ll continue privately.</p>
+    </div>
+    <div class="note-wrap" id="note-wrap">
+      <form class="note" id="note-form" novalidate>
+        <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp">
+        <div class="note-head">
+          <span class="note-label">Idea Note</span>
+          <span class="note-to">Public · everyone can read it</span>
+          <button class="note-close" type="button" id="note-close" aria-label="Close">✕</button>
+        </div>
+        <label class="note-field" for="note-name"><span>Your name <span class="opt">(optional, shown with your idea)</span></span>
+          <input id="note-name" name="name" type="text" autocomplete="name" maxlength={NOTE_LIMITS.name} placeholder="Nino Beridze">
+        </label>
+        <label class="note-field" for="note-email"><span>Your email <span class="opt">(optional, never shown)</span></span>
+          <input id="note-email" name="email" type="text" inputmode="email" autocomplete="email" placeholder="you@company.com">
+        </label>
+        <label class="note-field" for="note-msg"><span>The idea</span>
+          <textarea id="note-msg" name="message" rows="4" maxlength={NOTE_LIMITS.message} required placeholder="Share anything on your mind"></textarea>
+        </label>
+        <p class="note-error" id="note-error" role="alert" hidden></p>
+        <div class="note-choice">
+          <button class="note-send" type="submit">Fold &amp; share <span aria-hidden="true">→</span></button>
+        </div>
+      </form>
+      <div class="note-done" id="note-done" hidden>
+        <p class="note-done-title">Your idea took off.</p>
+        <p class="note-done-text" id="note-done-text">It’s flying at the top of the page now with the other ideas. Anyone can drag it around or open it to read it. Your email is never shown.</p>
+        <button class="note-again" type="button" id="note-again">Write another</button>
+      </div>
+    </div>
+  </div>
+</section>

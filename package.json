@@ -1,0 +1,23 @@
+{
+  "name": "revazkuparadze-site",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "build:preview": "SITE_MODE=preview astro build && node scripts/build-preview.mjs",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check": "astro check",
+    "parity": "node tests/parity/shoot.mjs dist tests/parity/current && python3 tests/parity/compare.py"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.4",
+    "astro": "^5.18.2",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3"
+  },
+  "private": true,
+  "type": "module"
+}

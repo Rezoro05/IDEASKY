@@ -1,0 +1,18 @@
+---
+/* One real page per idea: /econsul/, /ephoto/ ... (live site only; the preview opens them as #econsul). */
+import Site from "../../layouts/Site.astro";
+import { IDEAS, type Idea } from "../../content/ideas";
+import { SITE } from "../../content/site";
+import { clip } from "../../lib/text";
+
+export function getStaticPaths() {
+  if (process.env.SITE_MODE === "preview") return [];
+  return IDEAS.map((idea) => ({ params: { idea: idea.slug }, props: { idea } }));
+}
+const { idea } = Astro.props as { idea: Idea };
+const url = SITE.url + idea.slug + "/";
+const work: Record<string, unknown> = { "@type": "CreativeWork", name: idea.title, description: clip(idea.lede, 300), url, creator: { "@type": "Person", name: SITE.owner } };
+if (idea.url) work.sameAs = idea.url;
+---
+<Site view="home" idea={idea} meta={{ title: `${idea.title} · ${SITE.owner}`, description: clip(idea.lede) }} path={idea.slug + "/"}
+  image={idea.media?.[0] ? SITE.url + idea.media[0].src : undefined} extraLd={[work]} />

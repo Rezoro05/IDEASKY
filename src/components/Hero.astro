@@ -1,0 +1,30 @@
+---
+/* The sky: headline over the plane field. Planes are added by the Sky island; without motion the plain list below is the way in. */
+import { href } from "../build-mode";
+import { SITE } from "../content/site";
+import { HERO } from "../content/home";
+import { IDEAS } from "../content/ideas";
+import { ideaListHtml } from "../lib/views";
+---
+<section class="field" id="field" aria-label="Ideas in flight">
+  <div class="thesis">
+    <h1>Ideas to <b>life</b></h1>
+    <p set:html={HERO.lede} />
+    <div class="actions">
+      <button class="btn btn-idea" type="button" id="idea-btn" aria-haspopup="dialog">Share Your Ideas</button>
+      <a class="btn" href={SITE.booking} target="_blank" rel="noopener" id="book">Let’s talk</a>
+    </div>
+  </div>
+</section>
+
+<div id="fallback" hidden>
+  <div class="list-head">
+    <h2>Ideas</h2>
+    <span>Shown because reduced motion is on</span>
+  </div>
+  <ul class="ideas" id="ideas" set:html={ideaListHtml(IDEAS, href)} />
+  <div id="notes-fallback" hidden>
+    <div class="list-head"><h2>Notes from visitors</h2></div>
+    <ul class="ideas" id="notes-list"></ul>
+  </div>
+</div>

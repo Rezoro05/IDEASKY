@@ -1,0 +1,12 @@
+---
+import { href } from "../build-mode";
+import { SITE } from "../content/site";
+---
+<header class="bar">
+  <a href={href("home")} data-route="home" class="home-link" aria-label="Revaz Kuparadze, home"><span class="brand" aria-hidden="true"></span></a>
+  <nav class="nav" aria-label="Main">
+    <a href={href("about")} data-route="about">About</a>
+    <a href={href("craft")} data-route="craft">Craft</a>
+    <a href={SITE.booking} target="_blank" rel="noopener" class="nav-cta" id="book3">Book a call</a>
+  </nav>
+</header>
