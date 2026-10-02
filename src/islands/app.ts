@@ -7,12 +7,14 @@ import { browserKeyStore, COMMENT_KEYS_ITEM, LIKES_ITEM } from "../boundaries/ke
 import { likerIdFrom, memoryLikes, supabaseLikes, type LikeStore } from "../boundaries/likeStore";
 import { memoryComments, supabaseComments, type CommentStore } from "../boundaries/commentStore";
 import { inboxFor } from "../boundaries/inbox";
+import { memoryUpdates, supabaseUpdates, type UpdateStore } from "../boundaries/updateStore";
 import { startSky, type Sky } from "./sky";
 import { startBoard } from "./board";
 import { startComposer } from "./composer";
 import { startThread } from "./thread";
 import { startLikes } from "./likes";
 import { startStagePanel } from "./stage-panel";
+import { startUpdates } from "./updates";
 import { byId, prefersReducedMotion, randomBytes } from "./dom";
 
 function safeStorage(): Storage | null { try { return window.localStorage; } catch { return null; } }
@@ -25,15 +27,19 @@ async function sha256Hex(text: string): Promise<string> {
   return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))));
 }
 
-type Stores = { ideas: IdeaStore; comments: CommentStore; likes: LikeStore };
+type Stores = { ideas: IdeaStore; comments: CommentStore; likes: LikeStore; updates: UpdateStore };
 
 /** Supabase when a board is configured; otherwise everything lives in memory for this visit. */
 function chooseStores(): Stores {
-  if (!PUBLIC_BOARD.url) return { ideas: memoryStore(), comments: memoryComments(), likes: memoryLikes() };
+  if (!PUBLIC_BOARD.url) {
+    const ideas = memoryStore();
+    return { ideas, comments: memoryComments(), likes: memoryLikes(), updates: memoryUpdates((id) => ideas.ownsKey(id)) };
+  }
   const base = { url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window), randomBytes, sha256Hex };
-  const likeKeys = browserKeyStore(safeStorage(), LIKES_ITEM);
+  const likeKeys = browserKeyStore(safeStorage(), LIKES_ITEM), ideaKeys = browserKeyStore(safeStorage());
   return {
-    ideas: supabaseStore({ ...base, keys: browserKeyStore(safeStorage()) }),
+    ideas: supabaseStore({ ...base, keys: ideaKeys }),
+    updates: supabaseUpdates({ ...base, ideaKeys }),
     comments: supabaseComments({ ...base, keys: browserKeyStore(safeStorage(), COMMENT_KEYS_ITEM) }),
     likes: supabaseLikes({ ...base, keys: likeKeys, likerId: likerIdFrom(likeKeys, randomBytes), pageIsLeaving: () => leaving }),
   };
@@ -68,10 +74,11 @@ export function startSite(): void {
   const thread = startThread({ store: stores.then((s) => s.comments), inbox, ideaNameOf: (id) => nameOf(id), posted: (id) => commentPosted(id) });
   const likes = startLikes({ store: stores.then((s) => s.likes) });
   let ideaMoved = (_idea: Idea) => {};
+  const updates = startUpdates({ store: stores.then((s) => s.updates) });
   const stage = startStagePanel({ store: stores.then((s) => s.ideas), moved: (idea) => ideaMoved(idea) });
   const board = startBoard({ sky, store: stores.then((s) => s.ideas), letter: {
-    opened: (idea) => { thread.open(idea.id); likes.open(idea.id); stage.open(idea); },
-    closed: () => { thread.close(); likes.close(); stage.close(); },
+    opened: (idea) => { thread.open(idea.id); likes.open(idea.id); stage.open(idea); updates.open(idea.id); },
+    closed: () => { thread.close(); likes.close(); stage.close(); updates.close(); },
   } });
   ideaMoved = board.update;
   nameOf = board.nameOf;

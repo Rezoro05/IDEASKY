@@ -343,10 +343,10 @@ html, body { overflow-x: clip; }
 .c-remove:hover, .c-remove:focus-visible { color: #B3261E; outline: none; text-decoration: underline; }
 .thread-form { display: flex; flex-direction: column; gap: 12px; }
 .thread-form[hidden] { display: none; }
-.thread-send { align-self: flex-start; padding: 10px 16px; border: 0; border-radius: 0; cursor: pointer; background: var(--tone-cobalt); color: #fff; font: 500 14px/1 var(--font-body); }
-.thread-send:hover { filter: brightness(1.1); }
-.thread-send:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; }
-.thread-send:disabled { opacity: .6; cursor: progress; }
+.thread-send, .update-send { align-self: flex-start; padding: 10px 16px; border: 0; border-radius: 0; cursor: pointer; background: var(--tone-cobalt); color: #fff; font: 500 14px/1 var(--font-body); }
+.thread-send:hover, .update-send:hover { filter: brightness(1.1); }
+.thread-send:focus-visible, .update-send:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; }
+.thread-send:disabled, .update-send:disabled { opacity: .6; cursor: progress; }
 .thread .note-error { margin: 0; font: 400 13px/1.4 var(--font-body); color: #B3261E; }
 .thread-status[hidden] { display: none; }
 
@@ -454,3 +454,19 @@ html, body { overflow-x: clip; }
 
 /* While a letter or the Idea Note is open, the sky behind it holds still */
 .sky-covered .cloud { animation-play-state: paused; }
+
+/* Letter: the owner's updates, a dated story under the idea */
+.updates { --n-ink: var(--plane-edge); --n-muted: color-mix(in srgb, var(--plane-edge) 55%, var(--plane)); --n-rule: color-mix(in srgb, var(--plane-edge) 14%, var(--plane));
+  display: flex; flex-direction: column; gap: 12px; padding-top: 14px; border-top: 1px solid var(--n-rule); }
+.updates[hidden], .update-form[hidden], .add-update[hidden] { display: none; }
+.updates-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.updates-list:empty { display: none; }
+.updates-list > li { padding-left: 12px; border-left: 2px solid var(--tone-cobalt); display: flex; flex-direction: column; gap: 6px; }
+.updates-list > li.fresh { background: color-mix(in srgb, var(--tone-cobalt) 6%, var(--plane)); }
+.updates-list .c-meta { color: var(--tone-cobalt); }
+.add-update { align-self: flex-start; padding: 2px 0; background: none; border: 0; cursor: pointer; color: var(--tone-cobalt); font: 500 12px/1.4 var(--font-mono); letter-spacing: .04em; }
+.add-update:hover, .add-update:focus-visible { text-decoration: underline; outline: none; }
+.update-form { display: flex; flex-direction: column; gap: 12px; }
+.update-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.updates .note-error { margin: 0; font: 400 13px/1.4 var(--font-body); color: #B3261E; }
+.updates-list .c-remove { align-self: flex-start; }

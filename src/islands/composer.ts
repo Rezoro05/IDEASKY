@@ -1,13 +1,13 @@
 /** The Idea Note, in the overlay that "Share Your Idea" opens.
  *  States: closed → editing ⇄ invalid → folding → flying → sent (closed). Saving and emailing run alongside and never hold up the animation. */
 import { newRecordId, validateDraft, type Idea } from "../lib/ideas";
-import { LINK_LIMITS } from "../lib/links";
 import { v, type Vec } from "../lib/vec";
 import type { Inbox } from "../boundaries/inbox";
 import type { Board } from "./board";
 import type { Sky } from "./sky";
 import { byId, cancelPendingOpen, openWithTransition, randomBytes } from "./dom";
 import { flyPaperPlane } from "./flier";
+import { linkRowsIn } from "./link-rows";
 
 const FOLD_MS = 700, FLIGHT_MS = 1300, SCROLL_WAIT_MS = 3000, TOAST_MS = 6000, THROW_SPEED = 180;
 const NOT_SAVED = "The public board couldn’t save your idea just now, so for now only you can see your plane.";
@@ -19,28 +19,10 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
   const form = byId<HTMLFormElement>("note-form"), err = byId("note-error");
   const compose = byId("compose"), slot = byId("note-slot"), ideaBtn = byId("idea-btn"), toast = byId("toast");
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement;
-  const linkRows = byId<HTMLOListElement>("link-rows"), addLink = byId<HTMLButtonElement>("add-link"), rowTemplate = byId<HTMLTemplateElement>("link-row");
-
-  /* Link rows: "+ Add link" adds one (up to five), ✕ removes it; blank rows are ignored on send. */
-  const rowsNow = () => [...linkRows.querySelectorAll<HTMLLIElement>(".link-row")];
-  const showAddLink = () => { addLink.hidden = rowsNow().length >= LINK_LIMITS.perIdea; };
-  function clearLinks(): void { linkRows.replaceChildren(); showAddLink(); }
-  addLink.addEventListener("click", () => {
-    linkRows.append(rowTemplate.content.cloneNode(true));
-    showAddLink();
-    rowsNow().at(-1)!.querySelector<HTMLInputElement>(".link-url")!.focus();
-  });
-  linkRows.addEventListener("click", (e) => {
-    const row = (e.target as Element).closest(".link-remove")?.closest(".link-row");
-    if (!row) return;
-    row.remove(); showAddLink(); addLink.focus();
-  });
-  const typedLinks = () => rowsNow().map((row) => ({
-    url: row.querySelector<HTMLInputElement>(".link-url")!.value, title: row.querySelector<HTMLInputElement>(".link-title")!.value,
-  }));
+  const links = linkRowsIn(byId("note-link-rows"));
 
   function openCompose(): void {
-    form.reset(); clearLinks(); err.hidden = true; form.classList.remove("folding");
+    form.reset(); links.clear(); err.hidden = true; form.classList.remove("folding");
     const r = ideaBtn.getBoundingClientRect();
     slot.style.setProperty("--dx", r.left + r.width / 2 - innerWidth / 2 + "px");
     slot.style.setProperty("--dy", r.top + r.height / 2 - innerHeight / 2 + "px");
@@ -50,7 +32,7 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
   function closeCompose(returnFocus: boolean): void {
     cancelPendingOpen(compose);
     compose.classList.remove("open"); compose.hidden = true;
-    form.classList.remove("folding"); form.reset(); clearLinks(); err.hidden = true;
+    form.classList.remove("folding"); form.reset(); links.clear(); err.hidden = true;
     if (returnFocus) ideaBtn.focus({ preventScroll: true });
   }
   ideaBtn.addEventListener("click", openCompose);
@@ -72,11 +54,11 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const check = validateDraft({ name: field("name").value, email: field("email").value, message: field("message").value, trap: field("_gotcha").value, linkRows: typedLinks() });
+    const check = validateDraft({ name: field("name").value, email: field("email").value, message: field("message").value, trap: field("_gotcha").value, linkRows: links.typed() });
     if (!check.ok) {
-      if (check.reason === "bot") { form.reset(); clearLinks(); return; } // bots fill hidden fields: pretend nothing happened
+      if (check.reason === "bot") { form.reset(); links.clear(); return; } // bots fill hidden fields: pretend nothing happened
       err.textContent = check.text; err.hidden = false;
-      if (check.reason === "bad-link") rowsNow()[check.row]?.querySelector<HTMLInputElement>(".link-url")?.focus();
+      if (check.reason === "bad-link") links.focusRow(check.row);
       else field("message").focus();
       return;
     }

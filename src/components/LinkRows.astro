@@ -1,0 +1,13 @@
+---
+/* "+ Add link" rows: up to five, each a web address and an optional title. Driven by islands/link-rows.ts. */
+import { LINK_LIMITS } from "../lib/links";
+---
+<div class="note-links">
+  <ol class="link-rows"></ol>
+  <button type="button" class="add-link">+ Add link</button>
+  <template><li class="link-row">
+    <input class="link-url" type="text" inputmode="url" autocomplete="url" maxlength={LINK_LIMITS.url} placeholder="example.com" aria-label="Link address">
+    <input class="link-title" type="text" maxlength={LINK_LIMITS.title} placeholder="Title (optional)" aria-label="Link title">
+    <button type="button" class="link-remove" aria-label="Remove this link">✕</button>
+  </li></template>
+</div>
