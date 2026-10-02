@@ -1,6 +1,7 @@
 /** The Idea Note, in the overlay that "Share Your Idea" opens.
  *  States: closed → editing ⇄ invalid → folding → flying → sent (closed). Saving and emailing run alongside and never hold up the animation. */
 import { newRecordId, validateDraft, type Idea } from "../lib/ideas";
+import { LINK_LIMITS } from "../lib/links";
 import { v, type Vec } from "../lib/vec";
 import type { Inbox } from "../boundaries/inbox";
 import type { Board } from "./board";
@@ -18,9 +19,28 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
   const form = byId<HTMLFormElement>("note-form"), err = byId("note-error");
   const compose = byId("compose"), slot = byId("note-slot"), ideaBtn = byId("idea-btn"), toast = byId("toast");
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement;
+  const linkRows = byId<HTMLOListElement>("link-rows"), addLink = byId<HTMLButtonElement>("add-link"), rowTemplate = byId<HTMLTemplateElement>("link-row");
+
+  /* Link rows: "+ Add link" adds one (up to five), ✕ removes it; blank rows are ignored on send. */
+  const rowsNow = () => [...linkRows.querySelectorAll<HTMLLIElement>(".link-row")];
+  const showAddLink = () => { addLink.hidden = rowsNow().length >= LINK_LIMITS.perIdea; };
+  function clearLinks(): void { linkRows.replaceChildren(); showAddLink(); }
+  addLink.addEventListener("click", () => {
+    linkRows.append(rowTemplate.content.cloneNode(true));
+    showAddLink();
+    rowsNow().at(-1)!.querySelector<HTMLInputElement>(".link-url")!.focus();
+  });
+  linkRows.addEventListener("click", (e) => {
+    const row = (e.target as Element).closest(".link-remove")?.closest(".link-row");
+    if (!row) return;
+    row.remove(); showAddLink(); addLink.focus();
+  });
+  const typedLinks = () => rowsNow().map((row) => ({
+    url: row.querySelector<HTMLInputElement>(".link-url")!.value, title: row.querySelector<HTMLInputElement>(".link-title")!.value,
+  }));
 
   function openCompose(): void {
-    form.reset(); err.hidden = true; form.classList.remove("folding");
+    form.reset(); clearLinks(); err.hidden = true; form.classList.remove("folding");
     const r = ideaBtn.getBoundingClientRect();
     slot.style.setProperty("--dx", r.left + r.width / 2 - innerWidth / 2 + "px");
     slot.style.setProperty("--dy", r.top + r.height / 2 - innerHeight / 2 + "px");
@@ -30,7 +50,7 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
   function closeCompose(returnFocus: boolean): void {
     cancelPendingOpen(compose);
     compose.classList.remove("open"); compose.hidden = true;
-    form.classList.remove("folding"); form.reset(); err.hidden = true;
+    form.classList.remove("folding"); form.reset(); clearLinks(); err.hidden = true;
     if (returnFocus) ideaBtn.focus({ preventScroll: true });
   }
   ideaBtn.addEventListener("click", openCompose);
@@ -52,13 +72,16 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const check = validateDraft({ name: field("name").value, email: field("email").value, message: field("message").value, trap: field("_gotcha").value });
+    const check = validateDraft({ name: field("name").value, email: field("email").value, message: field("message").value, trap: field("_gotcha").value, linkRows: typedLinks() });
     if (!check.ok) {
-      if (check.reason === "bot") { form.reset(); return; } // bots fill hidden fields: pretend nothing happened
-      err.textContent = check.text; err.hidden = false; field("message").focus(); return;
+      if (check.reason === "bot") { form.reset(); clearLinks(); return; } // bots fill hidden fields: pretend nothing happened
+      err.textContent = check.text; err.hidden = false;
+      if (check.reason === "bad-link") rowsNow()[check.row]?.querySelector<HTMLInputElement>(".link-url")?.focus();
+      else field("message").focus();
+      return;
     }
     err.hidden = true;
-    const idea: Idea = { id: newRecordId(randomBytes(8)), ...check.idea, at: now() };
+    const idea: Idea = { id: newRecordId(randomBytes(8)), ...check.idea, stage: "idea", at: now() };
     inbox.send(idea, check.email, location.href);
     if (opts.reducedMotion || !sky) {
       const saving = board.post(idea);
@@ -81,7 +104,7 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
       return v(fr.left + fr.width * (0.35 + 0.3 * Math.sin(idea.at)), Math.max(80, fr.top + fr.height * 0.62));
     };
     flyPaperPlane({
-      from: start, target: landingSpot, durationMs: FLIGHT_MS,
+      from: start, target: landingSpot, durationMs: FLIGHT_MS, stage: "idea",
       scaleAt: (u) => 0.6 + 0.4 * Math.min(1, u * 3),
       mayLand: (elapsed) => window.scrollY < 4 || elapsed > SCROLL_WAIT_MS,
     }).then(({ at, heading }) => {
@@ -89,7 +112,7 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
       if (sky.has(idea.id)) sky.remove(idea.id);
       if (!board.has(idea.id)) return;
       const name = board.nameOf(idea.id), fr = sky.fieldRect();
-      sky.add(idea.id, { tag: name, label: `${name}: open the idea`, fresh: true,
+      sky.add(idea.id, { tag: name, label: `${name}: open the idea`, stage: idea.stage, fresh: true,
         from: v(at.x - fr.left, at.y - fr.top), velocity: v(Math.cos(heading) * THROW_SPEED, Math.sin(heading) * THROW_SPEED) });
       board.sync();
     });

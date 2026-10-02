@@ -2,11 +2,12 @@
 import { createWorld, step, addPlane, removePlane, type Bounds, type Held, type World } from "../lib/sim";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
 import type { FlightConfig } from "../lib/motion";
-import { PLANE_SVG } from "../lib/plane-svg";
+import { formFor } from "../lib/forms";
+import type { Stage } from "../lib/stages";
 import { headingDeg, len, v, type Vec } from "../lib/vec";
 import { orientationFor, orientationTransform, type Orientation } from "../lib/orientation";
 
-export type PlaneSpec = { tag: string; label: string; from?: Vec; velocity?: Vec; fresh?: boolean };
+export type PlaneSpec = { tag: string; label: string; stage: Stage; from?: Vec; velocity?: Vec; fresh?: boolean };
 export type Sky = {
   has(slug: string): boolean;
   slugs(): string[];
@@ -16,6 +17,8 @@ export type Sky = {
   screenPointOf(slug: string): Vec | null;
   add(slug: string, spec: PlaneSpec): void;
   retag(slug: string, tag: string, label: string): void;
+  /** The idea moved stage: draw its new form in place, flight unchanged. */
+  reform(slug: string, stage: Stage): void;
   remove(slug: string): void;
 };
 
@@ -28,6 +31,8 @@ export function startSky(opts: {
   config: FlightConfig;
   visitSeed: number;
   onOpen: (slug: string, origin: Vec) => void;
+  /** While something covers the sky (an open letter or the Idea Note), it holds still: nothing to see, nothing to pay for. */
+  covered?: () => boolean;
 }): Sky {
   const { field, config } = opts;
   const bounds = (): Bounds => ({ width: field.clientWidth, height: field.clientHeight });
@@ -43,7 +48,8 @@ export function startSky(opts: {
     a.dataset.slug = slug;
     a.style.setProperty("--s", config.planeSize + "px");
     a.setAttribute("aria-label", spec.label);
-    a.innerHTML = `<span class="body">${PLANE_SVG}</span><span class="tag"></span>`;
+    a.innerHTML = `<span class="body">${formFor(spec.stage)}</span><span class="tag"></span>`;
+    a.dataset.stage = spec.stage;
     a.querySelector(".tag")!.textContent = spec.tag;
     a.addEventListener("focus", () => pausedSlugs.add(slug));
     a.addEventListener("blur", () => pausedSlugs.delete(slug));
@@ -93,6 +99,7 @@ export function startSky(opts: {
   function frame(now: number) {
     const dt = (now - last) / 1000;
     last = now;
+    if (opts.covered?.()) { requestAnimationFrame(frame); return; }
     world = step(world, { dt, bounds: bounds(), held, pausedSlugs }, config);
     for (const p of world.planes) {
       const el = els.get(p.slug);
@@ -130,6 +137,12 @@ export function startSky(opts: {
       const t = a.querySelector(".tag")!;
       if (t.textContent !== tag) t.textContent = tag;
       a.setAttribute("aria-label", label);
+    },
+    reform(slug, stage) {
+      const a = els.get(slug);
+      if (!a || a.dataset.stage === stage) return;
+      a.dataset.stage = stage;
+      a.querySelector(".body")!.innerHTML = formFor(stage);
     },
     remove(slug) {
       world = removePlane(world, slug);

@@ -2,9 +2,9 @@ import { test, expect, type Page, type Route } from "@playwright/test";
 import { createHash } from "node:crypto";
 
 /** Fake the outside world: the test build points at board.test and inbox.test (see build:test), and both are intercepted here. */
-type Row = { id: string; name: string; message: string; created_at: string };
+type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[] };
 type CommentRow = Row & { idea_id: string };
-type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean };
+type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; stageMoves?: unknown[]; stageDown?: boolean };
 async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [], mails: 0 }) {
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.abort());
   await page.route("https://board.test/**", async (r: Route) => {
@@ -38,8 +38,15 @@ async function fakeServices(page: Page, board: Board = { rows: [], posts: [], de
     if (url.endsWith("/rest/v1/ideas")) {
       const body = r.request().postDataJSON();
       board.posts.push(body);
-      board.rows.unshift({ id: body.id, name: body.name, message: body.message, created_at: new Date().toISOString() });
+      board.rows.unshift({ id: body.id, name: body.name, message: body.message, links: body.links ?? [], stage: "idea", created_at: new Date().toISOString() });
       return r.fulfill({ status: 201, body: "" });
+    }
+    if (url.endsWith("/rpc/set_idea_stage")) {
+      if (board.stageDown) return r.fulfill({ status: 500, body: "down" });
+      const b = r.request().postDataJSON(), row = board.rows.find((x) => x.id === b.p_id);
+      (board.stageMoves ??= []).push(b);
+      if (row) row.stage = b.p_stage;
+      return r.fulfill({ json: !!row });
     }
     if (url.endsWith("/rpc/delete_idea")) { board.deletes.push(r.request().postDataJSON()); return r.fulfill({ json: true }); }
     return r.fulfill({ status: 404 });
@@ -47,6 +54,11 @@ async function fakeServices(page: Page, board: Board = { rows: [], posts: [], de
   await page.route("https://inbox.test/**", (r) => { board.mails++; (board.mailBodies ??= []).push(r.request().postData() ?? ""); return r.fulfill({ json: { ok: true } }); });
   return board;
 }
+/** Wait for opening animations (the note unfolding, a letter opening) to finish, as a person would before clicking inside. */
+async function settled(page: Page) {
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity));
+}
+
 function watchErrors(page: Page) {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -127,7 +139,7 @@ test("planes face the way they fly: heading left they are mirrored, heading righ
 test("post an idea: it flies to the sky, opens as a letter, and its author can remove it", async ({ page }) => {
   const board = await fakeServices(page);
   await page.goto("/");
-  await page.locator("#idea-btn").click();
+  await page.locator("#idea-btn").click(); await settled(page);
   await page.locator("#note-name").fill("Nino");
   await page.locator("#note-email").fill("nino@");
   await page.locator("#note-msg").fill("A bike-share for Tbilisi hills");
@@ -219,7 +231,7 @@ test("closing the Idea Note right after opening it closes it for good", async ({
 test("if the board is down, the idea still flies and the visitor is told", async ({ page }) => {
   await fakeServices(page, { rows: [], down: true, posts: [], deletes: [], mails: 0 });
   await page.goto("/");
-  await page.locator("#idea-btn").click();
+  await page.locator("#idea-btn").click(); await settled(page);
   await page.locator("#note-msg").fill("Still here");
   await page.locator(".note-send").click();
   await expect(page.locator("#toast")).toContainText("couldn’t save your idea just now");
@@ -229,7 +241,7 @@ test("if the board is down, the idea still flies and the visitor is told", async
 test("the button opens the Idea Note; it needs an idea; Escape closes it", async ({ page }) => {
   await fakeServices(page);
   await page.goto("/");
-  await page.locator("#idea-btn").click();
+  await page.locator("#idea-btn").click(); await settled(page);
   await expect(page.locator("#compose")).toBeVisible();
   await expect(page.locator("#note-msg")).toBeFocused();
   await page.locator("#compose .note-send").click();
@@ -242,7 +254,7 @@ test("the button opens the Idea Note; it needs an idea; Escape closes it", async
 test("bots that fill the hidden field are ignored", async ({ page }) => {
   const board = await fakeServices(page);
   await page.goto("/");
-  await page.locator("#idea-btn").click();
+  await page.locator("#idea-btn").click(); await settled(page);
   await page.locator("#note-msg").fill("spam");
   await page.locator('#note-form input[name="_gotcha"]').evaluate((el: HTMLInputElement) => { el.value = "bot"; });
   await page.locator(".note-send").click();
@@ -297,6 +309,7 @@ test.describe("comments on visitor ideas", () => {
     await plane.focus();
     await page.keyboard.press("Enter");
     await expect(page.locator("#letter")).toBeVisible();
+    await settled(page);
   }
 
   test("anyone reads the thread, adds a comment (emailed to the owner), and can remove only their own", async ({ page }) => {
@@ -397,7 +410,7 @@ test.describe("comments on visitor ideas", () => {
   test("a brand-new idea starts with no comments", async ({ page }) => {
     await fakeServices(page);
     await page.goto("/");
-    await page.locator("#idea-btn").click();
+    await page.locator("#idea-btn").click(); await settled(page);
     await page.locator("#note-msg").fill("Fresh idea");
     await page.locator(".note-send").click();
     const plane = page.locator(".plane");
@@ -430,6 +443,7 @@ test.describe("likes", () => {
     await plane.focus();
     await page.keyboard.press("Enter");
     await expect(page.locator("#letter")).toBeVisible();
+    await settled(page);
   }
 
   test("anyone can like an idea once from this browser, and tap again to unlike", async ({ page }) => {
@@ -463,5 +477,126 @@ test.describe("likes", () => {
     await page.locator("#like-btn").click();
     await expect(page.locator("#like-btn")).toHaveAttribute("aria-pressed", "false");
     await expect(page.locator("#like-count")).toHaveText("");
+  });
+});
+
+test.describe("stages and links", () => {
+  async function postWithLinks(page: Page, links: [string, string][]) {
+    await page.locator("#idea-btn").click(); await settled(page);
+    await page.locator("#note-msg").fill("A shared tool library");
+    for (const [url, title] of links) {
+      await page.locator("#add-link").click();
+      const row = page.locator(".link-row").last();
+      await row.locator(".link-url").fill(url);
+      await row.locator(".link-title").fill(title);
+    }
+    await page.locator(".note-send").click();
+  }
+  async function openOnly(page: Page) {
+    const plane = page.locator(".plane");
+    await expect(plane).toHaveCount(1, { timeout: 8000 });
+    await plane.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#letter")).toBeVisible();
+    await settled(page);
+  }
+
+  test("an idea is posted with its links, which open safely in a new tab", async ({ page }) => {
+    const board = await fakeServices(page);
+    await page.goto("/");
+    await postWithLinks(page, [["toolshare.example.org/plan", "Pilot plan"], ["https://github.com/someone/tools", ""]]);
+    await expect.poll(() => board.posts.length).toBe(1);
+    expect(board.posts[0]).toMatchObject({ links: [{ title: "Pilot plan", url: "https://toolshare.example.org/plan" }, { title: "github.com", url: "https://github.com/someone/tools" }] });
+    expect(board.posts[0]).not.toHaveProperty("stage"); // the database starts every idea at "idea"
+    await openOnly(page);
+    const links = page.locator("#letter-links a");
+    await expect(links).toHaveCount(2);
+    await expect(links.first()).toHaveAttribute("href", "https://toolshare.example.org/plan");
+    await expect(links.first()).toHaveAttribute("target", "_blank");
+    await expect(links.first()).toHaveAttribute("rel", /noopener/);
+    await expect(page.locator('#stage-track li[aria-current="step"]')).toContainText("Idea");
+  });
+
+  test("a link that isn't a web address stops the send and points at its row", async ({ page }) => {
+    const board = await fakeServices(page);
+    await page.goto("/");
+    await postWithLinks(page, [["example.com", ""], ["javascript:alert(1)", "Click me"]]);
+    await expect(page.locator("#note-error")).toContainText("isn’t a web address");
+    await expect(page.locator(".link-row").nth(1).locator(".link-url")).toBeFocused();
+    await page.waitForTimeout(300);
+    expect(board.posts).toHaveLength(0);
+  });
+
+  test("up to five links; a row can be removed", async ({ page }) => {
+    await fakeServices(page);
+    await page.goto("/");
+    await page.locator("#idea-btn").click(); await settled(page);
+    for (let i = 0; i < 5; i++) await page.locator("#add-link").click();
+    await expect(page.locator(".link-row")).toHaveCount(5);
+    await expect(page.locator("#add-link")).toBeHidden();
+    await page.locator(".link-row .link-remove").first().click();
+    await expect(page.locator(".link-row")).toHaveCount(4);
+    await expect(page.locator("#add-link")).toBeVisible();
+  });
+
+  test("the owner moves the idea one step at a time, each move asked first; its plane changes form", async ({ page }) => {
+    const board = await fakeServices(page);
+    await page.goto("/");
+    await postWithLinks(page, []);
+    await openOnly(page);
+    await expect(page.locator("#stage-back")).toBeHidden();
+    await page.locator("#stage-forward").click();
+    await expect(page.locator("#stage-question")).toHaveText("Move this idea to Implementation?");
+    await page.locator("#stage-cancel").click(); // changed my mind
+    await expect(page.locator("#stage-confirm")).toBeHidden();
+    expect(board.stageMoves ?? []).toHaveLength(0);
+    await page.locator("#stage-forward").click();
+    await page.locator("#stage-yes").click();
+    await expect(page.locator('#stage-track li[aria-current="step"]')).toContainText("Implementation");
+    await expect(page.locator(".plane")).toHaveAttribute("data-stage", "implementation");
+    expect(board.stageMoves!.at(-1)).toMatchObject({ p_stage: "implementation", p_key: expect.stringMatching(/^[0-9a-f]{32}$/) });
+    await page.locator("#stage-forward").click();
+    await page.locator("#stage-yes").click();
+    await expect(page.locator('#stage-track li[aria-current="step"]')).toContainText("Live");
+    await expect(page.locator("#stage-forward")).toBeHidden();
+    await expect(page.locator(".plane")).toHaveAttribute("data-stage", "live");
+    await page.locator("#stage-back").click();
+    await expect(page.locator("#stage-question")).toHaveText("Move this idea to Implementation?");
+  });
+
+  test("other people's ideas show their stage and form, with no way to move them", async ({ page }) => {
+    await fakeServices(page, { rows: [{ ...gioRow, stage: "live", links: [{ title: "Market map", url: "https://markets.example.com/" }] }], posts: [], deletes: [], mails: 0 });
+    await page.goto("/");
+    await expect(page.locator(".plane")).toHaveAttribute("data-stage", "live");
+    await openOnly(page);
+    await expect(page.locator('#stage-track li[aria-current="step"]')).toContainText("Live");
+    await expect(page.locator("#stage-moves")).toBeHidden();
+    await expect(page.locator("#letter-links a")).toHaveText(/Market map/);
+  });
+
+  test("if a move can't be saved, the stage stays and the letter says so", async ({ page }) => {
+    const board = await fakeServices(page);
+    await page.goto("/");
+    await postWithLinks(page, []);
+    await openOnly(page);
+    board.stageDown = true;
+    await page.locator("#stage-forward").click();
+    await page.locator("#stage-yes").click();
+    await expect(page.locator("#stage-error")).toContainText("Couldn’t move it");
+    await expect(page.locator('#stage-track li[aria-current="step"]')).toContainText("Idea");
+    await expect(page.locator(".plane")).toHaveAttribute("data-stage", "idea");
+  });
+
+  test("closing the letter mid-question cancels it", async ({ page }) => {
+    await fakeServices(page);
+    await page.goto("/");
+    await postWithLinks(page, []);
+    await openOnly(page);
+    await page.locator("#stage-forward").click();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#letter")).toBeHidden();
+    await openOnly(page);
+    await expect(page.locator("#stage-confirm")).toBeHidden();
+    await expect(page.locator('#stage-track li[aria-current="step"]')).toContainText("Idea");
   });
 });

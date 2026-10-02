@@ -2,6 +2,7 @@
 import { FORMSPREE_ENDPOINT, PUBLIC_BOARD } from "../content/site";
 import { FLIGHT_CONFIGS, motionProfileFor } from "../lib/motion";
 import { memoryStore, supabaseStore, toHex, type IdeaStore } from "../boundaries/ideaStore";
+import type { Idea } from "../lib/ideas";
 import { browserKeyStore, COMMENT_KEYS_ITEM, LIKES_ITEM } from "../boundaries/keyStore";
 import { likerIdFrom, memoryLikes, supabaseLikes, type LikeStore } from "../boundaries/likeStore";
 import { memoryComments, supabaseComments, type CommentStore } from "../boundaries/commentStore";
@@ -11,6 +12,7 @@ import { startBoard } from "./board";
 import { startComposer } from "./composer";
 import { startThread } from "./thread";
 import { startLikes } from "./likes";
+import { startStagePanel } from "./stage-panel";
 import { byId, prefersReducedMotion, randomBytes } from "./dom";
 
 function safeStorage(): Storage | null { try { return window.localStorage; } catch { return null; } }
@@ -51,7 +53,12 @@ export function startSite(): void {
       config: FLIGHT_CONFIGS[profile],
       visitSeed: new Uint32Array(randomBytes(4).buffer)[0]!,
       onOpen: (id, origin) => openPlane(id, origin),
+      covered: () => document.documentElement.classList.contains("sky-covered"),
     });
+    const overlays = [byId("compose"), byId("letter")];
+    const markCovered = () => document.documentElement.classList.toggle("sky-covered", overlays.some((o) => o.classList.contains("open")));
+    const watcher = new MutationObserver(markCovered);
+    for (const o of overlays) watcher.observe(o, { attributes: true, attributeFilter: ["class"] });
   }
 
   const stores = Promise.resolve(chooseStores());
@@ -60,10 +67,13 @@ export function startSite(): void {
   let commentPosted = (_ideaId: string) => {};
   const thread = startThread({ store: stores.then((s) => s.comments), inbox, ideaNameOf: (id) => nameOf(id), posted: (id) => commentPosted(id) });
   const likes = startLikes({ store: stores.then((s) => s.likes) });
+  let ideaMoved = (_idea: Idea) => {};
+  const stage = startStagePanel({ store: stores.then((s) => s.ideas), moved: (idea) => ideaMoved(idea) });
   const board = startBoard({ sky, store: stores.then((s) => s.ideas), letter: {
-    opened: (id) => { thread.open(id); likes.open(id); },
-    closed: () => { thread.close(); likes.close(); },
+    opened: (idea) => { thread.open(idea.id); likes.open(idea.id); stage.open(idea); },
+    closed: () => { thread.close(); likes.close(); stage.close(); },
   } });
+  ideaMoved = board.update;
   nameOf = board.nameOf;
   commentPosted = board.foldAfterComment;
   openPlane = board.openLetter;

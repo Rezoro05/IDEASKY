@@ -1,10 +1,13 @@
 /** Pure rules for visitor ideas. */
+import { checkLinkRows, cleanLinks, type Link, type LinkRow } from "./links";
+import { stageOrIdea, type Stage } from "./stages";
 
-export type Idea = { id: string; name: string; message: string; at: number };
-export type Draft = { name: string; email: string; message: string; trap: string };
+export type Idea = { id: string; name: string; message: string; at: number; stage: Stage; links: Link[] };
+export type Draft = { name: string; email: string; message: string; trap: string; linkRows: readonly LinkRow[] };
 export type DraftCheck =
-  | { ok: true; idea: Pick<Idea, "name" | "message">; email: string }
+  | { ok: true; idea: Pick<Idea, "name" | "message" | "links">; email: string }
   | { ok: false; reason: "empty-message"; text: string }
+  | { ok: false; reason: "bad-link"; row: number; text: string }
   | { ok: false; reason: "bot" };
 
 export const IDEA_LIMITS = { name: 40, message: 600, inSky: 8 } as const;
@@ -22,7 +25,7 @@ export function cleanIdea(raw: unknown): Idea | null {
   const message = typeof r.message === "string" ? r.message.trim().slice(0, IDEA_LIMITS.message) : "";
   if (!message) return null;
   const name = typeof r.name === "string" ? r.name.trim().slice(0, IDEA_LIMITS.name) : "";
-  return { id: r.id, name: name || ANONYMOUS, message, at: Number(r.at) || 0 };
+  return { id: r.id, name: name || ANONYMOUS, message, at: Number(r.at) || 0, stage: stageOrIdea(r.stage), links: cleanLinks(r.links) };
 }
 
 export function newestIdeas(ideas: Iterable<Idea>, max: number): Idea[] {
@@ -39,7 +42,9 @@ export function validateDraft(d: Draft): DraftCheck {
   if (d.trap) return { ok: false, reason: "bot" };
   const message = d.message.trim().slice(0, IDEA_LIMITS.message);
   if (!message) return { ok: false, reason: "empty-message", text: "Write your idea first." };
-  return { ok: true, idea: { name: d.name.trim().slice(0, IDEA_LIMITS.name) || ANONYMOUS, message }, email: d.email.trim() };
+  const links = checkLinkRows(d.linkRows);
+  if (!links.ok) return { ok: false, reason: "bad-link", row: links.row, text: links.text };
+  return { ok: true, idea: { name: d.name.trim().slice(0, IDEA_LIMITS.name) || ANONYMOUS, message, links: links.links }, email: d.email.trim() };
 }
 
 /** Ids for ideas and comments alike. */

@@ -3,6 +3,7 @@
  *  - memory (tests, and local runs with no board configured; ideas last until the page reloads)
  *  Every adapter turns failures into `false`, so the page never breaks because a board is down. */
 import { cleanIdea, type Idea } from "../lib/ideas";
+import { isOneStep, type Stage } from "../lib/stages";
 import type { KeyStore } from "./keyStore";
 
 export interface IdeaStore {
@@ -10,6 +11,8 @@ export interface IdeaStore {
   subscribe(onIdeas: (ideas: Map<string, Idea>) => void): Promise<boolean>;
   add(idea: Idea): Promise<boolean>;
   remove(idea: Idea): Promise<boolean>;
+  /** Move an idea one step, as its owner. False if this browser isn't the owner, the move isn't one step, or saving failed. */
+  setStage(idea: Idea, to: Stage): Promise<boolean>;
   /** Did this browser post this idea (so it may act as its owner)? */
   ownsKey(id: string): boolean;
 }
@@ -36,12 +39,12 @@ export function supabaseStore(d: SupabaseDeps): IdeaStore {
   return {
     async subscribe(onIdeas) {
       try {
-        const r = await d.fetch(d.url + "/rest/v1/ideas?select=id,name,message,created_at&order=created_at.desc&limit=60", { headers });
+        const r = await d.fetch(d.url + "/rest/v1/ideas?select=id,name,message,stage,links,created_at&order=created_at.desc&limit=60", { headers });
         if (!r.ok) return false;
-        const rows = (await r.json()) as { id: string; name: string; message: string; created_at: string }[];
+        const rows = (await r.json()) as { id: string; name: string; message: string; stage: unknown; links: unknown; created_at: string }[];
         const out = new Map<string, Idea>();
         for (const row of rows) {
-          const idea = cleanIdea({ id: row.id, name: row.name, message: row.message, at: Date.parse(row.created_at) });
+          const idea = cleanIdea({ id: row.id, name: row.name, message: row.message, stage: row.stage, links: row.links, at: Date.parse(row.created_at) });
           if (idea) out.set(idea.id, idea);
         }
         onIdeas(out);
@@ -53,7 +56,7 @@ export function supabaseStore(d: SupabaseDeps): IdeaStore {
         const deleteKey = toHex(d.randomBytes(16));
         const r = await d.fetch(d.url + "/rest/v1/ideas", {
           method: "POST", headers: { ...headers, Prefer: "return=minimal" },
-          body: JSON.stringify({ id: idea.id, name: idea.name, message: idea.message, delete_key_hash: await d.sha256Hex(deleteKey) }),
+          body: JSON.stringify({ id: idea.id, name: idea.name, message: idea.message, links: idea.links, delete_key_hash: await d.sha256Hex(deleteKey) }),
         });
         if (!r.ok) return false;
         d.keys.set(idea.id, deleteKey);
@@ -69,6 +72,14 @@ export function supabaseStore(d: SupabaseDeps): IdeaStore {
         const ok = !!(await r.json());
         if (ok) d.keys.drop(idea.id);
         return ok;
+      } catch { return false; }
+    },
+    async setStage(idea, to) {
+      const key = d.keys.get(idea.id);
+      if (!key || !isOneStep(idea.stage, to)) return false;
+      try {
+        const r = await d.fetch(d.url + "/rest/v1/rpc/set_idea_stage", { method: "POST", headers, body: JSON.stringify({ p_id: idea.id, p_key: key, p_stage: to }) });
+        return r.ok && !!(await r.json());
       } catch { return false; }
     },
     ownsKey: (id) => !!d.keys.get(id),
@@ -88,6 +99,11 @@ export function memoryStore(initial: Idea[] = [], opts: { failWrites?: boolean }
     async remove(idea) {
       if (opts.failWrites || !postedHere.has(idea.id)) return false;
       postedHere.delete(idea.id); ideas.delete(idea.id); emit(); return true;
+    },
+    async setStage(idea, to) {
+      const kept = ideas.get(idea.id);
+      if (opts.failWrites || !kept || !postedHere.has(idea.id) || !isOneStep(kept.stage, to)) return false;
+      ideas.set(idea.id, { ...kept, stage: to }); emit(); return true;
     },
     ownsKey: (id) => postedHere.has(id),
   };

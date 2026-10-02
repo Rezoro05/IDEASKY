@@ -404,3 +404,53 @@ html, body { overflow-x: clip; }
   .cloud { animation: none; }
   .cloud.c1 { transform: translateX(62vw); } .cloud.c2 { transform: translateX(18vw); } .cloud.c3 { transform: translateX(84vw); } .cloud.c4 { display: none; }
 }
+
+/* Idea Note: optional links, added one row at a time */
+.note-links { display: flex; flex-direction: column; gap: 8px; }
+.link-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.link-rows:empty { display: none; }
+.link-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.link-row input { min-width: 0; font: 400 15px/1.4 var(--font-body); color: var(--n-ink); background: transparent; border: 0; border-bottom: 1px solid #DADDE4; padding: 6px 0 7px; }
+.link-row input:focus { outline: none; border-bottom-color: var(--tone-cobalt); box-shadow: 0 1px 0 var(--tone-cobalt); }
+.link-row input::placeholder { color: #A7ABB5; }
+.link-remove { padding: 4px 6px; background: none; border: 0; cursor: pointer; color: var(--n-muted); font: 500 13px/1 var(--font-body); }
+.link-remove:hover, .link-remove:focus-visible { color: #B3261E; outline: none; }
+.add-link { align-self: flex-start; padding: 2px 0; background: none; border: 0; cursor: pointer; color: var(--tone-cobalt); font: 500 12px/1.4 var(--font-mono); letter-spacing: .04em; }
+.add-link:hover, .add-link:focus-visible { text-decoration: underline; outline: none; }
+.add-link[hidden] { display: none; }
+@media (max-width: 420px) { .link-row { grid-template-columns: minmax(0, 1fr) auto; } .link-row .link-title { grid-column: 1; grid-row: 2; } }
+
+/* Letter: the idea's links */
+.letter-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.letter-links[hidden] { display: none; }
+.letter-links a { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; color: var(--tone-cobalt); text-decoration: none; font-size: 15px; overflow-wrap: anywhere; }
+.letter-links a::before { content: "↗"; font-size: 12px; }
+.letter-links a:hover, .letter-links a:focus-visible { text-decoration: underline; outline: none; }
+.letter-links .site { font: 400 11px/1.3 var(--font-mono); color: color-mix(in srgb, var(--plane-edge) 50%, var(--plane)); }
+
+/* Letter: stage track 0 → – → 1, and the owner's moves */
+.stage { display: flex; flex-direction: column; gap: 10px; padding-block: 4px; }
+.stage-track { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 6px; font: 500 11px/1.2 var(--font-mono); letter-spacing: .04em;
+  color: color-mix(in srgb, var(--plane-edge) 45%, var(--plane)); }
+.stage-track li { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 8px; border-radius: 99px; white-space: nowrap; }
+.stage-track li + li::before { content: ""; width: 14px; height: 1px; background: currentColor; opacity: .5; margin-right: 6px; align-self: center; }
+.stage-track b { font: 700 13px/1 var(--font-display); }
+.stage-track li[aria-current="step"] { color: #fff; background: var(--tone-cobalt); }
+@media (max-width: 420px) { .stage-track li:not([aria-current="step"]) { font-size: 0; } .stage-track li:not([aria-current="step"]) b { font-size: 13px; } }
+.stage-moves, .stage-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.stage-moves[hidden], .stage-confirm[hidden], .stage-error[hidden], .stage-move[hidden] { display: none; }
+.stage-move, .stage-cancel { padding: 7px 12px; background: none; border: 1px solid color-mix(in srgb, var(--plane-edge) 25%, var(--plane)); color: var(--plane-edge);
+  cursor: pointer; font: 500 13px/1 var(--font-body); }
+.stage-move:hover, .stage-move:focus-visible, .stage-cancel:hover, .stage-cancel:focus-visible { border-color: var(--tone-cobalt); color: var(--tone-cobalt); outline: none; }
+.stage-confirm p { margin: 0; flex-basis: 100%; font-size: 15px; }
+.stage-yes { padding: 8px 14px; border: 0; cursor: pointer; background: var(--tone-cobalt); color: #fff; font: 500 13px/1 var(--font-body); }
+.stage-yes:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 2px; }
+.stage-yes:disabled, .stage-cancel:disabled { opacity: .6; cursor: progress; }
+.stage-error { margin: 0; font: 400 13px/1.4 var(--font-body); color: #B3261E; }
+
+/* Airplane and bird forms share the plane's colors; the bird's eye is a dot of its outline color */
+.pf-eye { fill: var(--sky-plane-edge); }
+.note-flier .pf-eye { fill: var(--accent); }
+
+/* While a letter or the Idea Note is open, the sky behind it holds still */
+.sky-covered .cloud { animation-play-state: paused; }

@@ -1,7 +1,8 @@
 /** A paper plane flown across the page by hand, outside the sky's simulation: from a form or letter into the sky. */
 import { arcPoint, headingBetween } from "../lib/flight-path";
 import { orientationFor, orientationTransform } from "../lib/orientation";
-import { PLANE_SVG } from "../lib/plane-svg";
+import { formFor } from "../lib/forms";
+import type { Stage } from "../lib/stages";
 import type { Vec } from "../lib/vec";
 
 const FLIER_HALF = 32;
@@ -15,10 +16,12 @@ export function flyPaperPlane(opts: {
   target: () => Vec;
   durationMs: number;
   scaleAt: (u: number) => number;
+  /** Which form flies: a new idea is a paper plane; a letter flies home as its idea's form. */
+  stage: Stage;
   mayLand?: (elapsedMs: number) => boolean;
 }): Promise<Landing> {
   const el = document.createElement("div");
-  el.className = "note-flier"; el.innerHTML = PLANE_SVG; el.setAttribute("aria-hidden", "true");
+  el.className = "note-flier"; el.innerHTML = formFor(opts.stage); el.setAttribute("aria-hidden", "true");
   document.body.appendChild(el);
   return new Promise((resolve) => {
     const t0 = performance.now();

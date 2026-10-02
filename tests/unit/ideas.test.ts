@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { cleanIdea, newestIdeas, ideaNumbers, validateDraft, newRecordId, previewLine, letterDateLine, isRecordId, ideaName, IDEA_LIMITS, type Idea } from "../../src/lib/ideas";
 
-const idea = (id: string, at: number, extra: Partial<Idea> = {}): Idea => ({ id, name: "A", message: "m", at, ...extra });
+const idea = (id: string, at: number, extra: Partial<Idea> = {}): Idea => ({ id, name: "A", message: "m", at, stage: "idea", links: [], ...extra });
 
 describe("cleanIdea", () => {
   it("rejects bad ids, empty messages and non-objects", () => {
@@ -14,6 +14,12 @@ describe("cleanIdea", () => {
     expect(c.name).toBe("Anonymous");
     expect(c.message.length).toBe(IDEA_LIMITS.message);
     expect(c.at).toBe(5);
+  });
+  it("reads stage and links safely: unknown stage is idea, bad links dropped", () => {
+    expect(cleanIdea({ id: "abcdef", message: "x" })).toMatchObject({ stage: "idea", links: [] });
+    expect(cleanIdea({ id: "abcdef", message: "x", stage: "live", links: [{ url: "javascript:x" }, { title: "Demo", url: "https://demo.app" }] }))
+      .toMatchObject({ stage: "live", links: [{ title: "Demo", url: "https://demo.app/" }] });
+    expect(cleanIdea({ id: "abcdef", message: "x", stage: "shipped" })!.stage).toBe("idea");
   });
 });
 
@@ -31,12 +37,18 @@ describe("collections", () => {
 });
 
 describe("validateDraft", () => {
-  const draft = { name: "", email: "", message: "", trap: "" };
+  const draft = { name: "", email: "", message: "", trap: "", linkRows: [] };
   it("needs a message", () => expect(validateDraft(draft)).toEqual({ ok: false, reason: "empty-message", text: "Write your idea first." }));
   it("catches the bot trap first", () => expect(validateDraft({ ...draft, message: "x", trap: "spam" })).toEqual({ ok: false, reason: "bot" }));
   it("accepts any email, even incomplete", () => {
     expect(validateDraft({ ...draft, message: " idea ", email: " half@ ", name: " Nino " }))
-      .toEqual({ ok: true, idea: { name: "Nino", message: "idea" }, email: "half@" });
+      .toEqual({ ok: true, idea: { name: "Nino", message: "idea", links: [] }, email: "half@" });
+  });
+  it("carries clean links; a bad link names its row", () => {
+    expect(validateDraft({ ...draft, message: "x", linkRows: [{ title: "", url: "demo.app" }] }))
+      .toMatchObject({ ok: true, idea: { links: [{ title: "demo.app", url: "https://demo.app/" }] } });
+    expect(validateDraft({ ...draft, message: "x", linkRows: [{ title: "", url: "ok.com" }, { title: "", url: "nope" }] }))
+      .toMatchObject({ ok: false, reason: "bad-link", row: 1 });
   });
 });
 

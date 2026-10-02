@@ -1,5 +1,6 @@
 /** The public idea board on the page: keeps the ideas, flies the newest in the sky, lists them without motion, and opens them as letters. */
 import { ideaName, ideaNumbers, letterDateLine, newestIdeas, previewLine, IDEA_LIMITS, type Idea } from "../lib/ideas";
+import { siteName } from "../lib/links";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import { v, type Vec } from "../lib/vec";
 import type { Sky } from "./sky";
@@ -16,6 +17,8 @@ export type Board = {
   openLetter(id: string, origin?: Vec): void;
   /** Someone just commented on this idea: let them see it land, then fold the letter and fly it home. */
   foldAfterComment(ideaId: string): void;
+  /** An idea changed (its owner moved its stage): keep it, and redraw its plane. */
+  update(idea: Idea): void;
   sync(): void;
 };
 
@@ -23,7 +26,7 @@ const NEW_IDEA_SPEED = 40;
 const REMOVE_FAILED = "Couldn’t remove it. Try again later.";
 const FOLD_MS = 750, RETURN_FLIGHT_MS = 900, PAUSE_AFTER_COMMENT_MS = 1000;
 
-export type LetterHooks = { opened(ideaId: string): void; closed(): void };
+export type LetterHooks = { opened(idea: Idea): void; closed(): void };
 
 export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; random?: () => number; letter?: LetterHooks }): Board {
   const { sky } = opts;
@@ -51,11 +54,11 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
     const b = sky.bounds(), nums = ideaNumbers(all.values());
     for (const n of shown) {
       const name = ideaName(nums.get(n.id));
-      if (sky.has(n.id)) { sky.retag(n.id, name, `${name}: open the idea`); continue; }
+      if (sky.has(n.id)) { sky.retag(n.id, name, `${name}: open the idea`); sky.reform(n.id, n.stage); continue; }
       if (inFlight.has(n.id)) continue;
       const angle = rand() * Math.PI * 2;
       sky.add(n.id, {
-        tag: name, label: `${name}: open the idea`,
+        tag: name, label: `${name}: open the idea`, stage: n.stage,
         from: v(80 + rand() * Math.max(1, b.width - 160), b.height * 0.45 + rand() * Math.max(1, b.height * 0.5 - 60)),
         velocity: v(Math.cos(angle) * NEW_IDEA_SPEED, Math.sin(angle) * NEW_IDEA_SPEED),
       });
@@ -96,14 +99,26 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
     byId("letter-from").textContent = nameOf(n.id);
     byId("letter-date").textContent = letterDateLine(n, dateOf);
     byId("letter-body").textContent = n.message;
+    renderLinks(n);
     removeBtn.hidden = !store?.ownsKey(n.id);
     removeBtn.textContent = "Remove this idea";
     card.style.setProperty("--dx", origin ? origin.x - innerWidth / 2 + "px" : "0px");
     card.style.setProperty("--dy", origin ? origin.y - innerHeight / 2 + "px" : "0px");
     openWithTransition(letter);
-    opts.letter?.opened(n.id);
+    opts.letter?.opened(n);
     byId("letter-close").focus({ preventScroll: true });
   }
+  const linkList = byId<HTMLUListElement>("letter-links");
+  function renderLinks(n: Idea): void {
+    linkList.hidden = n.links.length === 0;
+    linkList.replaceChildren(...n.links.map((l) => {
+      const li = document.createElement("li"), a = document.createElement("a"), site = document.createElement("span");
+      a.href = l.url; a.target = "_blank"; a.rel = "noopener noreferrer nofollow ugc"; a.textContent = l.title;
+      site.className = "site"; site.textContent = siteName(l.url);
+      a.append(site); li.append(a); return li;
+    }));
+  }
+
   function closeLetter(): void {
     cancelPendingOpen(letter);
     letter.classList.remove("open");
@@ -126,7 +141,7 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
       let lastHome = home;
       closeLetter();
       flyPaperPlane({
-        from, durationMs: RETURN_FLIGHT_MS, scaleAt: (u) => 1 - 0.45 * u,
+        from, durationMs: RETURN_FLIGHT_MS, scaleAt: (u) => 1 - 0.45 * u, stage: (all.get(n.id) ?? n).stage,
         target: () => (lastHome = sky.screenPointOf(n.id) ?? lastHome),
       });
     }, FOLD_MS);
@@ -164,6 +179,12 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
     markInFlight: (id, flying) => { if (flying) inFlight.add(id); else inFlight.delete(id); },
     openLetter,
     foldAfterComment,
+    update(idea) {
+      if (!all.has(idea.id)) return;
+      all.set(idea.id, idea);
+      if (open?.id === idea.id) open = idea;
+      sync();
+    },
     sync,
   };
 }
