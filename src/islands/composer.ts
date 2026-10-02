@@ -1,5 +1,5 @@
-/** The Idea Note. One form, two places: the closing section, or the hero overlay ("Share Your Ideas").
- *  States: closed → editing ⇄ invalid → folding → flying → sent. Saving and emailing run alongside and never hold up the animation. */
+/** The Idea Note, in the overlay that "Share Your Idea" opens.
+ *  States: closed → editing ⇄ invalid → folding → flying → sent (closed). Saving and emailing run alongside and never hold up the animation. */
 import { newRecordId, validateDraft, type Idea } from "../lib/ideas";
 import { len, sub, v, type Vec } from "../lib/vec";
 import { PLANE_SVG } from "../lib/plane-svg";
@@ -15,15 +15,12 @@ const UP_NO_MOTION = "Your idea is up. Anyone can open it and read it.";
 export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbox; reducedMotion: boolean; now?: () => number }): void {
   const { board, sky, inbox } = opts;
   const now = opts.now ?? Date.now;
-  const form = byId<HTMLFormElement>("note-form"), done = byId("note-done"), doneText = byId("note-done-text"), err = byId("note-error");
-  const compose = byId("compose"), slot = byId("note-slot"), home = byId("note-wrap"), ideaBtn = byId("idea-btn"), toast = byId("toast");
+  const form = byId<HTMLFormElement>("note-form"), err = byId("note-error");
+  const compose = byId("compose"), slot = byId("note-slot"), ideaBtn = byId("idea-btn"), toast = byId("toast");
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement;
-  const baseDoneText = doneText.textContent ?? "";
-  const inHero = () => slot.contains(form);
 
   function openCompose(): void {
-    form.reset(); err.hidden = true; form.hidden = false; form.classList.remove("folding");
-    slot.appendChild(form);
+    form.reset(); err.hidden = true; form.classList.remove("folding");
     const r = ideaBtn.getBoundingClientRect();
     slot.style.setProperty("--dx", r.left + r.width / 2 - innerWidth / 2 + "px");
     slot.style.setProperty("--dy", r.top + r.height / 2 - innerHeight / 2 + "px");
@@ -34,7 +31,6 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
   function closeCompose(returnFocus: boolean): void {
     compose.classList.remove("open"); compose.hidden = true;
     form.classList.remove("folding"); form.reset(); err.hidden = true;
-    home.insertBefore(form, done); form.hidden = false;
     if (returnFocus) ideaBtn.focus({ preventScroll: true });
   }
   ideaBtn.addEventListener("click", openCompose);
@@ -49,15 +45,9 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
     toastTimer = window.setTimeout(() => { toast.hidden = true; }, TOAST_MS);
   }
 
-  function sentFromHero(saving: Promise<boolean>): void {
+  function sent(saving: Promise<boolean>): void {
     closeCompose(false);
     saving.then((saved) => { if (!saved) say(NOT_SAVED); });
-  }
-  function sentFromSection(saving: Promise<boolean>): void {
-    form.hidden = true; form.classList.remove("folding"); done.hidden = false;
-    doneText.textContent = baseDoneText;
-    saving.then((saved) => { if (!saved) doneText.textContent = NOT_SAVED; });
-    byId("note-again").focus({ preventScroll: true });
   }
 
   form.addEventListener("submit", (e) => {
@@ -69,12 +59,11 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
     }
     err.hidden = true;
     const idea: Idea = { id: newRecordId(randomBytes(8)), ...check.idea, at: now() };
-    const fromHero = inHero(), sent = fromHero ? sentFromHero : sentFromSection;
     inbox.send(idea, check.email, location.href);
     if (opts.reducedMotion || !sky) {
       const saving = board.post(idea);
       board.sync(); sent(saving);
-      if (fromHero) say(UP_NO_MOTION);
+      say(UP_NO_MOTION);
       return;
     }
     const r = form.getBoundingClientRect();
@@ -82,9 +71,6 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
     const saving = board.post(idea);
     form.classList.add("folding");
     setTimeout(() => { flyToSky(sky, idea, v(r.left + r.width / 2, r.top + r.height / 2)); sent(saving); }, FOLD_MS);
-  });
-  byId("note-again").addEventListener("click", () => {
-    form.reset(); done.hidden = true; form.hidden = false; field("message").focus({ preventScroll: true });
   });
 
   /** A fixed-position plane climbs while the page scrolls up under it, then joins the sky's flight simulation. */

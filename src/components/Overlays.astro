@@ -1,8 +1,9 @@
 ---
 import { COMMENT_LIMITS } from "../lib/comments";
-/* Hero compose overlay (holds the Idea Note while open), status toast, and the letter a caught note opens into. */
+import IdeaNote from "./IdeaNote.astro";
+/* The compose overlay holding the Idea Note, the status toast, and the letter a caught plane opens into. */
 ---
-<div class="letter compose" id="compose" role="dialog" aria-modal="true" aria-label="Share your idea" hidden><div class="note-slot" id="note-slot"></div></div>
+<div class="letter compose" id="compose" role="dialog" aria-modal="true" aria-label="Share your idea" hidden><div class="note-slot" id="note-slot"><IdeaNote /></div></div>
 <p class="toast" id="toast" role="status" hidden></p>
 
 <div class="letter" id="letter" role="dialog" aria-modal="true" aria-labelledby="letter-from" hidden>

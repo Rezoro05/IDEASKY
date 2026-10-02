@@ -47,6 +47,7 @@ test("the home page opens with IDEA SKY content and no errors", async ({ page })
   await page.goto("/");
   await expect(page).toHaveTitle("IDEA SKY · Share ideas, bring them to life");
   await expect(page.locator("h1")).toHaveText("Ideas are everywhere.");
+  await expect(page.locator(".closing")).toHaveCount(0); // one section: the sky
   await expect(page.locator(".bar")).toContainText("IDEA SKY");
   await page.waitForTimeout(500);
   expect(errors).toEqual([]);
@@ -81,11 +82,12 @@ test("planes can be dragged and thrown, and a drag does not open the idea", asyn
 test("post an idea: it flies to the sky, opens as a letter, and its author can remove it", async ({ page }) => {
   const board = await fakeServices(page);
   await page.goto("/");
+  await page.locator("#idea-btn").click();
   await page.locator("#note-name").fill("Nino");
   await page.locator("#note-email").fill("nino@");
   await page.locator("#note-msg").fill("A bike-share for Tbilisi hills");
   await page.locator(".note-send").click();
-  await expect(page.locator("#note-done")).toBeVisible();
+  await expect(page.locator("#compose")).toBeHidden();
   const plane = page.locator(".plane");
   await expect(plane).toHaveCount(1, { timeout: 8000 });
   await expect(plane).toHaveAttribute("aria-label", "Idea1: open the idea");
@@ -120,13 +122,14 @@ test("other people's ideas can be read but not removed", async ({ page }) => {
 test("if the board is down, the idea still flies and the visitor is told", async ({ page }) => {
   await fakeServices(page, { rows: [], down: true, posts: [], deletes: [], mails: 0 });
   await page.goto("/");
+  await page.locator("#idea-btn").click();
   await page.locator("#note-msg").fill("Still here");
   await page.locator(".note-send").click();
-  await expect(page.locator("#note-done-text")).toContainText("couldn’t save your idea just now");
+  await expect(page.locator("#toast")).toContainText("couldn’t save your idea just now");
   await expect(page.locator(".plane")).toHaveCount(1, { timeout: 8000 });
 });
 
-test("the hero button opens the note; it needs an idea; Escape closes it", async ({ page }) => {
+test("the button opens the Idea Note; it needs an idea; Escape closes it", async ({ page }) => {
   await fakeServices(page);
   await page.goto("/");
   await page.locator("#idea-btn").click();
@@ -137,12 +140,12 @@ test("the hero button opens the note; it needs an idea; Escape closes it", async
   await page.keyboard.press("Escape");
   await expect(page.locator("#compose")).toBeHidden();
   await expect(page.locator("#idea-btn")).toBeFocused();
-  await expect(page.locator("#note-wrap #note-form")).toHaveCount(1); // the form went back home
 });
 
 test("bots that fill the hidden field are ignored", async ({ page }) => {
   const board = await fakeServices(page);
   await page.goto("/");
+  await page.locator("#idea-btn").click();
   await page.locator("#note-msg").fill("spam");
   await page.locator('#note-form input[name="_gotcha"]').evaluate((el: HTMLInputElement) => { el.value = "bot"; });
   await page.locator(".note-send").click();
@@ -258,6 +261,7 @@ test.describe("comments on visitor ideas", () => {
   test("a brand-new idea starts with no comments", async ({ page }) => {
     await fakeServices(page);
     await page.goto("/");
+    await page.locator("#idea-btn").click();
     await page.locator("#note-msg").fill("Fresh idea");
     await page.locator(".note-send").click();
     const plane = page.locator(".plane");

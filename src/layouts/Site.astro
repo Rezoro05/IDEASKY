@@ -1,10 +1,9 @@
 ---
-/* The one page: the sky, the Idea Note, and the overlays. It ships as real HTML before any script runs. */
+/* The one page: the sky and the overlays. It ships as real HTML before any script runs. */
 import css from "../styles/site.css?raw";
 import Loader from "../components/Loader.astro";
 import Header from "../components/Header.astro";
 import Hero from "../components/Hero.astro";
-import Closing from "../components/Closing.astro";
 import Footer from "../components/Footer.astro";
 import Overlays from "../components/Overlays.astro";
 import { SITE, type PageMeta } from "../content/site";
@@ -40,7 +39,6 @@ const ld = { "@context": "https://schema.org", "@type": "WebSite", name: SITE.na
   <Header />
   <main id="view-home">
     <Hero />
-    <Closing />
   </main>
   <Footer />
 </div>
