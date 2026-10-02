@@ -130,8 +130,7 @@ body { background: var(--paper); color: var(--ink); font: 400 16px/1.55 var(--fo
 @media (max-width: 560px) { .foot { flex-direction: column; align-items: center; text-align: center; gap: 14px; } }
 .home-link { display: inline-flex; align-items: center; flex: none; }
 
-/* Line-art figures: ink outlines on paper, one stroke weight {
-  fill: var(--paper); stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+/* Line-art figures: ink outlines on paper, one stroke weight, no shading */
 
 .bar .home-link { display: inline-flex; }
 /* Phones: logo and menu on one line */
@@ -152,19 +151,14 @@ body { background: var(--paper); color: var(--ink); font: 400 16px/1.55 var(--fo
 @keyframes ld-plane-in { to { opacity: 1; transform: scale(1); } }
 @keyframes ld-fly { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: translate(260px, -140px) rotate(-18deg) scale(.8); } }
 @keyframes loader-out { to { opacity: 0; visibility: hidden; } }
+/* "Now" pulses like a live location pin */
 @keyframes now-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 @keyframes now-ring { from { transform: scale(.6); opacity: .9; } to { transform: scale(1.9); opacity: 0; } }
-/* Hover: the path point lights up and grows { transition: transform .2s cubic-bezier(.2,.8,.2,1), background-color .2s, border-color .2s, box-shadow .2s; }
-
-/* Section tones: each band re-scopes the palette tokens, so every child restyles itself */
+/* About: breathing room between sections */
 html, body { overflow-x: clip; }
 /* Same light line grid as the hero, carried across the full-bleed cobalt band */
 .note-field .opt { opacity: .7; }
 /* Visitor notes flying in the hero: white paper, cobalt crease line, cobalt tag */
-.plane .pf { stroke: var(--accent); }
-.plane .tag { color: var(--accent); text-transform: none; letter-spacing: .02em; }
-.plane.fresh .body::after { content: ""; position: absolute; inset: -14px; border-radius: 50%; border: 1.5px solid var(--accent);
-  animation: fresh-ring 1.6s ease-out 4; pointer-events: none; }
 @keyframes fresh-ring { from { transform: scale(.5); opacity: .9; } to { transform: scale(1.5); opacity: 0; } }
 .note-flier { position: fixed; left: 0; top: 0; z-index: 9; width: 64px; height: 64px; pointer-events: none; will-change: transform; }
 .note-flier svg { width: 100%; height: 100%; overflow: visible; }
@@ -198,10 +192,9 @@ html, body { overflow-x: clip; }
   padding: 10px 14px; border-radius: 2px; font: 500 13px/1 var(--font-body); cursor: pointer; }
 .letter-actions button:hover, .letter-actions button:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
 .letter-actions .danger:hover, .letter-actions .danger:focus-visible { border-color: #B3261E; color: #B3261E; }
-@media (prefers-reduced-motion: reduce) { .compose.open .note-slot, .letter.open .letter-card, .plane.fresh .body::after { animation: none; } }
-/* Company logo strip: grayscale at rest { padding-block: 40px 48px; }
+@media (prefers-reduced-motion: reduce) { .compose.open .note-slot, .letter.open .letter-card { animation: none; } }
 
-/* Step 1 hover: the sheet appears out of thin air, opens up { transform: none; }
+/* Step 1 hover: the sheet appears out of thin air, opens up, then its creases and corner fold in */
 @keyframes paper-appear {
   0% { opacity: 0; transform: translateY(10px) scale(.12) rotate(-30deg); filter: blur(4px); }
   35% { opacity: 1; transform: translateY(4px) scale(.45, .12) rotate(-10deg); filter: blur(0); }
@@ -210,17 +203,15 @@ html, body { overflow-x: clip; }
 }
 @keyframes crease-in { from { opacity: 0; stroke-dashoffset: 16; } to { opacity: 1; stroke-dashoffset: 0; } }
 @keyframes corner-fold { from { opacity: 0; transform: scale(0) rotate(-40deg); } to { opacity: 1; transform: none; } }
-/* Step 2: a sheet that keeps folding in half, in half again { transform: none; }
+/* Step 2: a sheet that keeps folding in half, in half again, then opening back up (loops) */
 @keyframes fold-a { 0%, 10% { transform: scaleY(1); } 25%, 80% { transform: scaleY(-1); } 95%, 100% { transform: scaleY(1); } }
 @keyframes fold-b { 0%, 35% { transform: scaleX(1); } 50%, 65% { transform: scaleX(-1); } 80%, 100% { transform: scaleX(1); } }
 @keyframes back-a { 0% { fill: var(--paper); } 17.5% { fill: color-mix(in srgb, var(--ink) 9%, var(--paper)); } 87.5% { fill: var(--paper); } }
 @keyframes back-b { 0% { fill: var(--paper); } 42.5% { fill: color-mix(in srgb, var(--ink) 9%, var(--paper)); } 72.5% { fill: var(--paper); } }
 @keyframes back-ab { 0% { fill: var(--paper); } 17.5% { fill: color-mix(in srgb, var(--ink) 9%, var(--paper)); } 42.5% { fill: var(--paper); } 72.5% { fill: color-mix(in srgb, var(--ink) 9%, var(--paper)); } 87.5% { fill: var(--paper); } }
 @keyframes fold-creases { 0%, 9% { opacity: 1; } 12%, 93% { opacity: 0; } 97%, 100% { opacity: 1; } }
-/* Step 3 hover: an endless staircase that keeps moving up { transform: none; }
+/* Step 3 hover: an endless staircase that keeps moving up, one step per beat */
 @keyframes stairs-up { from { transform: translate(0, 0); } to { transform: translate(-26px, 22px); } }
-/* Who I am: statement on the left { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px 56px; align-items: start; }
-
 /* Idea Note: a message form that folds into a plane and flies off on send. Always white paper with ink text. */
 .note, .letter-card { --plane: #FFFFFF; --plane-edge: #14171B; }
 .note { --n-ink: var(--plane-edge); --n-muted: color-mix(in srgb, var(--plane-edge) 55%, var(--plane)); --n-rule: color-mix(in srgb, var(--plane-edge) 14%, var(--plane));
@@ -287,6 +278,7 @@ html, body { overflow-x: clip; }
   100% { transform: rotateX(85deg) scale(.12, .1) rotateZ(-20deg); opacity: 0; }
 }
 @keyframes note-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* Who I am illustration: a multi-tool whose newest blade is an AI prompt bar. Tools fan out again on hover. */
 @keyframes tool-fan { 0% { transform: rotate(calc(var(--a) * .15)); } 70% { transform: rotate(calc(var(--a) * 1.06)); } 100% { transform: rotate(var(--a)); } }
 @keyframes cursor-blink { 0% { opacity: 1; } 50% { opacity: 0; } }
 .note-choice { display: flex; align-items: stretch; margin-top: 4px; align-self: stretch; border: 1.5px solid var(--tone-cobalt); border-radius: 3px; overflow: hidden; }
@@ -301,8 +293,6 @@ html, body { overflow-x: clip; }
   .sheet { transition: none; }
 }
 
-/* Dark mode, About and Craft pages: the hero's light line grid behind the black background */
-
 /* Phones: slightly larger reading sizes */
 @media (max-width: 560px) {
   .field { height: max(640px, calc(100svh - 70px)); }
@@ -311,10 +301,6 @@ html, body { overflow-x: clip; }
   .note-field span, .role { font-size: 12px; }
   .ideas .line { font-size: 15px; }
 }
-
-/* Craft: key visual + print gallery (full posters { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px 56px; align-items: center; padding-block: 40px 72px; }
-
-/* Ads: always-visible video tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 24px; }
 
 /* Glass touch-ups: frosted surfaces where content scrolls or sits behind (palette unchanged) */
 .bar { background: transparent; box-shadow: none; isolation: isolate; }
@@ -338,8 +324,9 @@ html, body { overflow-x: clip; }
   .plane .tag { background: var(--paper); }
 }
 
-.hp { position: absolute !important; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+/* Hero "Let's talk": inverts to an outlined button with an external-link arrow */
 
+.hp { position: absolute !important; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 /* Comments under a visitor idea, inside the letter: same paper, rules and type as the Idea Note */
 .thread { --n-ink: var(--plane-edge); --n-muted: color-mix(in srgb, var(--plane-edge) 55%, var(--plane)); --n-rule: color-mix(in srgb, var(--plane-edge) 14%, var(--plane));
   margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--n-rule); display: flex; flex-direction: column; gap: 12px; }
