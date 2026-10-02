@@ -52,6 +52,8 @@ body { background: var(--paper); color: var(--ink); font: 400 16px/1.55 var(--fo
 /* Header follows the scroll, full-width paper behind it */
 .bar { position: sticky; top: 0; z-index: 8; background: var(--paper); box-shadow: 0 0 0 100vmax var(--paper); clip-path: inset(0 -100vmax); }
 .bar strong { color: var(--ink); font-weight: 500; }
+.wordmark { font: 700 15px/1 var(--font-display); letter-spacing: .06em; color: var(--ink); text-decoration: none; }
+.wordmark:hover, .wordmark:focus-visible { color: var(--accent); }
 
 .field { position: relative; height: clamp(460px, 68vh, 720px); margin-top: 8px; overflow: hidden;
   touch-action: pan-y; border-bottom: 1px solid var(--rule); }
