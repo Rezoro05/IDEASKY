@@ -1,0 +1,7 @@
+---
+/* A few soft clouds drifting slowly across the sky; most of the time only one or two are in view. */
+const CLOUD = "M30 70 Q10 70 12 55 Q8 38 28 36 Q32 16 56 20 Q70 2 96 12 Q118 0 134 20 Q160 14 166 36 Q190 38 186 56 Q186 70 166 70 Z";
+---
+<div class="clouds" aria-hidden="true">
+  {["c1", "c2", "c3", "c4"].map((c) => <svg class={`cloud ${c}`} viewBox="0 0 200 80"><path d={CLOUD} /></svg>)}
+</div>

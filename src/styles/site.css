@@ -26,6 +26,7 @@
   --tone-stone: #F4D65A; --tone-sun-ink: #1A1810; --tone-sun-muted: #5C5020; --tone-sun-rule: #D9B93B;
   --tone-deep: #15181D; --tone-deep-ink: #EEF0EF; --tone-deep-muted: #9BA4AE; --tone-deep-rule: #2C323A; --tone-deep-accent: #93A0FF;
   --tone-cobalt: #2438D6; --tone-cobalt-ink: #FFFFFF; --tone-cobalt-muted: #CBD2FF; --tone-cobalt-rule: #4A5DE3;
+  --sky-top: #A9D3F5; --sky-bottom: #E8F4FC; --sky-grid: rgba(255,255,255,.38); --sky-plane: #FFFDF4; --sky-plane-edge: #14171B; --skyline: #3B5A7A; --skyline-far: #8FB0CC; --cloud: #FFFFFF; --cloud-edge: rgba(59,90,122,.18);
   --font-display: "Poppins", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -34,10 +35,12 @@
   :root:not([data-theme="light"]) {
     --paper: #14130E; --ink: #F1EEE2; --graphite: #A39D86; --rule: #2E2B20;
     --plane: #1E1C15; --plane-edge: #F1EEE2; --accent: #7C8CFF; --panel: #1A1812; --fold-hi: #2B281D; --fold-mid: #221F16; --fold-lo: #18160F; --tone-mist: #151B26; --tone-stone: #E9C940; --tone-sun-ink: #1A1810; --tone-sun-muted: #5C5020; --tone-sun-rule: #C9A92C; --tone-deep: #1C2229; --tone-deep-ink: #EEF0EF; --tone-deep-muted: #9BA4AE; --tone-deep-rule: #313840; --tone-deep-accent: #93A0FF; --tone-cobalt: #2E41D9; --tone-cobalt-ink: #FFFFFF; --tone-cobalt-muted: #CBD2FF; --tone-cobalt-rule: #5566E6; --fold-edge: #4A4533;
+    --sky-top: #060B1C; --sky-bottom: #17284A; --sky-grid: rgba(255,255,255,.06); --sky-plane: #E4EBF7; --sky-plane-edge: #0B1430; --skyline: #A9BCD8; --skyline-far: #4A5E80; --cloud: rgba(200,214,236,.10); --cloud-edge: rgba(200,214,236,.18);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
+  --sky-top: #060B1C; --sky-bottom: #17284A; --sky-grid: rgba(255,255,255,.06); --sky-plane: #E4EBF7; --sky-plane-edge: #0B1430; --skyline: #A9BCD8; --skyline-far: #4A5E80; --cloud: rgba(200,214,236,.10); --cloud-edge: rgba(200,214,236,.18);
   --paper: #14130E; --ink: #F1EEE2; --graphite: #A39D86; --rule: #2E2B20;
   --plane: #1E1C15; --plane-edge: #F1EEE2; --accent: #7C8CFF; --panel: #1A1812; --fold-hi: #2B281D; --fold-mid: #221F16; --fold-lo: #18160F; --tone-mist: #151B26; --tone-stone: #E9C940; --tone-sun-ink: #1A1810; --tone-sun-muted: #5C5020; --tone-sun-rule: #C9A92C; --tone-deep: #1C2229; --tone-deep-ink: #EEF0EF; --tone-deep-muted: #9BA4AE; --tone-deep-rule: #313840; --tone-deep-accent: #93A0FF; --tone-cobalt: #2E41D9; --tone-cobalt-ink: #FFFFFF; --tone-cobalt-muted: #CBD2FF; --tone-cobalt-rule: #5566E6; --fold-edge: #4A4533;
   color-scheme: dark;
@@ -58,11 +61,10 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .wordmark { font: 700 15px/1 var(--font-display); letter-spacing: .06em; color: var(--ink); text-decoration: none; }
 .wordmark:hover, .wordmark:focus-visible { color: var(--accent); }
 
-.field { position: absolute; inset: 0; overflow: hidden;
+.field { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom) 85%);
   touch-action: pan-y; border-bottom: 1px solid var(--rule); }
 .field::before { content: ""; position: absolute; inset: 0; pointer-events: none;
-  --grid: color-mix(in srgb, var(--ink) 6%, transparent);
-  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-image: linear-gradient(var(--sky-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sky-grid) 1px, transparent 1px);
   background-size: 32px 32px; background-position: -1px -1px; }
 
 .thesis { position: absolute; left: var(--gutter); top: calc(var(--bar-h) + 3vh); max-width: min(760px, calc(100% - 2 * var(--gutter))); pointer-events: none; z-index: 1; }
@@ -81,7 +83,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .plane .body { position: absolute; left: calc(var(--s) / -2); top: calc(var(--s) / -2); width: var(--s); height: var(--s); cursor: grab; }
 .plane svg { width: 100%; height: 100%; display: block; overflow: visible; }
 /* Planes: faceted paper dart, ink outline on warm paper; accent blue while hovered or held */
-.plane .pf { fill: var(--plane); stroke: var(--plane-edge); stroke-width: 1.3; stroke-linejoin: round; transition: fill .2s, stroke .2s; }
+.plane .pf { fill: var(--sky-plane); stroke: var(--sky-plane-edge); stroke-width: 1.3; stroke-linejoin: round; transition: fill .2s, stroke .2s; }
 .plane .tag { position: absolute; left: calc(var(--s) / 2 + 4px); top: -8px; white-space: nowrap;
   font: 500 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--graphite);
   pointer-events: none; transition: color .2s; }
@@ -166,7 +168,7 @@ html, body { overflow-x: clip; }
 @keyframes fresh-ring { from { transform: scale(.5); opacity: .9; } to { transform: scale(1.5); opacity: 0; } }
 .note-flier { position: fixed; left: 0; top: 0; z-index: 9; width: 64px; height: 64px; pointer-events: none; will-change: transform; }
 .note-flier svg { width: 100%; height: 100%; overflow: visible; }
-.note-flier .pf { fill: var(--plane); stroke: var(--accent); stroke-width: 1.3; stroke-linejoin: round; }
+.note-flier .pf { fill: var(--sky-plane); stroke: var(--accent); stroke-width: 1.3; stroke-linejoin: round; }
 /* Letter: a caught note plane unfolds into a readable paper note */
 .letter { position: fixed; inset: 0; z-index: 11; display: grid; place-items: center; padding: 16px;
   background: color-mix(in srgb, #14171B 45%, transparent); opacity: 0; transition: opacity .3s; }
@@ -311,14 +313,14 @@ html, body { overflow-x: clip; }
 .letter { -webkit-backdrop-filter: blur(6px) saturate(1.2); backdrop-filter: blur(6px) saturate(1.2); background: color-mix(in srgb, #14171B 32%, transparent); }
 .toast { background: color-mix(in srgb, #14171B 78%, transparent); -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
   border: 1px solid rgba(255,255,255,.12); box-shadow: 0 16px 40px -20px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.1); color: #fff; border-radius: 4px; }
-.plane .tag { padding: 3px 6px; margin-top: -3px; border-radius: 3px; background: color-mix(in srgb, var(--paper) 55%, transparent);
+.plane .tag { padding: 3px 6px; margin-top: -3px; border-radius: 3px; background: color-mix(in srgb, var(--sky-bottom) 60%, transparent);
   -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 /* Visitors who ask for less transparency get solid surfaces */
 @media (prefers-reduced-transparency: reduce) {
   .sheet .back, .letter, .toast, .plane .tag { -webkit-backdrop-filter: none; backdrop-filter: none; }
   .sheet .back { background: var(--panel); }
   .toast { background: #14171B; }
-  .plane .tag { background: var(--paper); }
+  .plane .tag { background: var(--sky-bottom); }
 }
 
 /* Hero "Let's talk": inverts to an outlined button with an external-link arrow */
@@ -381,3 +383,24 @@ html, body { overflow-x: clip; }
 .act-comment[aria-expanded="true"] { color: var(--tone-cobalt); }
 @keyframes like-pop { 50% { transform: scale(1.25); } }
 @media (prefers-reduced-motion: reduce) { .act svg { transition: none; } .act-like[aria-pressed="true"] svg { animation: none; } }
+
+/* Sky: drifting clouds behind everything, the skyline standing on the ground line above the footer */
+:root { --ground-h: 44px; }
+.clouds { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.cloud { position: absolute; left: 0; width: clamp(140px, 16vw, 240px); fill: var(--cloud); stroke: var(--cloud-edge); stroke-width: 1.2; overflow: visible;
+  animation: cloud-drift linear infinite; will-change: transform; }
+.cloud.c1 { top: 14%; animation-duration: 140s; animation-delay: -30s; }
+.cloud.c2 { top: 34%; width: clamp(100px, 11vw, 170px); animation-duration: 190s; animation-delay: -120s; opacity: .85; }
+.cloud.c3 { top: 8%;  width: clamp(90px, 9vw, 140px); animation-duration: 230s; animation-delay: -200s; opacity: .7; }
+.cloud.c4 { top: 50%; animation-duration: 170s; animation-delay: -75s; opacity: .8; }
+@keyframes cloud-drift { from { transform: translateX(-30vw); } to { transform: translateX(110vw); } }
+.skyline { position: absolute; left: 0; right: 0; bottom: var(--ground-h); width: 100%; height: clamp(110px, 24vh, 250px); pointer-events: none; z-index: 0;
+  fill: var(--sky-bottom); stroke: var(--skyline); stroke-width: 1.4; stroke-linejoin: round; vector-effect: non-scaling-stroke; overflow: visible; }
+.skyline path { vector-effect: non-scaling-stroke; }
+.skyline .far { stroke: var(--skyline-far); }
+.field::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: var(--ground-h); background: var(--sky-bottom); z-index: 0; }
+.foot { min-height: var(--ground-h); align-items: center; }
+@media (prefers-reduced-motion: reduce) {
+  .cloud { animation: none; }
+  .cloud.c1 { transform: translateX(62vw); } .cloud.c2 { transform: translateX(18vw); } .cloud.c3 { transform: translateX(84vw); } .cloud.c4 { display: none; }
+}
