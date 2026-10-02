@@ -6,7 +6,7 @@ import { PLANE_SVG } from "../lib/plane-svg";
 import type { Inbox } from "../boundaries/inbox";
 import type { Board } from "./board";
 import type { Sky } from "./sky";
-import { byId, randomBytes } from "./dom";
+import { byId, cancelPendingOpen, openWithTransition, randomBytes } from "./dom";
 
 const FOLD_MS = 700, FLIGHT_MS = 1300, SCROLL_WAIT_MS = 3000, TOAST_MS = 6000, THROW_SPEED = 180;
 const NOT_SAVED = "The public board couldn’t save your idea just now, so for now only you can see your plane.";
@@ -24,11 +24,11 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
     const r = ideaBtn.getBoundingClientRect();
     slot.style.setProperty("--dx", r.left + r.width / 2 - innerWidth / 2 + "px");
     slot.style.setProperty("--dy", r.top + r.height / 2 - innerHeight / 2 + "px");
-    compose.hidden = false;
-    requestAnimationFrame(() => requestAnimationFrame(() => compose.classList.add("open")));
+    openWithTransition(compose);
     field("message").focus({ preventScroll: true });
   }
   function closeCompose(returnFocus: boolean): void {
+    cancelPendingOpen(compose);
     compose.classList.remove("open"); compose.hidden = true;
     form.classList.remove("folding"); form.reset(); err.hidden = true;
     if (returnFocus) ideaBtn.focus({ preventScroll: true });

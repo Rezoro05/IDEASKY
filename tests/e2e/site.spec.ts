@@ -57,7 +57,8 @@ test("unknown URLs get the 404 page, which still works as the site", async ({ pa
   await fakeServices(page);
   const res = await page.goto("/nope/");
   expect(res?.status()).toBe(404);
-  await expect(page.locator("#view-home")).toBeVisible();
+  await expect(page.locator("#field")).toBeVisible();
+  await expect(page.locator("h1")).toHaveText("Ideas are everywhere.");
 });
 
 test("planes can be dragged and thrown, and a drag does not open the idea", async ({ page }) => {
@@ -117,6 +118,35 @@ test("other people's ideas can be read but not removed", async ({ page }) => {
   await expect(page.locator("#letter-remove")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#letter")).toBeHidden();
+});
+
+test("closing the letter right after opening it closes it for good", async ({ page }) => {
+  await fakeServices(page, withGio());
+  await page.goto("/");
+  const plane = page.locator(".plane");
+  await expect(plane).toHaveCount(1);
+  await plane.focus();
+  for (let i = 0; i < 5; i++) {
+    await page.evaluate(() => {
+      document.querySelector<HTMLElement>(".plane")!.click();
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); // before the opening animation's frames run
+    });
+    await expect(page.locator("#letter")).toBeHidden();
+  }
+});
+
+test("closing the Idea Note right after opening it closes it for good", async ({ page }) => {
+  await fakeServices(page);
+  await page.goto("/");
+  for (let i = 0; i < 5; i++) {
+    await page.evaluate(() => {
+      document.getElementById("idea-btn")!.click();
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    await page.waitForTimeout(100);
+    await expect(page.locator("#compose")).toBeHidden();
+    await expect(page.locator("#compose")).not.toHaveClass(/\bopen\b/);
+  }
 });
 
 test("if the board is down, the idea still flies and the visitor is told", async ({ page }) => {

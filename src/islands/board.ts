@@ -3,7 +3,7 @@ import { ideaName, ideaNumbers, letterDateLine, newestIdeas, previewLine, IDEA_L
 import type { IdeaStore } from "../boundaries/ideaStore";
 import { v, type Vec } from "../lib/vec";
 import type { Sky } from "./sky";
-import { byId, openWithTransition } from "./dom";
+import { byId, cancelPendingOpen, openWithTransition } from "./dom";
 
 export type Board = {
   /** An idea this visitor just wrote: shown right away, saved in the background. Resolves to whether the board kept it. */
@@ -100,6 +100,7 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
     byId("letter-close").focus({ preventScroll: true });
   }
   function closeLetter(): void {
+    cancelPendingOpen(letter);
     letter.classList.remove("open"); open = null;
     opts.letter?.closed();
     setTimeout(() => { if (!letter.classList.contains("open")) letter.hidden = true; }, 300);
