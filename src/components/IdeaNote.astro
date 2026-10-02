@@ -1,5 +1,6 @@
 ---
-/* The Idea Note: the paper form a visitor writes an idea on. It lives in the compose overlay opened by "Share Your Idea". */
+/* The Idea Note: the paper form a visitor writes an idea on. It lives in the compose overlay opened by "Share Your Idea".
+   The idea comes first; who wrote it is optional and sits below. */
 import { IDEA_LIMITS } from "../lib/ideas";
 ---
 <form class="note" id="note-form" novalidate>
@@ -9,15 +10,17 @@ import { IDEA_LIMITS } from "../lib/ideas";
     <span class="note-to">Public</span>
     <button class="note-close" type="button" id="note-close" aria-label="Close">✕</button>
   </div>
-  <label class="note-field" for="note-name"><span>Your name <span class="opt">(optional, shown with your idea)</span></span>
-    <input id="note-name" name="name" type="text" autocomplete="name" maxlength={IDEA_LIMITS.name} placeholder="Nino Beridze">
+  <label class="note-field note-idea" for="note-msg"><span>The idea <span class="req" aria-hidden="true">*</span></span>
+    <textarea id="note-msg" name="message" rows="4" maxlength={IDEA_LIMITS.message} required aria-required="true" placeholder="Share anything on your mind"></textarea>
   </label>
-  <label class="note-field" for="note-email"><span>Your email <span class="opt">(optional, never shown)</span></span>
-    <input id="note-email" name="email" type="text" inputmode="email" autocomplete="email" placeholder="you@company.com">
-  </label>
-  <label class="note-field" for="note-msg"><span>The idea</span>
-    <textarea id="note-msg" name="message" rows="4" maxlength={IDEA_LIMITS.message} required placeholder="Share anything on your mind"></textarea>
-  </label>
+  <div class="note-who">
+    <label class="note-field" for="note-name"><span>Name</span>
+      <input id="note-name" name="name" type="text" autocomplete="name" maxlength={IDEA_LIMITS.name} placeholder="Nino Beridze">
+    </label>
+    <label class="note-field" for="note-email"><span>Email</span>
+      <input id="note-email" name="email" type="text" inputmode="email" autocomplete="email" placeholder="you@company.com">
+    </label>
+  </div>
   <p class="note-error" id="note-error" role="alert" hidden></p>
   <div class="note-choice">
     <button class="note-send" type="submit">Fold &amp; share <span aria-hidden="true">→</span></button>
