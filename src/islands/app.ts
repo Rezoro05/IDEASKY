@@ -2,13 +2,15 @@
 import { FORMSPREE_ENDPOINT, PUBLIC_BOARD } from "../content/site";
 import { FLIGHT_CONFIGS, motionProfileFor } from "../lib/motion";
 import { memoryStore, supabaseStore, toHex, type IdeaStore } from "../boundaries/ideaStore";
-import { browserKeyStore, COMMENT_KEYS_ITEM } from "../boundaries/keyStore";
+import { browserKeyStore, COMMENT_KEYS_ITEM, LIKES_ITEM } from "../boundaries/keyStore";
+import { likerIdFrom, memoryLikes, supabaseLikes, type LikeStore } from "../boundaries/likeStore";
 import { memoryComments, supabaseComments, type CommentStore } from "../boundaries/commentStore";
 import { inboxFor } from "../boundaries/inbox";
 import { startSky, type Sky } from "./sky";
 import { startBoard } from "./board";
 import { startComposer } from "./composer";
 import { startThread } from "./thread";
+import { startLikes } from "./likes";
 import { byId, prefersReducedMotion, randomBytes } from "./dom";
 
 function safeStorage(): Storage | null { try { return window.localStorage; } catch { return null; } }
@@ -17,15 +19,17 @@ async function sha256Hex(text: string): Promise<string> {
   return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))));
 }
 
-type Stores = { ideas: IdeaStore; comments: CommentStore };
+type Stores = { ideas: IdeaStore; comments: CommentStore; likes: LikeStore };
 
 /** Supabase when a board is configured; otherwise everything lives in memory for this visit. */
 function chooseStores(): Stores {
-  if (!PUBLIC_BOARD.url) return { ideas: memoryStore(), comments: memoryComments() };
+  if (!PUBLIC_BOARD.url) return { ideas: memoryStore(), comments: memoryComments(), likes: memoryLikes() };
   const base = { url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window), randomBytes, sha256Hex };
+  const likeKeys = browserKeyStore(safeStorage(), LIKES_ITEM);
   return {
     ideas: supabaseStore({ ...base, keys: browserKeyStore(safeStorage()) }),
     comments: supabaseComments({ ...base, keys: browserKeyStore(safeStorage(), COMMENT_KEYS_ITEM) }),
+    likes: supabaseLikes({ ...base, keys: likeKeys, likerId: likerIdFrom(likeKeys, randomBytes) }),
   };
 }
 
@@ -51,7 +55,11 @@ export function startSite(): void {
   let nameOf = (id: string) => id;
   let commentPosted = (_ideaId: string) => {};
   const thread = startThread({ store: stores.then((s) => s.comments), inbox, ideaNameOf: (id) => nameOf(id), posted: (id) => commentPosted(id) });
-  const board = startBoard({ sky, store: stores.then((s) => s.ideas), letter: { opened: thread.open, closed: thread.close } });
+  const likes = startLikes({ store: stores.then((s) => s.likes) });
+  const board = startBoard({ sky, store: stores.then((s) => s.ideas), letter: {
+    opened: (id) => { thread.open(id); likes.open(id); },
+    closed: () => { thread.close(); likes.close(); },
+  } });
   nameOf = board.nameOf;
   commentPosted = board.foldAfterComment;
   openPlane = board.openLetter;

@@ -1,9 +1,10 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
+import { createHash } from "node:crypto";
 
 /** Fake the outside world: the test build points at board.test and inbox.test (see build:test), and both are intercepted here. */
 type Row = { id: string; name: string; message: string; created_at: string };
 type CommentRow = Row & { idea_id: string };
-type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[] };
+type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean };
 async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [], mails: 0 }) {
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.abort());
   await page.route("https://board.test/**", async (r: Route) => {
@@ -17,6 +18,20 @@ async function fakeServices(page: Page, board: Board = { rows: [], posts: [], de
       if (url.includes("delete_comment")) { const { p_id } = r.request().postDataJSON(); board.comments = board.comments.filter((x) => x.id !== p_id); return r.fulfill({ json: true }); }
       const b = r.request().postDataJSON();
       board.comments.push({ id: b.id, idea_id: b.idea_id, name: b.name, message: b.message, created_at: new Date().toISOString() });
+      return r.fulfill({ status: 201, body: "" });
+    }
+    if (url.includes("/rest/v1/likes") || url.includes("unlike_idea")) {
+      board.likes ??= [];
+      if (board.likesDown) return r.fulfill({ status: 500, body: "down" });
+      if (method === "HEAD") { const id = new URL(url).searchParams.get("idea_id")!.slice(3); return r.fulfill({ status: 200, headers: { "content-range": `*/${board.likes.filter((l) => l.idea_id === id).length}`, "access-control-expose-headers": "Content-Range", "access-control-allow-origin": "*" } }); }
+      if (url.includes("unlike_idea")) {
+        const { p_idea_id, p_liker } = r.request().postDataJSON(), hash = createHash("sha256").update(p_liker).digest("hex");
+        board.likes = board.likes.filter((l) => !(l.idea_id === p_idea_id && l.liker_hash === hash));
+        return r.fulfill({ json: true });
+      }
+      const b = r.request().postDataJSON();
+      if (board.likes.some((l) => l.idea_id === b.idea_id && l.liker_hash === b.liker_hash)) return r.fulfill({ status: 409, body: "" });
+      board.likes.push(b);
       return r.fulfill({ status: 201, body: "" });
     }
     if (method === "GET") return r.fulfill({ json: board.rows });
@@ -284,6 +299,7 @@ test.describe("comments on visitor ideas", () => {
     await expect(page.locator("#thread-list li")).toHaveCount(1);
     await expect(page.locator("#thread-list li").first()).toContainText("Ana");
     await expect(page.locator("#thread-list .c-remove")).toHaveCount(0);
+    await page.locator("#comment-btn").click();
     await page.locator("#comment-msg").fill("I'd sell khachapuri there");
     await page.locator("#comment-name").fill("Nino");
     await page.locator(".thread-send").click();
@@ -303,10 +319,26 @@ test.describe("comments on visitor ideas", () => {
     expect(board.comments).toHaveLength(1);
   });
 
+  test("comments show at once; the comment icon opens and closes the form to write one", async ({ page }) => {
+    await fakeServices(page, gio());
+    await page.goto("/");
+    await openGio(page);
+    await expect(page.locator("#thread-list li")).toHaveCount(1);
+    await expect(page.locator("#comment-count")).toHaveText("1");
+    await expect(page.locator("#thread-form")).toBeHidden();
+    await page.locator("#comment-btn").click();
+    await expect(page.locator("#thread-form")).toBeVisible();
+    await expect(page.locator("#comment-msg")).toBeFocused();
+    await expect(page.locator("#comment-btn")).toHaveAttribute("aria-expanded", "true");
+    await page.locator("#comment-btn").click();
+    await expect(page.locator("#thread-form")).toBeHidden();
+  });
+
   test("comments stay after reopening the idea and reloading the page", async ({ page }) => {
     await fakeServices(page, gio());
     await page.goto("/");
     await openGio(page);
+    await page.locator("#comment-btn").click();
     await page.locator("#comment-msg").fill("Second thought");
     await page.locator(".thread-send").click();
     await expect(page.locator("#thread-count")).toHaveText("2 comments");
@@ -320,6 +352,7 @@ test.describe("comments on visitor ideas", () => {
     const board = await fakeServices(page, gio());
     await page.goto("/");
     await openGio(page);
+    await page.locator("#comment-btn").click();
     await page.locator(".thread-send").click();
     await expect(page.locator("#comment-error")).toHaveText("Write your comment first.");
     await page.locator("#comment-msg").fill("spam");
@@ -334,6 +367,7 @@ test.describe("comments on visitor ideas", () => {
     await fakeServices(page, { ...gio(), commentPostsDown: true });
     await page.goto("/");
     await openGio(page);
+    await page.locator("#comment-btn").click();
     await page.locator("#comment-msg").fill("Keep me");
     await page.locator(".thread-send").click();
     await expect(page.locator("#comment-error")).toContainText("Couldn’t post your comment");
@@ -349,6 +383,7 @@ test.describe("comments on visitor ideas", () => {
     await openGio(page);
     await expect(page.locator("#thread-status")).toContainText("couldn’t load");
     await expect(page.locator("#thread-form")).toBeHidden();
+    await expect(page.locator("#comment-btn")).toBeDisabled();
   });
 
   test("a brand-new idea starts with no comments", async ({ page }) => {
@@ -372,8 +407,53 @@ test.describe("comments on visitor ideas", () => {
       await openGio(page);
       const card = (await page.locator(".letter-card").boundingBox())!;
       expect(card.width).toBeLessThanOrEqual(390);
+      await page.locator("#comment-btn").click();
       await page.locator("#comment-msg").scrollIntoViewIfNeeded();
       await expect(page.locator("#comment-msg")).toBeInViewport();
     });
+  });
+});
+
+test.describe("likes", () => {
+  const liked = (n: number) => Array.from({ length: n }, (_, i) => ({ idea_id: "zzzzzz1", liker_hash: String(i).padStart(64, "0") }));
+  async function openIdea(page: Page) {
+    const plane = page.locator(".plane");
+    await expect(plane).toHaveCount(1);
+    await plane.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#letter")).toBeVisible();
+  }
+
+  test("anyone can like an idea once from this browser, and tap again to unlike", async ({ page }) => {
+    const board = await fakeServices(page, { ...withGio(), likes: liked(2) });
+    await page.goto("/");
+    await openIdea(page);
+    const heart = page.locator("#like-btn"), count = page.locator("#like-count");
+    await expect(count).toHaveText("2");
+    await expect(heart).toHaveAttribute("aria-pressed", "false");
+    await heart.click();
+    await expect(heart).toHaveAttribute("aria-pressed", "true");
+    await expect(heart).toHaveAttribute("aria-label", "Unlike this idea");
+    await expect(count).toHaveText("3");
+    await expect.poll(() => board.likes!.length).toBe(3);
+    expect(board.likes!.at(-1)!.liker_hash).toMatch(/^[0-9a-f]{64}$/); // only a hash leaves the browser
+    await page.reload();
+    await openIdea(page);
+    await expect(heart).toHaveAttribute("aria-pressed", "true"); // remembered by this browser
+    await expect(count).toHaveText("3");
+    await heart.click();
+    await expect(heart).toHaveAttribute("aria-pressed", "false");
+    await expect(count).toHaveText("2");
+    await expect.poll(() => board.likes!.length).toBe(2);
+  });
+
+  test("if a like can't be saved, the heart goes back", async ({ page }) => {
+    await fakeServices(page, { ...withGio(), likesDown: true });
+    await page.goto("/");
+    await openIdea(page);
+    await expect(page.locator("#like-count")).toHaveText(""); // count unknown: no number
+    await page.locator("#like-btn").click();
+    await expect(page.locator("#like-btn")).toHaveAttribute("aria-pressed", "false");
+    await expect(page.locator("#like-count")).toHaveText("");
   });
 });

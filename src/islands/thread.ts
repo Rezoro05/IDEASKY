@@ -1,5 +1,5 @@
-/** Comments under a visitor idea, inside its letter.
- *  Thread: loading → ready | unavailable.  Form: editing → sending → editing (added) | failed (text kept).
+/** Comments under a visitor idea, inside its letter. The comments show at once; the form to write one opens from the comment icon.
+ *  Thread: loading → ready | unavailable.  Form: closed → editing → sending → editing (added) | failed (text kept).
  *  Every open gets a token, so answers that arrive after the letter closed or switched are ignored. */
 import { commentCountLabel, threadFor, validateCommentDraft, type Comment } from "../lib/comments";
 import { newRecordId } from "../lib/ideas";
@@ -21,15 +21,18 @@ export function startThread(opts: {
 }): Thread {
   const now = opts.now ?? Date.now;
   const list = byId<HTMLOListElement>("thread-list"), status = byId("thread-status"), count = byId("thread-count");
+  const commentBtn = byId<HTMLButtonElement>("comment-btn"), iconCount = byId("comment-count");
   const form = byId<HTMLFormElement>("thread-form"), err = byId("comment-error"), send = form.querySelector<HTMLButtonElement>(".thread-send")!;
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement;
   let ideaId: string | null = null, token = 0, comments: Comment[] = [], store: CommentStore | null = null;
+  let loaded = false, formWanted = false;
   const dateOf = (at: number) => new Date(at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
   function setStatus(text: string | null): void { status.hidden = !text; status.textContent = text ?? ""; }
 
   function render(freshId?: string): void {
     count.textContent = commentCountLabel(comments.length);
+    iconCount.textContent = comments.length ? String(comments.length) : "";
     list.replaceChildren(...comments.map((c) => {
       const li = document.createElement("li");
       if (c.id === freshId) li.className = "fresh";
@@ -50,16 +53,26 @@ export function startThread(opts: {
 
   async function open(id: string): Promise<void> {
     const mine = ++token;
-    ideaId = id; comments = [];
-    form.reset(); err.hidden = true; send.disabled = false; form.hidden = true;
-    list.replaceChildren(); count.textContent = ""; setStatus(LOADING);
+    ideaId = id; comments = []; loaded = false; formWanted = false;
+    form.reset(); err.hidden = true; send.disabled = false; showForm();
+    list.replaceChildren(); count.textContent = ""; iconCount.textContent = ""; commentBtn.disabled = false; setStatus(LOADING);
     store = await opts.store;
-    const loaded = await store.list(id);
+    const found = await store.list(id);
     if (mine !== token) return;
-    if (!loaded) { setStatus(UNAVAILABLE); return; }
-    comments = threadFor(loaded, id);
-    setStatus(null); form.hidden = false; render();
+    if (!found) { setStatus(UNAVAILABLE); commentBtn.disabled = true; return; }
+    comments = threadFor(found, id); loaded = true;
+    setStatus(null); showForm(); render();
   }
+
+  function showForm(): void {
+    form.hidden = !(loaded && formWanted);
+    commentBtn.setAttribute("aria-expanded", String(formWanted));
+  }
+  commentBtn.addEventListener("click", () => {
+    formWanted = !formWanted;
+    showForm();
+    if (!form.hidden) field("message").focus();
+  });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();

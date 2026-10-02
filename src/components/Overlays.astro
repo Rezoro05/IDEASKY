@@ -12,6 +12,16 @@ import IdeaNote from "./IdeaNote.astro";
     <p class="letter-from" id="letter-from"></p>
     <p class="letter-date" id="letter-date"></p>
     <p class="letter-body" id="letter-body"></p>
+    <div class="letter-bar">
+      <button class="act act-like" id="like-btn" type="button" aria-pressed="false" aria-label="Like this idea">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3s-7.4-4.5-9.2-9C1.5 8 3.6 4.6 7 4.6c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.4 0 5.5 3.4 4.2 6.7-1.8 4.5-9.2 9-9.2 9z"/></svg>
+        <span class="act-count" id="like-count"></span>
+      </button>
+      <button class="act act-comment" id="comment-btn" type="button" aria-expanded="false" aria-controls="thread-form" aria-label="Write a comment">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5h15a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H12l-5 3.6V17H4.5A1.5 1.5 0 0 1 3 15.5v-9A1.5 1.5 0 0 1 4.5 5z"/></svg>
+        <span class="act-count" id="comment-count"></span>
+      </button>
+    </div>
     <div class="letter-actions">
       <button type="button" class="danger" id="letter-remove" hidden>Remove this idea</button>
     </div>
