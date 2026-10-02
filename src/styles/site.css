@@ -178,6 +178,7 @@ html, body { overflow-x: clip; }
   background-image: linear-gradient(var(--n-grid) 1px, transparent 1px), linear-gradient(90deg, var(--n-grid) 1px, transparent 1px); background-size: 20px 20px; background-position: -1px -1px;
   box-shadow: 0 30px 60px -28px rgba(0,0,0,.6); transform-origin: 50% 50%; }
 .letter.open .letter-card { animation: letter-unfold .7s cubic-bezier(.2,.8,.2,1) both; }
+.letter .letter-card.folding { animation: note-fold .75s cubic-bezier(.6,0,.4,1) forwards; pointer-events: none; }
 @keyframes letter-unfold {
   0% { transform: translate(var(--dx, 0), var(--dy, 0)) scale(.08) rotate(-18deg); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
   55% { transform: none; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
@@ -192,6 +193,7 @@ html, body { overflow-x: clip; }
 .letter-date { margin: 0; font: 400 12px/1 var(--font-mono); color: color-mix(in srgb, var(--plane-edge) 55%, var(--plane)); }
 .letter-body { margin: 8px 0 4px; font-size: 17px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .letter-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.letter-actions:not(:has(> :not([hidden]))) { display: none; }
 .letter-actions button { background: none; border: 1px solid color-mix(in srgb, var(--plane-edge) 25%, var(--plane)); color: var(--plane-edge);
   padding: 10px 14px; border-radius: 2px; font: 500 13px/1 var(--font-body); cursor: pointer; }
 .letter-actions button:hover, .letter-actions button:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }

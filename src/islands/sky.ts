@@ -11,6 +11,8 @@ export type Sky = {
   slugs(): string[];
   bounds(): Bounds;
   fieldRect(): DOMRect;
+  /** Where a plane is on screen right now (its center), or null if it isn't in the sky. */
+  screenPointOf(slug: string): Vec | null;
   add(slug: string, spec: PlaneSpec): void;
   retag(slug: string, tag: string, label: string): void;
   remove(slug: string): void;
@@ -107,6 +109,12 @@ export function startSky(opts: {
     slugs: () => [...els.keys()],
     bounds,
     fieldRect: () => field.getBoundingClientRect(),
+    screenPointOf(slug) {
+      const body = els.get(slug)?.querySelector(".body");
+      if (!body) return null;
+      const r = body.getBoundingClientRect();
+      return v(r.left + r.width / 2, r.top + r.height / 2);
+    },
     add(slug, spec) {
       const a = makePlane(slug, spec);
       const velocity = spec.velocity ?? v(0, 0);

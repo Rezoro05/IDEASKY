@@ -1,12 +1,12 @@
 /** The Idea Note, in the overlay that "Share Your Idea" opens.
  *  States: closed → editing ⇄ invalid → folding → flying → sent (closed). Saving and emailing run alongside and never hold up the animation. */
 import { newRecordId, validateDraft, type Idea } from "../lib/ideas";
-import { len, sub, v, type Vec } from "../lib/vec";
-import { PLANE_SVG } from "../lib/plane-svg";
+import { v, type Vec } from "../lib/vec";
 import type { Inbox } from "../boundaries/inbox";
 import type { Board } from "./board";
 import type { Sky } from "./sky";
 import { byId, cancelPendingOpen, openWithTransition, randomBytes } from "./dom";
+import { flyPaperPlane } from "./flier";
 
 const FOLD_MS = 700, FLIGHT_MS = 1300, SCROLL_WAIT_MS = 3000, TOAST_MS = 6000, THROW_SPEED = 180;
 const NOT_SAVED = "The public board couldn’t save your idea just now, so for now only you can see your plane.";
@@ -73,36 +73,25 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
     setTimeout(() => { flyToSky(sky, idea, v(r.left + r.width / 2, r.top + r.height / 2)); sent(saving); }, FOLD_MS);
   });
 
-  /** A fixed-position plane climbs while the page scrolls up under it, then joins the sky's flight simulation. */
+  /** A plane climbs from the folded note while the page scrolls up under it, then joins the sky's flight simulation. */
   function flyToSky(sky: Sky, idea: Idea, start: Vec): void {
-    const el = document.createElement("div");
-    el.className = "note-flier"; el.innerHTML = PLANE_SVG; el.setAttribute("aria-hidden", "true");
-    document.body.appendChild(el);
     window.scrollTo({ top: 0, behavior: "smooth" });
-    const t0 = performance.now();
-    let prev = start, heading = -Math.PI / 2;
-    const place = (pt: Vec, ang: number, k: number) => {
-      el.style.transform = `translate(${pt.x - 32}px, ${pt.y - 32}px) rotate(${(ang * 180) / Math.PI}deg) scale(${k})`;
+    const landingSpot = (): Vec => {
+      const fr = sky.fieldRect();
+      return v(fr.left + fr.width * (0.35 + 0.3 * Math.sin(idea.at)), Math.max(80, fr.top + fr.height * 0.62));
     };
-    function tick(t: number) {
-      const u = Math.min(1, (t - t0) / FLIGHT_MS), fr = sky.fieldRect();
-      const end = v(fr.left + fr.width * (0.35 + 0.3 * Math.sin(idea.at)), Math.max(80, fr.top + fr.height * 0.62));
-      const ctrl = v(start.x - 180, Math.min(start.y, end.y) - 140);
-      const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2, a = 1 - e;
-      const pt = v(a * a * start.x + 2 * a * e * ctrl.x + e * e * end.x, a * a * start.y + 2 * a * e * ctrl.y + e * e * end.y);
-      if (len(sub(pt, prev)) > 0.5) heading = Math.atan2(pt.y - prev.y, pt.x - prev.x);
-      place(pt, heading, 0.6 + 0.4 * Math.min(1, u * 3));
-      const scrolled = window.scrollY < 4 || t - t0 > SCROLL_WAIT_MS;
-      if (u < 1 || !scrolled) { prev = pt; requestAnimationFrame(tick); return; }
-      el.remove();
+    flyPaperPlane({
+      from: start, target: landingSpot, durationMs: FLIGHT_MS,
+      scaleAt: (u) => 0.6 + 0.4 * Math.min(1, u * 3),
+      mayLand: (elapsed) => window.scrollY < 4 || elapsed > SCROLL_WAIT_MS,
+    }).then(({ at, heading }) => {
       board.markInFlight(idea.id, false);
       if (sky.has(idea.id)) sky.remove(idea.id);
       if (!board.has(idea.id)) return;
-      const name = board.nameOf(idea.id);
+      const name = board.nameOf(idea.id), fr = sky.fieldRect();
       sky.add(idea.id, { tag: name, label: `${name}: open the idea`, fresh: true,
-        from: v(pt.x - fr.left, pt.y - fr.top), velocity: v(Math.cos(heading) * THROW_SPEED, Math.sin(heading) * THROW_SPEED) });
+        from: v(at.x - fr.left, at.y - fr.top), velocity: v(Math.cos(heading) * THROW_SPEED, Math.sin(heading) * THROW_SPEED) });
       board.sync();
-    }
-    requestAnimationFrame(tick);
+    });
   }
 }

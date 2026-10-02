@@ -49,9 +49,11 @@ export function startSite(): void {
   const stores = Promise.resolve(chooseStores());
   const inbox = inboxFor(FORMSPREE_ENDPOINT, window.fetch.bind(window));
   let nameOf = (id: string) => id;
-  const thread = startThread({ store: stores.then((s) => s.comments), inbox, ideaNameOf: (id) => nameOf(id) });
+  let commentPosted = (_ideaId: string) => {};
+  const thread = startThread({ store: stores.then((s) => s.comments), inbox, ideaNameOf: (id) => nameOf(id), posted: (id) => commentPosted(id) });
   const board = startBoard({ sky, store: stores.then((s) => s.ideas), letter: { opened: thread.open, closed: thread.close } });
   nameOf = board.nameOf;
+  commentPosted = board.foldAfterComment;
   openPlane = board.openLetter;
   startComposer({ board, sky, reducedMotion, inbox });
   board.sync();

@@ -3,7 +3,7 @@ import { test, expect, type Page, type Route } from "@playwright/test";
 /** Fake the outside world: the test build points at board.test and inbox.test (see build:test), and both are intercepted here. */
 type Row = { id: string; name: string; message: string; created_at: string };
 type CommentRow = Row & { idea_id: string };
-type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; mailBodies?: string[] };
+type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[] };
 async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [], mails: 0 }) {
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.abort());
   await page.route("https://board.test/**", async (r: Route) => {
@@ -13,6 +13,7 @@ async function fakeServices(page: Page, board: Board = { rows: [], posts: [], de
       board.comments ??= [];
       if (board.commentsDown) return r.fulfill({ status: 500, body: "down" });
       if (method === "GET") { const id = new URL(url).searchParams.get("idea_id")!.slice(3); return r.fulfill({ json: board.comments.filter((x) => x.idea_id === id) }); }
+      if (board.commentPostsDown) return r.fulfill({ status: 500, body: "down" });
       if (url.includes("delete_comment")) { const { p_id } = r.request().postDataJSON(); board.comments = board.comments.filter((x) => x.id !== p_id); return r.fulfill({ json: true }); }
       const b = r.request().postDataJSON();
       board.comments.push({ id: b.id, idea_id: b.idea_id, name: b.name, message: b.message, created_at: new Date().toISOString() });
@@ -120,6 +121,29 @@ test("other people's ideas can be read but not removed", async ({ page }) => {
   await expect(page.locator("#letter")).toBeHidden();
 });
 
+for (const [how, close] of [
+  ["Escape", (page: Page) => page.keyboard.press("Escape")],
+  ["the close button", (page: Page) => page.locator("#letter-close").click()],
+  ["clicking outside", (page: Page) => page.mouse.click(8, 8)],
+] as const) {
+  test(`closing a letter with ${how} folds it into a plane that flies home to the sky`, async ({ page }) => {
+    await fakeServices(page, withGio());
+    await page.goto("/");
+    const plane = page.locator(".plane");
+    await expect(plane).toHaveCount(1);
+    await plane.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#letter-body")).toHaveText("Night markets");
+    await expect(page.locator("#letter-refold")).toHaveCount(0); // closing is the fold
+    await close(page);
+    await expect(page.locator(".letter-card")).toHaveClass(/folding/);
+    await expect(page.locator(".note-flier")).toHaveCount(1, { timeout: 3000 });
+    await expect(page.locator("#letter")).toBeHidden();
+    await expect(page.locator(".note-flier")).toHaveCount(0, { timeout: 3000 }); // merged into its plane
+    await expect(plane).toHaveCount(1);
+  });
+}
+
 test("closing the letter right after opening it closes it for good", async ({ page }) => {
   await fakeServices(page, withGio());
   await page.goto("/");
@@ -193,6 +217,9 @@ test.describe("reduced motion", () => {
     await expect(page.locator(".plane")).toHaveCount(0);
     await page.locator("#ideas-list a").first().click();
     await expect(page.locator("#letter-body")).toHaveText("Night markets");
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#letter")).toBeHidden(); // no fold or flight without motion
+    await expect(page.locator(".note-flier")).toHaveCount(0);
   });
 });
 
@@ -248,7 +275,10 @@ test.describe("comments on visitor ideas", () => {
     expect(board.comments!.at(-1)).toMatchObject({ idea_id: "zzzzzz1", name: "Nino" });
     await expect.poll(() => board.mails).toBe(1);
     expect(board.mailBodies![0]).toContain("New comment on Idea1 from Nino");
-    await mine.locator(".c-remove").click();
+    await expect(page.locator(".letter-card")).toHaveClass(/folding/, { timeout: 3000 }); // seen it land, now it folds and flies home
+    await expect(page.locator("#letter")).toBeHidden();
+    await openGio(page);
+    await page.locator("#thread-list li").nth(1).locator(".c-remove").click();
     await expect(page.locator("#thread-count")).toHaveText("1 comment");
     expect(board.comments).toHaveLength(1);
   });
@@ -278,6 +308,19 @@ test.describe("comments on visitor ideas", () => {
     await page.waitForTimeout(300);
     expect(board.comments).toHaveLength(1);
     expect(board.mails).toBe(0);
+  });
+
+  test("if a comment can't be saved, the letter stays open and keeps the text", async ({ page }) => {
+    await fakeServices(page, { ...gio(), commentPostsDown: true });
+    await page.goto("/");
+    await openGio(page);
+    await page.locator("#comment-msg").fill("Keep me");
+    await page.locator(".thread-send").click();
+    await expect(page.locator("#comment-error")).toContainText("Couldn’t post your comment");
+    await page.waitForTimeout(1500);
+    await expect(page.locator("#letter")).toBeVisible();
+    await expect(page.locator(".letter-card")).not.toHaveClass(/folding/);
+    await expect(page.locator("#comment-msg")).toHaveValue("Keep me");
   });
 
   test("if comments can't load, the letter says so and hides the form", async ({ page }) => {

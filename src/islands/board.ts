@@ -4,6 +4,7 @@ import type { IdeaStore } from "../boundaries/ideaStore";
 import { v, type Vec } from "../lib/vec";
 import type { Sky } from "./sky";
 import { byId, cancelPendingOpen, openWithTransition } from "./dom";
+import { flyPaperPlane } from "./flier";
 
 export type Board = {
   /** An idea this visitor just wrote: shown right away, saved in the background. Resolves to whether the board kept it. */
@@ -13,11 +14,14 @@ export type Board = {
   /** While a new idea flies up, the sky waits for it instead of spawning a second plane. */
   markInFlight(id: string, flying: boolean): void;
   openLetter(id: string, origin?: Vec): void;
+  /** Someone just commented on this idea: let them see it land, then fold the letter and fly it home. */
+  foldAfterComment(ideaId: string): void;
   sync(): void;
 };
 
 const NEW_IDEA_SPEED = 40;
 const REMOVE_FAILED = "Couldn’t remove it. Try again later.";
+const FOLD_MS = 750, RETURN_FLIGHT_MS = 900, PAUSE_AFTER_COMMENT_MS = 1000;
 
 export type LetterHooks = { opened(ideaId: string): void; closed(): void };
 
@@ -78,21 +82,22 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
     openLetter(a.dataset.idea!, v(r.left + 40, r.top + r.height / 2));
   });
 
-  /* Letter: a caught plane unfolds into a readable paper note */
-  const letter = byId("letter"), removeBtn = byId<HTMLButtonElement>("letter-remove");
-  let open: Idea | null = null, returnFocus: Element | null = null;
+  /* Letter: a caught plane unfolds into a readable paper note, and folds back into its plane when closed.
+     States: closed → open → folding → closed (flying home), or open → closed directly (removed, or no sky to fly to). */
+  const letter = byId("letter"), card = letter.querySelector<HTMLElement>(".letter-card")!, removeBtn = byId<HTMLButtonElement>("letter-remove");
+  let open: Idea | null = null, returnFocus: Element | null = null, letterState: "closed" | "open" | "folding" = "closed", opening = 0;
   const dateOf = (at: number) => new Date(at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
   function openLetter(id: string, origin?: Vec): void {
     const n = all.get(id);
-    if (!n) return;
-    open = n; returnFocus = document.activeElement;
+    if (!n || letterState === "folding") return;
+    open = n; returnFocus = document.activeElement; letterState = "open"; opening++;
+    card.classList.remove("folding");
     byId("letter-from").textContent = nameOf(n.id);
     byId("letter-date").textContent = letterDateLine(n, dateOf);
     byId("letter-body").textContent = n.message;
     removeBtn.hidden = !store?.ownsKey(n.id);
     removeBtn.textContent = "Remove this idea";
-    const card = letter.querySelector<HTMLElement>(".letter-card")!;
     card.style.setProperty("--dx", origin ? origin.x - innerWidth / 2 + "px" : "0px");
     card.style.setProperty("--dy", origin ? origin.y - innerHeight / 2 + "px" : "0px");
     openWithTransition(letter);
@@ -101,15 +106,40 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
   }
   function closeLetter(): void {
     cancelPendingOpen(letter);
-    letter.classList.remove("open"); open = null;
-    opts.letter?.closed();
-    setTimeout(() => { if (!letter.classList.contains("open")) letter.hidden = true; }, 300);
+    letter.classList.remove("open");
+    if (letterState === "open") opts.letter?.closed();
+    open = null; letterState = "closed";
+    setTimeout(() => { if (!letter.classList.contains("open")) { letter.hidden = true; card.classList.remove("folding"); } }, 300);
     if (returnFocus instanceof HTMLElement && returnFocus.isConnected) returnFocus.focus({ preventScroll: true });
   }
-  byId("letter-close").addEventListener("click", closeLetter);
-  byId("letter-refold").addEventListener("click", closeLetter);
-  letter.addEventListener("click", (e) => { if (e.target === letter) closeLetter(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !letter.hidden) closeLetter(); });
+
+  /** Every way of closing a letter folds it back into its plane, which flies home and merges into the plane in the sky. */
+  function foldLetter(): void {
+    const n = open, home = n && sky?.screenPointOf(n.id);
+    if (letterState !== "open" || !n || !sky || !home) { if (letterState === "open") closeLetter(); return; }
+    letterState = "folding";
+    opts.letter?.closed();
+    cancelPendingOpen(letter);
+    const r = card.getBoundingClientRect(), from = v(r.left + r.width / 2, r.top + r.height / 2);
+    card.classList.add("folding");
+    setTimeout(() => {
+      let lastHome = home;
+      closeLetter();
+      flyPaperPlane({
+        from, durationMs: RETURN_FLIGHT_MS, scaleAt: (u) => 1 - 0.45 * u,
+        target: () => (lastHome = sky.screenPointOf(n.id) ?? lastHome),
+      });
+    }, FOLD_MS);
+  }
+
+  function foldAfterComment(ideaId: string): void {
+    const sameOpening = opening;
+    setTimeout(() => { if (open?.id === ideaId && opening === sameOpening) foldLetter(); }, PAUSE_AFTER_COMMENT_MS);
+  }
+
+  byId("letter-close").addEventListener("click", foldLetter);
+  letter.addEventListener("click", (e) => { if (e.target === letter) foldLetter(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && letterState === "open") foldLetter(); });
   removeBtn.addEventListener("click", async () => {
     const n = open;
     if (!n || !store) return;
@@ -133,6 +163,7 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
     nameOf,
     markInFlight: (id, flying) => { if (flying) inFlight.add(id); else inFlight.delete(id); },
     openLetter,
+    foldAfterComment,
     sync,
   };
 }

@@ -14,7 +14,11 @@ const UNAVAILABLE = "Comments couldn’t load right now. Try again later.";
 const SEND_FAILED = "Couldn’t post your comment. Try again in a moment.";
 const REMOVE_FAILED = "Couldn’t remove it. Try again later.";
 
-export function startThread(opts: { store: Promise<CommentStore>; inbox: Inbox; ideaNameOf: (ideaId: string) => string; now?: () => number }): Thread {
+export function startThread(opts: {
+  store: Promise<CommentStore>; inbox: Inbox; ideaNameOf: (ideaId: string) => string; now?: () => number;
+  /** A comment was saved and shown. */
+  posted?: (ideaId: string) => void;
+}): Thread {
   const now = opts.now ?? Date.now;
   const list = byId<HTMLOListElement>("thread-list"), status = byId("thread-status"), count = byId("thread-count");
   const form = byId<HTMLFormElement>("thread-form"), err = byId("comment-error"), send = form.querySelector<HTMLButtonElement>(".thread-send")!;
@@ -77,6 +81,7 @@ export function startThread(opts: { store: Promise<CommentStore>; inbox: Inbox; 
     comments = threadFor([...comments, c], forIdea);
     field("message").value = "";
     render(c.id);
+    opts.posted?.(forIdea);
   });
 
   list.addEventListener("click", async (e) => {
