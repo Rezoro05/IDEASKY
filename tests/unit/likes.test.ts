@@ -61,6 +61,24 @@ describe("supabaseLikes", () => {
     expect(JSON.parse(f.mock.calls[0]![1]!.body as string)).toEqual({ idea_id: "idea01", liker_hash: "hash:liker-secret" });
     expect(s.likedHere("idea01")).toBe(true);
   });
+  it("the like is remembered here before the request finishes, so a reload mid-request keeps it", async () => {
+    let finish!: (r: Response) => void;
+    const d = deps((() => new Promise<Response>((res) => { finish = res; })) as unknown as typeof fetch), s = supabaseLikes(d);
+    const pending = s.like("idea01");
+    await Promise.resolve(); await Promise.resolve();
+    expect(s.likedHere("idea01")).toBe(true);
+    finish(response(201));
+    expect(await pending).toBe(true);
+  });
+  it("a request cut off because the page is leaving keeps the like; a real failure takes it back", async () => {
+    const cutOff = (async () => { throw new TypeError("Failed to fetch"); }) as unknown as typeof fetch;
+    const leaving = { ...deps(cutOff), pageIsLeaving: () => true };
+    expect(await supabaseLikes(leaving).like("idea01")).toBe(false);
+    expect(supabaseLikes(leaving).likedHere("idea01")).toBe(true);
+    const staying = { ...deps(cutOff), pageIsLeaving: () => false };
+    expect(await supabaseLikes(staying).like("idea01")).toBe(false);
+    expect(supabaseLikes(staying).likedHere("idea01")).toBe(false);
+  });
   it("an already-existing like (409) still counts as liked here", async () => {
     const s = supabaseLikes(deps((async () => response(409)) as unknown as typeof fetch));
     expect(await s.like("idea01")).toBe(true);

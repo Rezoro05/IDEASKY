@@ -32,6 +32,8 @@ export type SupabaseLikeDeps = {
   keys: KeyStore;
   likerId: () => string;
   sha256Hex: (text: string) => Promise<string>;
+  /** True once the page is unloading: a request cut off by leaving is not a failure, so the like is kept. */
+  pageIsLeaving?: () => boolean;
 };
 
 export function supabaseLikes(d: SupabaseLikeDeps): LikeStore {
@@ -45,24 +47,28 @@ export function supabaseLikes(d: SupabaseLikeDeps): LikeStore {
       } catch { return null; }
     },
     likedHere: (ideaId) => d.keys.get(ideaId) === "1",
+    /* The browser remembers the change before it is sent and takes it back only if sending really failed,
+       not when a reload or navigation cut the request off. */
     async like(ideaId) {
+      d.keys.set(ideaId, "1");
       try {
         const r = await d.fetch(d.url + "/rest/v1/likes", {
           method: "POST", headers: { ...headers, Prefer: "return=minimal" },
           body: JSON.stringify({ idea_id: ideaId, liker_hash: await d.sha256Hex(d.likerId()) }),
         });
-        if (!r.ok && r.status !== 409) return false; // 409: this browser already liked it
-        d.keys.set(ideaId, "1");
-        return true;
-      } catch { return false; }
+        if (r.ok || r.status === 409) return true; // 409: this browser already liked it
+      } catch { if (d.pageIsLeaving?.()) return false; }
+      d.keys.drop(ideaId);
+      return false;
     },
     async unlike(ideaId) {
+      d.keys.drop(ideaId);
       try {
         const r = await d.fetch(d.url + "/rest/v1/rpc/unlike_idea", { method: "POST", headers, body: JSON.stringify({ p_idea_id: ideaId, p_liker: d.likerId() }) });
-        if (!r.ok) return false;
-        d.keys.drop(ideaId);
-        return true;
-      } catch { return false; }
+        if (r.ok) return true;
+      } catch { if (d.pageIsLeaving?.()) return false; }
+      d.keys.set(ideaId, "1");
+      return false;
     },
   };
 }

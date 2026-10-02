@@ -15,6 +15,10 @@ import { byId, prefersReducedMotion, randomBytes } from "./dom";
 
 function safeStorage(): Storage | null { try { return window.localStorage; } catch { return null; } }
 
+let leaving = false;
+addEventListener("pagehide", () => { leaving = true; });
+addEventListener("pageshow", () => { leaving = false; }); // back/forward cache brings the page back
+
 async function sha256Hex(text: string): Promise<string> {
   return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))));
 }
@@ -29,7 +33,7 @@ function chooseStores(): Stores {
   return {
     ideas: supabaseStore({ ...base, keys: browserKeyStore(safeStorage()) }),
     comments: supabaseComments({ ...base, keys: browserKeyStore(safeStorage(), COMMENT_KEYS_ITEM) }),
-    likes: supabaseLikes({ ...base, keys: likeKeys, likerId: likerIdFrom(likeKeys, randomBytes) }),
+    likes: supabaseLikes({ ...base, keys: likeKeys, likerId: likerIdFrom(likeKeys, randomBytes), pageIsLeaving: () => leaving }),
   };
 }
 
