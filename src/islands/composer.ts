@@ -6,7 +6,7 @@ import type { Inbox } from "../boundaries/inbox";
 import type { Board } from "./board";
 import type { Sky } from "./sky";
 import { byId, cancelPendingOpen, openWithTransition, randomBytes } from "./dom";
-import { flyPaperPlane } from "./flier";
+import { flyAcrossPage } from "./flier";
 import { linkRowsIn } from "./link-rows";
 
 const FOLD_MS = 700, FLIGHT_MS = 1300, SCROLL_WAIT_MS = 3000, TOAST_MS = 6000, THROW_SPEED = 180;
@@ -85,7 +85,7 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
       const fr = sky.fieldRect();
       return v(fr.left + fr.width * (0.35 + 0.3 * Math.sin(idea.at)), Math.max(80, fr.top + fr.height * 0.62));
     };
-    flyPaperPlane({
+    flyAcrossPage({
       from: start, target: landingSpot, durationMs: FLIGHT_MS, stage: "idea",
       scaleAt: (u) => 0.6 + 0.4 * Math.min(1, u * 3),
       mayLand: (elapsed) => window.scrollY < 4 || elapsed > SCROLL_WAIT_MS,

@@ -10,6 +10,7 @@ import { inboxFor } from "../boundaries/inbox";
 import { memoryUpdates, supabaseUpdates, type UpdateStore } from "../boundaries/updateStore";
 import { startSky, type Sky } from "./sky";
 import { startBoard } from "./board";
+import { startLetter } from "./letter";
 import { startComposer } from "./composer";
 import { startThread } from "./thread";
 import { startLikes } from "./likes";
@@ -76,14 +77,19 @@ export function startSite(): void {
   let ideaMoved = (_idea: Idea) => {};
   const updates = startUpdates({ store: stores.then((s) => s.updates) });
   const stage = startStagePanel({ store: stores.then((s) => s.ideas), moved: (idea) => ideaMoved(idea) });
-  const board = startBoard({ sky, store: stores.then((s) => s.ideas), letter: {
-    opened: (idea) => { thread.open(idea.id); likes.open(idea.id); stage.open(idea); updates.open(idea.id); },
-    closed: () => { thread.close(); likes.close(); stage.close(); updates.close(); },
-  } });
-  ideaMoved = board.update;
+  const ideaStore = stores.then((s) => s.ideas);
+  const board = startBoard({ sky, store: ideaStore, openIdea: (id, origin) => letter.open(id, origin) });
+  const letter = startLetter({
+    sky, store: ideaStore, ideaOf: board.get, nameOf: board.nameOf, removed: board.forget,
+    hooks: {
+      opened: (idea) => { thread.open(idea.id); likes.open(idea.id); stage.open(idea); updates.open(idea.id); },
+      closed: () => { thread.close(); likes.close(); stage.close(); updates.close(); },
+    },
+  });
+  ideaMoved = (idea) => { board.update(idea); letter.refresh(idea); };
   nameOf = board.nameOf;
-  commentPosted = board.foldAfterComment;
-  openPlane = board.openLetter;
+  commentPosted = letter.foldAfterComment;
+  openPlane = letter.open;
   startComposer({ board, sky, reducedMotion, inbox });
   board.sync();
 }

@@ -2,11 +2,11 @@
  *  List: loading → ready | unavailable.  Form: closed → editing → sending → closed (added) | editing with an error (text kept).
  *  Every open gets a token, so answers that arrive after the letter closed or switched are ignored. */
 import { newRecordId } from "../lib/ideas";
-import { siteName } from "../lib/links";
 import { updateCountLabel, updatesFor, validateUpdateDraft, type Update } from "../lib/updates";
 import type { UpdateStore } from "../boundaries/updateStore";
 import { byId, randomBytes } from "./dom";
 import { linkRowsIn } from "./link-rows";
+import { linkItems } from "./link-list";
 
 export type Updates = { open(ideaId: string): void; close(): void };
 
@@ -40,12 +40,7 @@ export function startUpdates(opts: { store: Promise<UpdateStore>; now?: () => nu
       li.append(meta, body);
       if (u.links.length) {
         const ul = document.createElement("ul"); ul.className = "letter-links";
-        ul.append(...u.links.map((l) => {
-          const item = document.createElement("li"), a = document.createElement("a"), site = document.createElement("span");
-          a.href = l.url; a.target = "_blank"; a.rel = "noopener noreferrer nofollow ugc"; a.textContent = l.title;
-          site.className = "site"; site.textContent = siteName(l.url);
-          a.append(site); item.append(a); return item;
-        }));
+        ul.append(...linkItems(u.links));
         li.append(ul);
       }
       if (owner) {

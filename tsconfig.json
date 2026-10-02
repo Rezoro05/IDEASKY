@@ -1,1 +1,16 @@
-{ "extends": "astro/tsconfigs/strict", "include": [".astro/types.d.ts", "src", "tests", "scripts"], "exclude": ["dist", "dist-preview"] }
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [
+    ".astro/types.d.ts",
+    "src",
+    "tests",
+    "scripts"
+  ],
+  "exclude": [
+    "dist"
+  ],
+  "compilerOptions": {
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  }
+}

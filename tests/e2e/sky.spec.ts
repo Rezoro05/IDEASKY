@@ -1,0 +1,49 @@
+import { test, expect } from "@playwright/test";
+import { fakeServices, withGio } from "./fixtures";
+
+test("planes can be dragged and thrown, and a drag does not open the idea", async ({ page }) => {
+  await fakeServices(page, withGio());
+  await page.goto("/");
+  const plane = page.locator(".plane");
+  await expect(plane).toHaveCount(1);
+  await page.waitForTimeout(400);
+  await plane.focus(); // pause it so we can grab it reliably
+  const box = (await plane.boundingBox())!;
+  const x0 = box.x + box.width / 2, y0 = box.y + box.height / 2;
+  const dx = x0 > 400 ? -25 : 25;
+  await page.mouse.move(x0, y0);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(x0 + i * dx, y0, { steps: 1 });
+  await page.mouse.up();
+  await expect(page.locator("#letter")).toBeHidden();
+  const after = (await plane.boundingBox())!;
+  expect(Math.abs(after.x - box.x)).toBeGreaterThan(150);
+});
+
+test("planes face the way they fly: heading left they are mirrored, heading right they are not", async ({ page }) => {
+  const rows = ["aaaaaa1", "bbbbbb2", "cccccc3", "dddddd4", "eeeeee5", "ffffff6"].map((id, i) => ({ id, name: "A", message: "Idea " + i, created_at: `2026-09-30T1${i}:00:00Z` }));
+  await fakeServices(page, { rows, posts: [], deletes: [], mails: 0 });
+  await page.goto("/");
+  await expect(page.locator(".plane")).toHaveCount(6);
+  const sample = () => page.$$eval(".plane", (els) => els.map((el) => {
+    const r = el.getBoundingClientRect(); // the anchor moves only with flight; the drawing's box also shifts when it turns
+    return { id: el.getAttribute("data-slug")!, x: r.left, y: r.top, mirrored: (el.querySelector(".body")!.getAttribute("style") ?? "").includes("scaleX(-1)") };
+  }));
+  const seen = { left: 0, right: 0 };
+  let before = await sample();
+  for (let i = 0; i < 160 && (seen.left < 3 || seen.right < 3); i++) {
+    await page.waitForTimeout(150);
+    const now = await sample();
+    for (const p of now) {
+      const q = before.find((b) => b.id === p.id);
+      if (!q) continue;
+      const dx = p.x - q.x, dy = p.y - q.y;
+      if (Math.abs(dx) < 3 || Math.abs(dx) < 2 * Math.abs(dy)) continue; // only clearly sideways motion
+      expect(p.mirrored, `plane moving ${dx < 0 ? "left" : "right"}`).toBe(dx < 0);
+      seen[dx < 0 ? "left" : "right"]++;
+    }
+    before = now;
+  }
+  expect(seen.left).toBeGreaterThanOrEqual(3);
+  expect(seen.right).toBeGreaterThanOrEqual(3);
+});

@@ -1,4 +1,4 @@
-/** A paper plane flown across the page by hand, outside the sky's simulation: from a form or letter into the sky. */
+/** An idea's form flown across the page by hand, outside the sky's simulation: a new idea up into the sky, a closed letter home to its plane. */
 import { arcPoint, headingBetween } from "../lib/flight-path";
 import { orientationFor, orientationTransform } from "../lib/orientation";
 import { formFor } from "../lib/forms";
@@ -11,7 +11,7 @@ export type Landing = { at: Vec; heading: number };
 
 /** Flies from `from` to wherever `target()` says the plane should land (asked every frame, so the target may move).
  *  Resolves once the arc is done and `mayLand()` agrees; the flier element is gone by then. */
-export function flyPaperPlane(opts: {
+export function flyAcrossPage(opts: {
   from: Vec;
   target: () => Vec;
   durationMs: number;

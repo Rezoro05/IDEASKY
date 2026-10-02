@@ -1,5 +1,4 @@
 /** Small DOM helpers shared by the islands. */
-import { v, type Vec } from "../lib/vec";
 
 export const byId = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -23,7 +22,6 @@ export function cancelPendingOpen(el: HTMLElement): void {
 }
 
 
-export const pointOf = (r: DOMRect, dx: number, dy: number): Vec => v(r.left + dx, r.top + dy);
 export const prefersReducedMotion = (): boolean => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export function randomBytes(n: number): Uint8Array {
