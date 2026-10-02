@@ -359,6 +359,8 @@ html, body { overflow-x: clip; }
 }
 
 /* Folded corner: the card itself is cut along the fold, so whatever is behind it shows through (no dark triangle) */
+/* The flap sits on the outer edge (over the borders) so its fold line meets the cut exactly, with no white sliver */
+.compose .note::after, .letter-card::after { top: -3px; right: -1px; width: var(--fold); height: var(--fold); }
 .compose .note, .letter-card { --fold: 34px;
   clip-path: polygon(-80px -80px, calc(100% - var(--fold)) -80px, calc(100% - var(--fold)) 0, 100% var(--fold), calc(100% + 80px) var(--fold), calc(100% + 80px) calc(100% + 80px), -80px calc(100% + 80px)); }
 
