@@ -1,22 +1,22 @@
-/** The public idea board on the page: keeps the notes, flies the newest in the sky, lists them without motion, and opens them as letters. */
-import { canRemove, ideaName, ideaNumbers, letterDateLine, newestNotes, noteIdFromSlug, noteSlug, previewLine, NOTE_LIMITS, type Note } from "../lib/notes";
+/** The public idea board on the page: keeps the ideas, flies the newest in the sky, lists them without motion, and opens them as letters. */
+import { ideaName, ideaNumbers, letterDateLine, newestIdeas, previewLine, IDEA_LIMITS, type Idea } from "../lib/ideas";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import { v, type Vec } from "../lib/vec";
 import type { Sky } from "./sky";
 import { byId, openWithTransition } from "./dom";
 
 export type Board = {
-  /** A note this visitor just wrote: shown right away, saved in the background. Resolves to whether the board kept it. */
-  post(note: Note): Promise<boolean>;
+  /** An idea this visitor just wrote: shown right away, saved in the background. Resolves to whether the board kept it. */
+  post(idea: Idea): Promise<boolean>;
   has(id: string): boolean;
   nameOf(id: string): string;
-  /** While a new note flies up, the sky waits for it instead of spawning a second plane. */
+  /** While a new idea flies up, the sky waits for it instead of spawning a second plane. */
   markInFlight(id: string, flying: boolean): void;
   openLetter(id: string, origin?: Vec): void;
   sync(): void;
 };
 
-const NEW_NOTE_SPEED = 40;
+const NEW_IDEA_SPEED = 40;
 const REMOVE_FAILED = "Couldn’t remove it. Try again later.";
 
 export type LetterHooks = { opened(ideaId: string): void; closed(): void };
@@ -24,14 +24,14 @@ export type LetterHooks = { opened(ideaId: string): void; closed(): void };
 export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; random?: () => number; letter?: LetterHooks }): Board {
   const { sky } = opts;
   const rand = opts.random ?? Math.random;
-  let all = new Map<string, Note>();
+  let all = new Map<string, Idea>();
   const unsaved = new Set<string>(), inFlight = new Set<string>();
   let store: IdeaStore | null = null;
   opts.store.then((s) => {
     store = s;
-    s.subscribe((notes) => {
-      for (const id of unsaved) { const n = all.get(id); if (n) notes.set(id, n); } // keep this visit's unsaved notes
-      all = notes;
+    s.subscribe((ideas) => {
+      for (const id of unsaved) { const n = all.get(id); if (n) ideas.set(id, n); } // keep this visit's unsaved ideas
+      all = ideas;
       sync();
     });
   });
@@ -39,48 +39,48 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
   const nameOf = (id: string) => ideaName(ideaNumbers(all.values()).get(id));
 
   function sync(): void {
-    const shown = newestNotes(all.values(), NOTE_LIMITS.inSky);
+    const shown = newestIdeas(all.values(), IDEA_LIMITS.inSky);
     renderList(shown);
     if (!sky) return;
-    const keep = new Set(shown.map((n) => noteSlug(n.id)));
-    for (const slug of sky.noteSlugs()) if (!keep.has(slug)) sky.remove(slug);
+    const keep = new Set(shown.map((n) => n.id));
+    for (const id of sky.slugs()) if (!keep.has(id)) sky.remove(id);
     const b = sky.bounds(), nums = ideaNumbers(all.values());
     for (const n of shown) {
-      const name = ideaName(nums.get(n.id)), slug = noteSlug(n.id);
-      if (sky.has(slug)) { sky.retag(slug, name, `${name}: open the note`); continue; }
+      const name = ideaName(nums.get(n.id));
+      if (sky.has(n.id)) { sky.retag(n.id, name, `${name}: open the idea`); continue; }
       if (inFlight.has(n.id)) continue;
       const angle = rand() * Math.PI * 2;
-      sky.add(slug, {
-        tag: name, label: `${name}: open the note`, href: "#", isNote: true,
+      sky.add(n.id, {
+        tag: name, label: `${name}: open the idea`,
         from: v(80 + rand() * Math.max(1, b.width - 160), b.height * 0.45 + rand() * Math.max(1, b.height * 0.5 - 60)),
-        velocity: v(Math.cos(angle) * NEW_NOTE_SPEED, Math.sin(angle) * NEW_NOTE_SPEED),
+        velocity: v(Math.cos(angle) * NEW_IDEA_SPEED, Math.sin(angle) * NEW_IDEA_SPEED),
       });
     }
   }
 
-  const listWrap = byId("notes-fallback"), list = byId("notes-list");
-  function renderList(shown: Note[]): void {
+  const listWrap = byId("ideas-fallback"), list = byId("ideas-list");
+  function renderList(shown: Idea[]): void {
     listWrap.hidden = shown.length === 0;
     const nums = ideaNumbers(all.values());
     list.replaceChildren(...shown.map((n) => {
       const li = document.createElement("li"), a = document.createElement("a");
-      a.href = "#"; a.dataset.note = n.id;
+      a.href = "#"; a.dataset.idea = n.id;
       const name = document.createElement("span"); name.className = "name"; name.textContent = ideaName(nums.get(n.id));
       const line = document.createElement("span"); line.className = "line"; line.textContent = previewLine(n.message);
       a.append(name, line); li.append(a); return li;
     }));
   }
   list.addEventListener("click", (e) => {
-    const a = (e.target as Element).closest<HTMLElement>("a[data-note]");
+    const a = (e.target as Element).closest<HTMLElement>("a[data-idea]");
     if (!a) return;
     e.preventDefault();
     const r = a.getBoundingClientRect();
-    openLetter(a.dataset.note!, v(r.left + 40, r.top + r.height / 2));
+    openLetter(a.dataset.idea!, v(r.left + 40, r.top + r.height / 2));
   });
 
-  /* Letter: a caught note unfolds into a readable paper note */
+  /* Letter: a caught plane unfolds into a readable paper note */
   const letter = byId("letter"), removeBtn = byId<HTMLButtonElement>("letter-remove");
-  let open: Note | null = null, returnFocus: Element | null = null;
+  let open: Idea | null = null, returnFocus: Element | null = null;
   const dateOf = (at: number) => new Date(at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
   function openLetter(id: string, origin?: Vec): void {
@@ -90,10 +90,7 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
     byId("letter-from").textContent = nameOf(n.id);
     byId("letter-date").textContent = letterDateLine(n, dateOf);
     byId("letter-body").textContent = n.message;
-    const viewer = store?.viewer();
-    removeBtn.hidden = !store || !viewer || !canRemove(n,
-      viewer.mode === "public" ? { mode: "public", hasKey: store.ownsKey(n.id) }
-        : viewer.mode === "claude" ? { mode: "claude", isOwner: viewer.isOwner, uid: viewer.uid } : { mode: "none" });
+    removeBtn.hidden = !store?.ownsKey(n.id);
     removeBtn.textContent = "Remove this idea";
     const card = letter.querySelector<HTMLElement>(".letter-card")!;
     card.style.setProperty("--dx", origin ? origin.x - innerWidth / 2 + "px" : "0px");
@@ -124,11 +121,11 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
   });
 
   return {
-    async post(note) {
-      all.set(note.id, note); unsaved.add(note.id);
+    async post(idea) {
+      all.set(idea.id, idea); unsaved.add(idea.id);
       const s = await opts.store;
-      const saved = await s.add(note);
-      if (saved) unsaved.delete(note.id);
+      const saved = await s.add(idea);
+      if (saved) unsaved.delete(idea.id);
       return saved;
     },
     has: (id) => all.has(id),
@@ -138,9 +135,3 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
     sync,
   };
 }
-
-export const openPlaneHandler = (board: Board, openIdea: (slug: string, origin: Vec) => void) =>
-  (slug: string, origin: Vec): void => {
-    if (slug.startsWith("note-")) board.openLetter(noteIdFromSlug(slug), origin);
-    else openIdea(slug, origin);
-  };

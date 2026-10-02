@@ -1,40 +1,28 @@
 /** Site-wide facts and service endpoints. Public by design (no secrets here). */
 export const SITE = {
-  url: "https://revazkuparadze.com/",
-  owner: "Revaz Kuparadze",
-  shortName: "Rez",
-  jobTitle: "Founder and product lead",
-  city: "New York",
-  linkedin: "https://www.linkedin.com/in/rkuparadze/",
-  booking: "https://calendar.app.google/oPBxK5waPKJncCMs9",
-  ogImage: "og-image.png",
+  name: "IDEA SKY",
+  url: "https://rezoro05.github.io/IDEASKY/",
 } as const;
 
-/** Every Idea Note is emailed to the owner here. */
-export const FORMSPREE_ENDPOINT = "https://formspree.io/f/xeaowwln";
+export const HERO = {
+  headline: "Ideas are everywhere.",
+  lede: "But an idea without execution is just a thought exercise. Share yours, explore other people’s, and maybe someone will bring it to life.",
+} as const;
+
+/* Services come from the build environment, so nothing points at a real service by accident.
+   Unset (local runs): the board lives in memory and nothing is emailed. The browser tests set fake addresses and intercept them. */
+
+/** Every idea and comment is emailed to the platform owner here. */
+export const FORMSPREE_ENDPOINT: string = import.meta.env.PUBLIC_FORMSPREE_ENDPOINT ?? "";
 
 /** Public idea board. The publishable key is meant to be public; database rules decide what it can do. */
 export const PUBLIC_BOARD = {
-  url: "https://ssqcfsbkmrhjfylxghfj.supabase.co",
-  key: "sb_publishable_iTflyj7RKulZ3DRoDFBmfg_ESbUKOWq",
+  url: (import.meta.env.PUBLIC_BOARD_URL ?? "") as string,
+  key: (import.meta.env.PUBLIC_BOARD_KEY ?? "") as string,
 } as const;
 
 export type PageMeta = { title: string; description: string };
-export const PAGE_META: Record<"home" | "about" | "craft" | "notFound", PageMeta> = {
-  home: {
-    title: "Ideas to life · Revaz Kuparadze",
-    description: "Revaz (Rez) Kuparadze turns ideas from 0 to 1: co-founder of eConsul, ePhoto.AI and greencard.ge, now building with AI in New York. Share an idea or book a call.",
-  },
-  about: {
-    title: "About · Revaz Kuparadze",
-    description: "Rez Kuparadze’s path from PCmania and ABK to TBC Bank, eConsul and building with AI in New York, with the awards along the way.",
-  },
-  craft: {
-    title: "Craft · Revaz Kuparadze",
-    description: "Ads, print and strategy from Rez Kuparadze’s years at ABK: national TV campaigns and Cannes Young Lions Georgia work.",
-  },
-  notFound: {
-    title: "Page not found · Revaz Kuparadze",
-    description: "Revaz (Rez) Kuparadze turns ideas from 0 to 1: co-founder of eConsul, ePhoto.AI and greencard.ge, now building with AI in New York. Share an idea or book a call.",
-  },
+export const PAGE_META: Record<"home" | "notFound", PageMeta> = {
+  home: { title: "IDEA SKY · Share ideas, bring them to life", description: HERO.lede },
+  notFound: { title: "Page not found · IDEA SKY", description: HERO.lede },
 };

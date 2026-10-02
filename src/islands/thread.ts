@@ -2,7 +2,7 @@
  *  Thread: loading → ready | unavailable.  Form: editing → sending → editing (added) | failed (text kept).
  *  Every open gets a token, so answers that arrive after the letter closed or switched are ignored. */
 import { commentCountLabel, threadFor, validateCommentDraft, type Comment } from "../lib/comments";
-import { newNoteId } from "../lib/notes";
+import { newRecordId } from "../lib/ideas";
 import type { CommentStore } from "../boundaries/commentStore";
 import type { Inbox } from "../boundaries/inbox";
 import { byId, randomBytes } from "./dom";
@@ -67,7 +67,7 @@ export function startThread(opts: { store: Promise<CommentStore>; inbox: Inbox; 
     }
     err.hidden = true;
     const mine = token, forIdea = ideaId;
-    const c: Comment = { id: newNoteId(randomBytes(8)), ideaId: forIdea, ...check.comment, at: now() };
+    const c: Comment = { id: newRecordId(randomBytes(8)), ideaId: forIdea, ...check.comment, at: now() };
     send.disabled = true;
     const saved = await store.add(c);
     if (mine !== token) return;

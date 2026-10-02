@@ -13,10 +13,6 @@ export function openWithTransition(el: HTMLElement): void {
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("open")));
 }
 
-export function closeAfterTransition(el: HTMLElement, ms: number): void {
-  el.classList.remove("open");
-  setTimeout(() => { if (!el.classList.contains("open")) el.hidden = true; }, ms);
-}
 
 export const pointOf = (r: DOMRect, dx: number, dy: number): Vec => v(r.left + dx, r.top + dy);
 export const prefersReducedMotion = (): boolean => matchMedia("(prefers-reduced-motion: reduce)").matches;

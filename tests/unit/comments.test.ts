@@ -1,9 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { cleanComment, threadFor, validateCommentDraft, commentCountLabel, COMMENT_LIMITS, type Comment } from "../../src/lib/comments";
-import { supabaseComments, claudeComments, memoryComments } from "../../src/boundaries/commentStore";
+import { supabaseComments, memoryComments } from "../../src/boundaries/commentStore";
 import { browserKeyStore, COMMENT_KEYS_ITEM, DELETE_KEYS_ITEM } from "../../src/boundaries/keyStore";
 import { commentFields, formspreeInbox } from "../../src/boundaries/inbox";
-import type { ClaudeDb } from "../../src/boundaries/ideaStore";
 
 const c = (id: string, at: number, extra: Partial<Comment> = {}): Comment => ({ id, ideaId: "idea01", name: "A", message: "m", at, ...extra });
 const res = (body: unknown, ok = true) => ({ ok, json: async () => body }) as Response;
@@ -13,10 +12,9 @@ describe("comment rules", () => {
   it("cleanComment rejects bad ids and empty text; trims and caps", () => {
     expect(cleanComment({ id: "abcdef", ideaId: "BAD", message: "x" })).toBeNull();
     expect(cleanComment({ id: "abcdef", ideaId: "idea01", message: " " })).toBeNull();
-    const got = cleanComment({ id: "abcdef", ideaId: "idea01", name: " ", message: "y".repeat(900), at: 3 }, "u1")!;
+    const got = cleanComment({ id: "abcdef", ideaId: "idea01", name: " ", message: "y".repeat(900), at: 3 })!;
     expect(got.name).toBe("Anonymous");
     expect(got.message).toHaveLength(COMMENT_LIMITS.message);
-    expect(got.owner).toBe("u1");
   });
   it("threadFor keeps one idea's comments, oldest first, stable on ties", () => {
     const all = [c("bbbbbb", 2), c("aaaaaa", 2), c("cccccc", 1), c("dddddd", 0, { ideaId: "other1" })];
@@ -71,42 +69,6 @@ describe("supabaseComments", () => {
     const st = memStorage();
     browserKeyStore(st, COMMENT_KEYS_ITEM).set("a", "k");
     expect(browserKeyStore(st, DELETE_KEYS_ITEM).get("a")).toBeUndefined();
-  });
-});
-
-describe("claudeComments", () => {
-  function fakeDb(initial: Record<string, unknown[]>) {
-    const docs = new Map(Object.entries(initial).map(([k, v]) => [k, { items: v }]));
-    const db: ClaudeDb = {
-      collection: () => ({ onSnapshot: (next) => { next({ docs: [...docs].map(([id, data]) => ({ id, exists: true, data: () => data })) }); return () => {}; } }),
-      doc: (path) => { const id = path.split("/")[1]!; return {
-        get: async () => ({ id, exists: docs.has(id), data: () => docs.get(id) ?? {} }),
-        set: async (data) => { docs.set(id, data as { items: unknown[] }); },
-      }; },
-    };
-    return { db, docs };
-  }
-  const user = (id: string, owner = false) => ({ id: async () => id, isOwner: async () => owner });
-  it("lists across visitors for one idea; writes only to the viewer's own doc", async () => {
-    const { db, docs } = fakeDb({ u2: [{ id: "cmt002", ideaId: "idea01", message: "theirs", at: 1 }, { id: "cmt003", ideaId: "other1", message: "x" }] });
-    const s = claudeComments(db, user("u1"));
-    expect((await s.list("idea01"))!.map((x) => x.id)).toEqual(["cmt002"]);
-    const mine = c("cmt001", 5);
-    expect(await s.add(mine)).toBe(true);
-    expect(docs.get("u1")!.items).toHaveLength(1);
-    expect(s.canRemove(mine)).toBe(true);
-    expect(s.canRemove({ ...c("cmt002", 1), owner: "u2" })).toBe(false);
-  });
-  it("the owner may remove anyone's comment", async () => {
-    const { db, docs } = fakeDb({ u2: [{ id: "cmt002", ideaId: "idea01", message: "a" }] });
-    const s = claudeComments(db, user("me", true));
-    await s.list("idea01");
-    expect(s.canRemove({ ...c("cmt002", 1), owner: "u2" })).toBe(true);
-    expect(await s.remove({ ...c("cmt002", 1), owner: "u2" })).toBe(true);
-    expect(docs.get("u2")!.items).toEqual([]);
-  });
-  it("signed out: cannot add", async () => {
-    expect(await claudeComments(fakeDb({}).db, null).add(c("cmt001", 1))).toBe(false);
   });
 });
 

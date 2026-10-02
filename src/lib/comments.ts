@@ -1,28 +1,24 @@
 /** Pure rules for comments on visitor ideas. */
-import { ANONYMOUS, NOTE_LIMITS } from "./notes";
+import { ANONYMOUS, IDEA_LIMITS, isRecordId } from "./ideas";
 
-export type Comment = { id: string; ideaId: string; name: string; message: string; at: number; owner?: string };
+export type Comment = { id: string; ideaId: string; name: string; message: string; at: number };
 export type CommentDraft = { name: string; message: string; trap: string };
 export type CommentCheck =
   | { ok: true; comment: Pick<Comment, "name" | "message"> }
   | { ok: false; reason: "empty"; text: string }
   | { ok: false; reason: "bot" };
 
-export const COMMENT_LIMITS = { name: NOTE_LIMITS.name, message: 400, perIdea: 100, perPerson: 30 } as const;
-const ID = /^[a-z0-9]{6,20}$/;
+export const COMMENT_LIMITS = { name: IDEA_LIMITS.name, message: 400, perIdea: 100 } as const;
 
 /** Untrusted data in, a safe comment (or null) out. */
-export function cleanComment(raw: unknown, owner?: string): Comment | null {
+export function cleanComment(raw: unknown): Comment | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  if (typeof r.id !== "string" || !ID.test(r.id)) return null;
-  if (typeof r.ideaId !== "string" || !ID.test(r.ideaId)) return null;
+  if (!isRecordId(r.id) || !isRecordId(r.ideaId)) return null;
   const message = typeof r.message === "string" ? r.message.trim().slice(0, COMMENT_LIMITS.message) : "";
   if (!message) return null;
   const name = typeof r.name === "string" ? r.name.trim().slice(0, COMMENT_LIMITS.name) : "";
-  const c: Comment = { id: r.id, ideaId: r.ideaId, name: name || ANONYMOUS, message, at: Number(r.at) || 0 };
-  if (owner !== undefined) c.owner = owner;
-  return c;
+  return { id: r.id, ideaId: r.ideaId, name: name || ANONYMOUS, message, at: Number(r.at) || 0 };
 }
 
 /** One idea's comments, oldest first (ties by id, so the order never flickers). */

@@ -1,20 +1,20 @@
-/** Every Idea Note is also emailed to Rez through Formspree. The visitor's email is used only there, never shown. */
-import type { Note } from "../lib/notes";
+/** Every idea and comment is also emailed to the platform owner through Formspree. A visitor's email is used only there, never shown. */
+import type { Idea } from "../lib/ideas";
 import type { Comment } from "../lib/comments";
 
 export interface Inbox {
-  send(note: Note, email: string, page: string): Promise<boolean>;
+  send(idea: Idea, email: string, page: string): Promise<boolean>;
   sendComment(comment: Comment, ideaName: string, page: string): Promise<boolean>;
 }
 
-export function inboxFields(note: Note, email: string, page: string): [string, string][] {
+export function inboxFields(idea: Idea, email: string, page: string): [string, string][] {
   return [
-    ["name", note.name],
+    ["name", idea.name],
     ...(email ? [["email", email] as [string, string]] : []),
-    ["message", note.message],
-    ["idea_id", note.id],
+    ["message", idea.message],
+    ["idea_id", idea.id],
     ["page", page],
-    ["_subject", `New idea on your site from ${note.name}`],
+    ["_subject", `New idea on IDEA SKY from ${idea.name}`],
   ];
 }
 
@@ -40,7 +40,16 @@ export function formspreeInbox(endpoint: string, doFetch: typeof fetch): Inbox {
     } catch { return false; }
   }
   return {
-    send: (note, email, page) => post(inboxFields(note, email, page)),
+    send: (idea, email, page) => post(inboxFields(idea, email, page)),
     sendComment: (c, ideaName, page) => post(commentFields(c, ideaName, page)),
   };
 }
+
+/** No inbox configured (local runs): nothing is sent, and nothing pretends it was. */
+export const unconfiguredInbox: Inbox = {
+  send: async () => false,
+  sendComment: async () => false,
+};
+
+export const inboxFor = (endpoint: string, doFetch: typeof fetch): Inbox =>
+  endpoint ? formspreeInbox(endpoint, doFetch) : unconfiguredInbox;

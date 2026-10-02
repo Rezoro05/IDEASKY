@@ -1,7 +1,7 @@
-/** Where comments on visitor ideas live. Same three places and the same failure rule as the idea store:
+/** Where comments on visitor ideas live. Same two places and the same failure rule as the idea store:
  *  failures become null/false, never an exception. */
 import { cleanComment, COMMENT_LIMITS, type Comment } from "../lib/comments";
-import { supabaseHeaders, toHex, type ClaudeDb, type ClaudeUser } from "./ideaStore";
+import { supabaseHeaders, toHex } from "./ideaStore";
 import type { KeyStore } from "./keyStore";
 
 export interface CommentStore {
@@ -55,57 +55,6 @@ export function supabaseComments(d: SupabaseCommentDeps): CommentStore {
       } catch { return false; }
     },
     canRemove: (c) => !!d.keys.get(c.id),
-  };
-}
-
-/* ---------- claude.ai artifact db: collection "comments", one doc per visitor holding { items } ---------- */
-export function claudeComments(db: ClaudeDb, user: ClaudeUser | null): CommentStore {
-  let uid: string | null = null, isOwner = false;
-  const ready = (async () => {
-    if (!user) return;
-    try { uid = await user.id(); isOwner = await user.isOwner(); } catch { /* signed out */ }
-  })();
-  const itemsOf = (data: { items?: unknown }): unknown[] => (Array.isArray(data.items) ? data.items : []);
-  const allDocs = () => new Promise<{ id: string; items: unknown[] }[]>((resolve, reject) => {
-    let done = false;
-    const stop = db.collection("comments").onSnapshot((snap) => {
-      if (done) return;
-      done = true;
-      resolve(snap.docs.filter((x) => x.exists).map((x) => ({ id: x.id, items: itemsOf(x.data()) })));
-      if (typeof stop === "function") stop();
-    }, reject);
-  });
-  return {
-    async list(ideaId) {
-      await ready;
-      try {
-        const docs = await allDocs();
-        return docs.flatMap((doc) => doc.items.map((raw) => cleanComment(raw, doc.id)))
-          .filter((c): c is Comment => c !== null && c.ideaId === ideaId);
-      } catch { return null; }
-    },
-    async add(c) {
-      await ready;
-      if (!uid) return false;
-      try {
-        const ref = db.doc("comments/" + uid), snap = await ref.get();
-        const items = (snap.exists ? itemsOf(snap.data()) : [])
-          .concat({ id: c.id, ideaId: c.ideaId, name: c.name, message: c.message, at: c.at }).slice(-COMMENT_LIMITS.perPerson);
-        await ref.set({ items });
-        c.owner = uid;
-        return true;
-      } catch { return false; }
-    },
-    async remove(c) {
-      if (!c.owner) return false;
-      try {
-        const ref = db.doc("comments/" + c.owner), snap = await ref.get();
-        const items = snap.exists ? itemsOf(snap.data()).filter((it) => !(it && typeof it === "object" && (it as { id?: unknown }).id === c.id)) : [];
-        await ref.set({ items });
-        return true;
-      } catch { return false; }
-    },
-    canRemove: (c) => isOwner || (!!uid && c.owner === uid),
   };
 }
 

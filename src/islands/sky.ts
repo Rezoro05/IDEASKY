@@ -2,14 +2,13 @@
 import { createWorld, step, addPlane, removePlane, type Bounds, type Held, type World } from "../lib/sim";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
 import type { FlightConfig } from "../lib/motion";
-import { isNoteSlug } from "../lib/notes";
 import { PLANE_SVG } from "../lib/plane-svg";
 import { headingDeg, len, v, type Vec } from "../lib/vec";
 
-export type PlaneSpec = { tag: string; label: string; href: string; from?: Vec; velocity?: Vec; fresh?: boolean; isNote?: boolean };
+export type PlaneSpec = { tag: string; label: string; from?: Vec; velocity?: Vec; fresh?: boolean };
 export type Sky = {
   has(slug: string): boolean;
-  noteSlugs(): string[];
+  slugs(): string[];
   bounds(): Bounds;
   fieldRect(): DOMRect;
   add(slug: string, spec: PlaneSpec): void;
@@ -25,21 +24,19 @@ export function startSky(opts: {
   field: HTMLElement;
   config: FlightConfig;
   visitSeed: number;
-  ideas: readonly { slug: string; spec: PlaneSpec }[];
-  isVisible: () => boolean;
   onOpen: (slug: string, origin: Vec) => void;
 }): Sky {
   const { field, config } = opts;
   const bounds = (): Bounds => ({ width: field.clientWidth, height: field.clientHeight });
-  let world: World = createWorld(opts.ideas.map((i) => i.slug), opts.visitSeed, bounds(), config);
+  let world: World = createWorld([], opts.visitSeed, bounds(), config);
   const els = new Map<string, HTMLAnchorElement>(), angles = new Map<string, number>();
   const pausedSlugs = new Set<string>(); // keyboard focus only; hover just recolors
   let held: Held | null = null, press: (PointerMark & { slug: string }) | null = null, suppressClick = false;
 
   function makePlane(slug: string, spec: PlaneSpec): HTMLAnchorElement {
     const a = document.createElement("a");
-    a.className = "plane" + (spec.isNote ? " note-p" : "") + (spec.fresh ? " fresh" : "");
-    a.href = spec.href;
+    a.className = "plane" + (spec.fresh ? " fresh" : "");
+    a.href = "#";
     a.dataset.slug = slug;
     a.style.setProperty("--s", config.planeSize + "px");
     a.setAttribute("aria-label", spec.label);
@@ -51,7 +48,6 @@ export function startSky(opts: {
     els.set(slug, a);
     return a;
   }
-  for (const { slug, spec } of opts.ideas) { makePlane(slug, spec); angles.set(slug, 0); }
 
   const local = (e: PointerEvent): Vec => { const r = field.getBoundingClientRect(); return v(e.clientX - r.left, e.clientY - r.top); };
   field.addEventListener("pointerdown", (e) => {
@@ -94,15 +90,13 @@ export function startSky(opts: {
   function frame(now: number) {
     const dt = (now - last) / 1000;
     last = now;
-    if (opts.isVisible()) {
-      world = step(world, { dt, bounds: bounds(), held, pausedSlugs }, config);
-      for (const p of world.planes) {
-        const el = els.get(p.slug);
-        if (!el) continue;
-        if (len(p.velocity) > MIN_SPEED_FOR_HEADING) angles.set(p.slug, headingDeg(p.velocity));
-        el.style.transform = `translate3d(${p.position.x}px, ${p.position.y}px, 0)`;
-        (el.firstElementChild as HTMLElement).style.transform = `rotate(${angles.get(p.slug)}deg)`;
-      }
+    world = step(world, { dt, bounds: bounds(), held, pausedSlugs }, config);
+    for (const p of world.planes) {
+      const el = els.get(p.slug);
+      if (!el) continue;
+      if (len(p.velocity) > MIN_SPEED_FOR_HEADING) angles.set(p.slug, headingDeg(p.velocity));
+      el.style.transform = `translate3d(${p.position.x}px, ${p.position.y}px, 0)`;
+      (el.firstElementChild as HTMLElement).style.transform = `rotate(${angles.get(p.slug)}deg)`;
     }
     requestAnimationFrame(frame);
   }
@@ -110,7 +104,7 @@ export function startSky(opts: {
 
   return {
     has: (slug) => els.has(slug),
-    noteSlugs: () => [...els.keys()].filter(isNoteSlug),
+    slugs: () => [...els.keys()],
     bounds,
     fieldRect: () => field.getBoundingClientRect(),
     add(slug, spec) {
