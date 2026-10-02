@@ -4,6 +4,7 @@ import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gestur
 import type { FlightConfig } from "../lib/motion";
 import { PLANE_SVG } from "../lib/plane-svg";
 import { headingDeg, len, v, type Vec } from "../lib/vec";
+import { orientationFor, orientationTransform, type Orientation } from "../lib/orientation";
 
 export type PlaneSpec = { tag: string; label: string; from?: Vec; velocity?: Vec; fresh?: boolean };
 export type Sky = {
@@ -31,7 +32,7 @@ export function startSky(opts: {
   const { field, config } = opts;
   const bounds = (): Bounds => ({ width: field.clientWidth, height: field.clientHeight });
   let world: World = createWorld([], opts.visitSeed, bounds(), config);
-  const els = new Map<string, HTMLAnchorElement>(), angles = new Map<string, number>();
+  const els = new Map<string, HTMLAnchorElement>(), facing = new Map<string, Orientation>();
   const pausedSlugs = new Set<string>(); // keyboard focus only; hover just recolors
   let held: Held | null = null, press: (PointerMark & { slug: string }) | null = null, suppressClick = false;
 
@@ -96,9 +97,10 @@ export function startSky(opts: {
     for (const p of world.planes) {
       const el = els.get(p.slug);
       if (!el) continue;
-      if (len(p.velocity) > MIN_SPEED_FOR_HEADING) angles.set(p.slug, headingDeg(p.velocity));
+      if (len(p.velocity) > MIN_SPEED_FOR_HEADING) facing.set(p.slug, orientationFor(headingDeg(p.velocity), facing.get(p.slug)?.mirrored ?? false));
       el.style.transform = `translate3d(${p.position.x}px, ${p.position.y}px, 0)`;
-      (el.firstElementChild as HTMLElement).style.transform = `rotate(${angles.get(p.slug)}deg)`;
+      const o = facing.get(p.slug);
+      if (o) (el.firstElementChild as HTMLElement).style.transform = orientationTransform(o);
     }
     requestAnimationFrame(frame);
   }
@@ -118,7 +120,7 @@ export function startSky(opts: {
     add(slug, spec) {
       const a = makePlane(slug, spec);
       const velocity = spec.velocity ?? v(0, 0);
-      angles.set(slug, headingDeg(velocity));
+      facing.set(slug, orientationFor(headingDeg(velocity), false));
       world = addPlane(world, { slug, position: spec.from ?? v(0, 0), velocity });
       if (spec.fresh) setTimeout(() => a.classList.remove("fresh"), FRESH_GLOW_MS);
     },
@@ -134,7 +136,7 @@ export function startSky(opts: {
       pausedSlugs.delete(slug);
       els.get(slug)?.remove();
       els.delete(slug);
-      angles.delete(slug);
+      facing.delete(slug);
     },
   };
 }

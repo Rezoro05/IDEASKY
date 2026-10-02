@@ -81,6 +81,26 @@ test("planes can be dragged and thrown, and a drag does not open the idea", asyn
   expect(Math.abs(after.x - box.x)).toBeGreaterThan(150);
 });
 
+test("a plane faces the way it flies: thrown left it is mirrored, thrown right it is not", async ({ page }) => {
+  await fakeServices(page, withGio());
+  await page.goto("/");
+  const plane = page.locator(".plane"), body = plane.locator(".body");
+  await expect(plane).toHaveCount(1);
+  for (const [dx, mirrored] of [[-30, true], [30, false]] as const) {
+    await plane.focus();
+    const box = (await plane.boundingBox())!;
+    const x0 = Math.min(Math.max(box.x + box.width / 2, 400), 880), y0 = box.y + box.height / 2;
+    await page.mouse.move(box.x + box.width / 2, y0);
+    await page.mouse.down();
+    await page.mouse.move(x0, y0, { steps: 4 });
+    for (let i = 1; i <= 8; i++) await page.mouse.move(x0 + i * dx, y0, { steps: 1 });
+    await page.mouse.up();
+    await page.locator("h1").focus().catch(() => {}); // unpause
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await expect.poll(async () => (await body.getAttribute("style")) ?? "").toMatch(mirrored ? /scaleX\(-1\)/ : /^(?!.*scaleX)/);
+  }
+});
+
 test("post an idea: it flies to the sky, opens as a letter, and its author can remove it", async ({ page }) => {
   const board = await fakeServices(page);
   await page.goto("/");
