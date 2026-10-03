@@ -1,16 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { STAGES, isOneStep, isStage, moveQuestion, nextStage, previousStage, stageGlyph, stageLabel, stageOrIdea } from "../../src/lib/stages";
+import { STAGES, isOneStep, isStage, moveQuestion, stageChoices, stageGlyph, stageLabel, stageOrIdea } from "../../src/lib/stages";
 import { checkLinkRows, cleanLink, cleanLinks, siteName, webAddress, LINK_LIMITS } from "../../src/lib/links";
 
 describe("stages", () => {
   it("run in order, shown as 0 / – / 1", () => {
     expect(STAGES).toEqual(["idea", "implementation", "live"]);
     expect(STAGES.map(stageGlyph)).toEqual(["0", "–", "1"]);
-    expect(STAGES.map(stageLabel)).toEqual(["Idea", "Implementation", "Live"]);
+    expect(STAGES.map(stageLabel)).toEqual(["Idea", "In Progress", "Live"]);
   });
-  it("next and previous stop at both ends", () => {
-    expect(STAGES.map(nextStage)).toEqual(["implementation", "live", null]);
-    expect(STAGES.map(previousStage)).toEqual([null, "idea", "implementation"]);
+  describe("the stage radios", () => {
+    const view = (cs: ReturnType<typeof stageChoices>) => cs.map((c) => `${c.checked ? "●" : "○"}${c.enabled ? "" : "x"}`).join(" ");
+    it("show the current stage; visitors can't pick", () => {
+      expect(view(stageChoices("implementation", null, false))).toBe("○x ●x ○x");
+    });
+    it("let the owner pick one step either way, never a jump", () => {
+      expect(view(stageChoices("idea", null, true))).toBe("● ○ ○x");
+      expect(view(stageChoices("implementation", null, true))).toBe("○ ● ○");
+      expect(view(stageChoices("live", null, true))).toBe("○x ○ ●");
+    });
+    it("hold the picked stage, locked, while the move is asked", () => {
+      expect(view(stageChoices("idea", "implementation", true))).toBe("○x ●x ○x");
+    });
   });
   it("only single steps are moves", () => {
     expect(isOneStep("idea", "implementation")).toBe(true);
