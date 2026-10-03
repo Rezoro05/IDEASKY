@@ -17,7 +17,7 @@ const ld = { "@context": "https://schema.org", "@type": "WebSite", name: SITE.na
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<base href="/">
+<base href={import.meta.env.BASE_URL}>
 <title>{meta.title}</title>
 <meta name="description" content={meta.description}>
 {noindex ? <meta name="robots" content="noindex"> : <link rel="canonical" href={SITE.url}>}

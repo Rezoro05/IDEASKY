@@ -1,0 +1,58 @@
+# Publishes the site to GitHub Pages on every push to main.
+# One-time setup (repo Settings): Pages → Source = "GitHub Actions"; Variables → PUBLIC_BOARD_URL, PUBLIC_BOARD_KEY, PUBLIC_FORMSPREE_ENDPOINT.
+# These three values end up in the public site by design, so they are Variables, not Secrets.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  PUBLIC_BASE_PATH: /IDEASKY/
+  PUBLIC_BOARD_URL: ${{ vars.PUBLIC_BOARD_URL }}
+  PUBLIC_BOARD_KEY: ${{ vars.PUBLIC_BOARD_KEY }}
+  PUBLIC_FORMSPREE_ENDPOINT: ${{ vars.PUBLIC_FORMSPREE_ENDPOINT }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # A build without its services would quietly ship an in-memory board, so refuse to.
+      - name: Services are configured
+        run: |
+          for v in PUBLIC_BOARD_URL PUBLIC_BOARD_KEY PUBLIC_FORMSPREE_ENDPOINT; do
+            if [ -z "${!v}" ]; then echo "::error::Repository variable $v is not set (Settings → Secrets and variables → Actions → Variables)"; exit 1; fi
+          done
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

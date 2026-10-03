@@ -34,7 +34,8 @@ Endpoints come from build-time environment variables, so no build points at a re
 | Variable | What |
 |---|---|
 | `PUBLIC_BOARD_URL`, `PUBLIC_BOARD_KEY` | Supabase project URL and publishable key |
-| `PUBLIC_FORMSPREE_ENDPOINT` | Formspree form that emails new ideas and comments |
+| `PUBLIC_FORMSPREE_ENDPOINT` | Formspree form that emails new ideas, comments and feedback |
+| `PUBLIC_BASE_PATH` | Where the site lives. Unset = `/`; the deploy workflow sets `/IDEASKY/` |
 
 Unset (the default): everything lives in memory for the visit and nothing is emailed. Good for local testing.
 
@@ -46,4 +47,10 @@ Unset (the default): everything lives in memory for the visit and nothing is ema
 - `npm run check` — type-check Astro and TypeScript (unused code is an error)
 
 ## Publishing
-Not set up yet. Target: GitHub Pages at `rezoro05.github.io/IDEASKY/`, which needs the `/IDEASKY/` base path first. Pushes happen only when the owner says "push".
+GitHub Pages at `rezoro05.github.io/IDEASKY/`, built by `.github/workflows/deploy.yml` on every push to `main` (type check and unit tests first; the browser tests run locally). One-time setup:
+
+1. **Supabase:** new project, then run `supabase/01` to `05` in order in the SQL editor. Copy the project URL and the publishable key.
+2. **Formspree:** one form that emails the owner. Copy its endpoint.
+3. **GitHub, repo Settings:** Pages → Source = "GitHub Actions". Secrets and variables → Actions → **Variables**: `PUBLIC_BOARD_URL`, `PUBLIC_BOARD_KEY`, `PUBLIC_FORMSPREE_ENDPOINT`. (They end up in the public site by design, so they are Variables, not Secrets.)
+
+The workflow refuses to build if any of the three is missing, so a deploy can't quietly ship an in-memory board. Pushes happen only when the owner says "push".
