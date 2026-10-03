@@ -4,13 +4,9 @@
 import { IDEA_LIMITS } from "../lib/ideas";
 import LinkRows from "./LinkRows.astro";
 ---
-<form class="note" id="note-form" novalidate>
+<form class="note" id="note-form" aria-label="Share your idea" novalidate>
   <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp">
-  <div class="note-head">
-    <span class="note-label">Idea Note</span>
-    <span class="note-to">Public</span>
-    <button class="note-close" type="button" id="note-close" aria-label="Close">✕</button>
-  </div>
+  <button class="note-close" type="button" id="note-close" aria-label="Close">✕</button>
   <label class="note-field note-idea" for="note-msg"><span>The idea <span class="req" aria-hidden="true">*</span></span>
     <textarea id="note-msg" name="message" rows="4" maxlength={IDEA_LIMITS.message} required aria-required="true" placeholder="Share anything on your mind"></textarea>
   </label>
