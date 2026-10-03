@@ -3,7 +3,7 @@
  *  With no inbox set up (local runs) it says so instead of pretending to send. */
 import { validateFeedbackDraft } from "../lib/feedback";
 import type { Inbox } from "../boundaries/inbox";
-import { byId, cancelPendingOpen, openWithTransition } from "./dom";
+import { byId, cancelPendingOpen, hideOnEdit, openWithTransition } from "./dom";
 
 const FOLD_MS = 700;
 const THANKS = "Thanks. Your feedback is on its way.";
@@ -38,6 +38,7 @@ export function startFeedback(opts: { inbox: Inbox; say: (text: string) => void;
   overlay.addEventListener("click", (e) => { if (e.target === overlay && !form.classList.contains("folding")) close(true); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && isOpen() && !form.classList.contains("folding")) close(true); });
 
+  hideOnEdit(form, err);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (send.disabled) return;

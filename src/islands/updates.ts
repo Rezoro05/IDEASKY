@@ -4,7 +4,7 @@
 import { newRecordId } from "../lib/ideas";
 import { updateCountLabel, updatesFor, validateUpdateDraft, type Update } from "../lib/updates";
 import type { UpdateStore } from "../boundaries/updateStore";
-import { byId, randomBytes } from "./dom";
+import { byId, hideOnEdit, randomBytes } from "./dom";
 import { linkRowsIn } from "./link-rows";
 import { linkItems } from "./link-list";
 
@@ -82,6 +82,7 @@ export function startUpdates(opts: { store: Promise<UpdateStore>; now?: () => nu
   });
   byId("update-cancel").addEventListener("click", () => { closeForm(); addButton.focus(); });
 
+  hideOnEdit(form, err);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!ideaId || !store) return;

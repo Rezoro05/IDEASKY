@@ -5,7 +5,7 @@ import { threadFor, validateCommentDraft, type Comment } from "../lib/comments";
 import { newRecordId } from "../lib/ideas";
 import type { CommentStore } from "../boundaries/commentStore";
 import type { Inbox } from "../boundaries/inbox";
-import { byId, randomBytes } from "./dom";
+import { byId, hideOnEdit, randomBytes } from "./dom";
 
 export type Thread = { open(ideaId: string): void; close(): void; /** Hide the comment form (another icon was chosen); what was typed stays. */ closePanel(): void };
 
@@ -76,6 +76,7 @@ export function startThread(opts: {
     if (!form.hidden) field("message").focus();
   });
 
+  hideOnEdit(form, err);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!ideaId || !store) return;

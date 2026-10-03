@@ -5,7 +5,7 @@ import { v, type Vec } from "../lib/vec";
 import type { Inbox } from "../boundaries/inbox";
 import type { Board } from "./board";
 import type { Sky } from "./sky";
-import { byId, cancelPendingOpen, openWithTransition, randomBytes } from "./dom";
+import { byId, cancelPendingOpen, hideOnEdit, openWithTransition, randomBytes } from "./dom";
 import { flyAcrossPage } from "./flier";
 import { startToast } from "./toast";
 import { linkRowsIn } from "./link-rows";
@@ -46,6 +46,7 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
     saving.then((saved) => { if (!saved) say(NOT_SAVED); });
   }
 
+  hideOnEdit(form, err);
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const check = validateDraft({ name: field("name").value, email: field("email").value, message: field("message").value, trap: field("_gotcha").value, linkRows: links.typed() });

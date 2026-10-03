@@ -48,6 +48,29 @@ test.describe("stages and links", () => {
     expect(board.posts).toHaveLength(0);
   });
 
+  test("the link message goes as soon as the link is changed, cleared or removed", async ({ page }) => {
+    await fakeServices(page);
+    await page.goto("/");
+    await postWithLinks(page, [["javascript:alert(1)", ""]]);
+    const error = page.locator("#note-error");
+    await expect(error).toContainText("isn’t a web address");
+    await page.locator(".link-row .link-url").fill(""); // wiped out: the old complaint no longer applies
+    await expect(error).toBeHidden();
+    await page.locator(".link-row .link-url").fill("not a link"); // and a new mistake is only reported when it is sent again
+    await expect(error).toBeHidden();
+    await page.locator(".note-send").click();
+    await expect(error).toContainText("isn’t a web address");
+  });
+
+  test("a link message also goes when its row is removed", async ({ page }) => {
+    await fakeServices(page);
+    await page.goto("/");
+    await postWithLinks(page, [["javascript:alert(1)", ""]]);
+    await expect(page.locator("#note-error")).toContainText("isn’t a web address");
+    await page.locator(".link-row .link-remove").click();
+    await expect(page.locator("#note-error")).toBeHidden();
+  });
+
   test("up to five links; a row can be removed", async ({ page }) => {
     await fakeServices(page);
     await page.goto("/");

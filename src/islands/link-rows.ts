@@ -18,6 +18,7 @@ export function linkRowsIn(container: HTMLElement): LinkRows {
     const row = (e.target as Element).closest(".link-remove")?.closest(".link-row");
     if (!row) return;
     row.remove(); showAdd(); add.focus();
+    container.dispatchEvent(new Event("input", { bubbles: true })); // removing a row is an edit too
   });
 
   return {

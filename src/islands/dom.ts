@@ -6,6 +6,11 @@ export const byId = <T extends HTMLElement = HTMLElement>(id: string): T => {
   return el as T;
 };
 
+/** A message about what was typed (or failed to send) belongs to that attempt: once the visitor edits the form, it goes. It comes back if the next send still has the problem. */
+export function hideOnEdit(form: HTMLElement, message: HTMLElement): void {
+  form.addEventListener("input", () => { message.hidden = true; });
+}
+
 const openRequests = new WeakMap<HTMLElement, number>();
 
 /** Show an overlay, then add .open on the next frames so its CSS transition runs. */
