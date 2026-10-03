@@ -1,6 +1,6 @@
 # IDEA SKY
 
-A public sky of ideas. Visitors fold an idea into a paper plane and send it into a full-screen sky over the New York skyline, where anyone can catch it, read it, like it and comment. Its author moves it from Idea (0) through In Progress (–) to Live (1); each stage flies as its own form (paper plane, airplane, bird), and the author adds dated updates along the way.
+A public sky of ideas. Visitors fold an idea into a paper plane and send it into a full-screen sky over the New York skyline, where anyone can catch it, read it, like it and comment. Its author moves it from Idea through In Progress to Live; each stage flies as its own form (paper plane, airplane, bird), and the author adds dated updates along the way.
 
 Astro + TypeScript, built as small tested parts. Plan and decisions: `status.md` in the Project.
 

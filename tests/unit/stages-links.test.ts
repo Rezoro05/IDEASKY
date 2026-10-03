@@ -1,12 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { STAGES, isOneStep, isStage, stageChoices, stageGlyph, stageLabel, stageOrIdea } from "../../src/lib/stages";
+import { STAGES, isOneStep, isStage, stageChoices, stageLabel, stageOrIdea } from "../../src/lib/stages";
 import { fractionAt, knobFraction, settledStage, stageFraction } from "../../src/lib/stage-bar";
 import { checkLinkRows, cleanLink, cleanLinks, siteName, webAddress, LINK_LIMITS } from "../../src/lib/links";
 
 describe("stages", () => {
   it("run in order, shown as 0 / – / 1", () => {
     expect(STAGES).toEqual(["idea", "implementation", "live"]);
-    expect(STAGES.map(stageGlyph)).toEqual(["0", "–", "1"]);
     expect(STAGES.map(stageLabel)).toEqual(["Idea", "In Progress", "Live"]);
   });
   describe("the stage radios", () => {

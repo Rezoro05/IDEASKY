@@ -329,7 +329,6 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .stage-labels label:nth-child(1) { justify-self: start; }
 .stage-labels label:nth-child(2) { justify-self: center; }
 .stage-labels label:nth-child(3) { justify-self: end; }
-.stage-track b { font: 700 13px/1 var(--font-display); }
 .stage-labels label:has(input:checked), .stage-labels label.target { opacity: 1; color: var(--tone-cobalt); font-weight: 700; }
 .stage-track.dragging label:not(.target) { opacity: .5; color: inherit; font-weight: 500; } /* while dragging, only the stage it would settle on is lit */
 /* The radios themselves are hidden but stay in the keyboard order (arrow keys move between stages). Owner: the stage next door reads as a link. */
