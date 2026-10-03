@@ -73,11 +73,11 @@ test.describe("owner updates", () => {
     await expect(page.locator("#update-form")).toBeVisible();
     await expect(page.locator("#thread-form")).toBeHidden();
     expect(await selected("comment-btn")).toMatchObject({ open: "false", chip: "rgba(0, 0, 0, 0)" });
-    expect(await selected("add-update")).toEqual(look);
+    await expect.poll(() => selected("add-update"), { message: "the + should look as the selected comment icon did" }).toEqual(look);
     await icon("letter-remove").click(); // the bin closes the update form
     await expect(page.locator("#remove-confirm")).toBeVisible();
     await expect(page.locator("#update-form")).toBeHidden();
-    expect(await selected("letter-remove")).toEqual(look);
+    await expect.poll(() => selected("letter-remove"), { message: "the bin should look as the selected comment icon did" }).toEqual(look);
     await icon("comment-btn").click(); // and the comment icon closes the question
     await expect(page.locator("#thread-form")).toBeVisible();
     await expect(page.locator("#remove-confirm")).toBeHidden();

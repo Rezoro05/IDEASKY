@@ -2,8 +2,11 @@
 import { type Vec, v, add, sub, scale, len, clampLen } from "./vec";
 import { mulberry32, seedFor } from "./random";
 import type { FlightConfig } from "./motion";
+import type { Stage } from "./stages";
+import { FORM_FLIGHT, configFor } from "./flight-forms";
+import { bank } from "./banking";
 
-export type Plane = { readonly slug: string; readonly position: Vec; readonly velocity: Vec };
+export type Plane = { readonly slug: string; readonly stage: Stage; readonly position: Vec; readonly velocity: Vec };
 export type World = { readonly planes: readonly Plane[]; readonly visitSeed: number; readonly time: number };
 export type Bounds = { readonly width: number; readonly height: number };
 export type Held = { readonly slug: string; readonly pointer: Vec };
@@ -21,6 +24,7 @@ export function createWorld(slugs: readonly string[], visitSeed: number, bounds:
     const angle = rand() * Math.PI * 2;
     return {
       slug,
+      stage: "idea" as Stage,
       position: v(
         config.boundsMargin + rand() * Math.max(1, bounds.width - 2 * config.boundsMargin),
         bounds.height * 0.5 + rand() * Math.max(1, bounds.height * 0.5 - config.boundsMargin),
@@ -87,11 +91,17 @@ export function step(world: World, input: StepInput, config: FlightConfig): Worl
       return { ...plane, position: input.held.pointer, velocity: add(scale(plane.velocity, 0.6), scale(moved, 0.4)) };
     }
     if (mode === "paused") return plane;
+    const flight = FORM_FLIGHT[plane.stage], own = configFor(config, flight); // each form flies by its own settings
     const others = world.planes.filter((o) => o.slug !== plane.slug);
-    const steer = add(add(wanderSteer(plane, world, config), separationSteer(plane, others, config)), boundsSteer(plane, input.bounds, config));
-    let velocity = add(plane.velocity, scale(steer, dt));
-    if (len(velocity) > config.cruise * 1.5) velocity = scale(velocity, Math.exp(-config.throwDamping * dt));
-    velocity = clampLen(velocity, config.maxSpeed);
+    const steer = add(add(wanderSteer(plane, world, own), separationSteer(plane, others, own)), boundsSteer(plane, input.bounds, own));
+    let velocity: Vec;
+    if (flight.maxTurnRate === null) {
+      velocity = add(plane.velocity, scale(steer, dt));
+      if (len(velocity) > own.cruise * 1.5) velocity = scale(velocity, Math.exp(-own.throwDamping * dt));
+    } else {
+      velocity = bank(plane.velocity, steer, { cruise: own.cruise, settle: own.wanderStrength, maxTurnRate: flight.maxTurnRate }, dt);
+    }
+    velocity = clampLen(velocity, own.maxSpeed);
     return containWithin({ ...plane, position: add(plane.position, scale(velocity, dt)), velocity }, input.bounds);
   });
   return { ...world, planes, time: world.time + dt };
@@ -99,6 +109,11 @@ export function step(world: World, input: StepInput, config: FlightConfig): Worl
 
 export function addPlane(world: World, plane: Plane): World {
   return { ...world, planes: world.planes.filter((p) => p.slug !== plane.slug).concat(plane) };
+}
+
+/** The idea moved stage: it flies by its new form's settings from here, from the same place at the same velocity. */
+export function setStage(world: World, slug: string, stage: Stage): World {
+  return { ...world, planes: world.planes.map((p) => (p.slug === slug ? { ...p, stage } : p)) };
 }
 
 export function removePlane(world: World, slug: string): World {

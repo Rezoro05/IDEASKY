@@ -1,5 +1,5 @@
 /** The hero sky: renders the pure flight simulation, and turns pointer and keyboard input into held/paused planes. */
-import { createWorld, step, addPlane, removePlane, type Bounds, type Held, type World } from "../lib/sim";
+import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type World } from "../lib/sim";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
 import type { FlightConfig } from "../lib/motion";
 import { formFor } from "../lib/forms";
@@ -17,7 +17,7 @@ export type Sky = {
   screenPointOf(slug: string): Vec | null;
   add(slug: string, spec: PlaneSpec): void;
   retag(slug: string, tag: string, label: string): void;
-  /** The idea moved stage: draw its new form in place, flight unchanged. */
+  /** The idea moved stage: draw its new form in place and fly it by that form's rules, from where it is. */
   reform(slug: string, stage: Stage): void;
   remove(slug: string): void;
 };
@@ -128,7 +128,7 @@ export function startSky(opts: {
       const a = makePlane(slug, spec);
       const velocity = spec.velocity ?? v(0, 0);
       facing.set(slug, orientationFor(headingDeg(velocity), false));
-      world = addPlane(world, { slug, position: spec.from ?? v(0, 0), velocity });
+      world = addPlane(world, { slug, stage: spec.stage, position: spec.from ?? v(0, 0), velocity });
       if (spec.fresh) setTimeout(() => a.classList.remove("fresh"), FRESH_GLOW_MS);
     },
     retag(slug, tag, label) {
@@ -143,6 +143,7 @@ export function startSky(opts: {
       if (!a || a.dataset.stage === stage) return;
       a.dataset.stage = stage;
       a.querySelector(".body")!.innerHTML = formFor(stage);
+      world = setStage(world, slug, stage);
     },
     remove(slug) {
       world = removePlane(world, slug);

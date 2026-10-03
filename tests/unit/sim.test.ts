@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { createWorld, step, modeOf, boundsSteer, separationSteer, containWithin, addPlane, removePlane, EDGE_INSET, MAX_DT, type World, type StepInput } from "../../src/lib/sim";
+import { createWorld, step, modeOf, boundsSteer, separationSteer, containWithin, addPlane, removePlane, EDGE_INSET, MAX_DT, type Plane, type World, type StepInput } from "../../src/lib/sim";
 import { FLIGHT_CONFIGS } from "../../src/lib/motion";
-import { v, len } from "../../src/lib/vec";
+import { v, len, type Vec } from "../../src/lib/vec";
+import type { Stage } from "../../src/lib/stages";
 
 const config = FLIGHT_CONFIGS.full;
+const aPlane = (slug: string, position: Vec, velocity: Vec, stage: Stage = "idea"): Plane => ({ slug, stage, position, velocity });
 const bounds = { width: 1200, height: 600 };
 const none = new Set<string>();
 const input = (over: Partial<StepInput> = {}): StepInput => ({ dt: 1 / 60, bounds, held: null, pausedSlugs: none, ...over });
@@ -40,19 +42,19 @@ describe("modeOf", () => {
 
 describe("steering", () => {
   it("bounds steer pushes back inward only outside the margin", () => {
-    const at = (x: number, y: number) => ({ slug: "a", position: v(x, y), velocity: v(0, 0) });
+    const at = (x: number, y: number) => (aPlane("a", v(x, y), v(0, 0)));
     expect(boundsSteer(at(600, 300), bounds, config)).toEqual(v(0, 0));
     expect(boundsSteer(at(10, 300), bounds, config).x).toBeGreaterThan(0);
     expect(boundsSteer(at(1190, 300), bounds, config).x).toBeLessThan(0);
     expect(boundsSteer(at(600, 590), bounds, config).y).toBeLessThan(0);
   });
   it("separation pushes apart within the shield and ignores planes outside it", () => {
-    const a = { slug: "a", position: v(100, 100), velocity: v(0, 0) };
-    expect(separationSteer(a, [{ slug: "b", position: v(150, 100), velocity: v(0, 0) }], config).x).toBeLessThan(0);
-    expect(separationSteer(a, [{ slug: "b", position: v(100 + config.shieldRadius + 1, 100), velocity: v(0, 0) }], config)).toEqual(v(0, 0));
+    const a = aPlane("a", v(100, 100), v(0, 0));
+    expect(separationSteer(a, [aPlane("b", v(150, 100), v(0, 0))], config).x).toBeLessThan(0);
+    expect(separationSteer(a, [aPlane("b", v(100 + config.shieldRadius + 1, 100), v(0, 0))], config)).toEqual(v(0, 0));
   });
   it("containWithin clamps and bounces at half speed", () => {
-    const p = containWithin({ slug: "a", position: v(-20, 700), velocity: v(-100, 50) }, bounds);
+    const p = containWithin(aPlane("a", v(-20, 700), v(-100, 50)), bounds);
     expect(p.position).toEqual(v(EDGE_INSET, bounds.height - EDGE_INSET));
     expect(p.velocity).toEqual(v(50, -25));
   });
@@ -75,7 +77,7 @@ describe("step", () => {
     expect(w.time).toBeCloseTo(MAX_DT, 9);
   });
   it("never exceeds max speed", () => {
-    const w0 = addPlane(createWorld([], 1, bounds, config), { slug: "x", position: v(600, 300), velocity: v(99999, 0) });
+    const w0 = addPlane(createWorld([], 1, bounds, config), aPlane("x", v(600, 300), v(99999, 0)));
     expect(len(step(w0, input(), config).planes[0]!.velocity)).toBeLessThanOrEqual(config.maxSpeed + 1e-6);
   });
 });
@@ -83,7 +85,7 @@ describe("step", () => {
 describe("add / remove planes", () => {
   it("adding an existing slug replaces it; removing drops it", () => {
     let w = createWorld(["a"], 1, bounds, config);
-    w = addPlane(w, { slug: "a", position: v(1, 2), velocity: v(0, 0) });
+    w = addPlane(w, aPlane("a", v(1, 2), v(0, 0)));
     expect(w.planes).toHaveLength(1);
     expect(w.planes[0]!.position).toEqual(v(1, 2));
     expect(removePlane(w, "a").planes).toHaveLength(0);
