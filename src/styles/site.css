@@ -283,13 +283,13 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .letter-card::after { background: linear-gradient(225deg, transparent 0 50%, color-mix(in srgb, var(--plane-edge) 14%, var(--plane)) 50%); }
 .letter.open .letter-card { animation: card-unfold .7s cubic-bezier(.2,.8,.2,1) both; }
 .letter .letter-card.folding { animation: note-fold .75s cubic-bezier(.6,0,.4,1) forwards; pointer-events: none; }
-.letter-card .note-head { align-items: baseline; }
+.letter-card .note-head { align-items: baseline; justify-content: flex-start; gap: 4px 14px; flex-wrap: wrap; }
 .letter-close { position: absolute; top: 0; right: 0; z-index: 2; width: 34px; height: 34px; display: grid; place-items: end start; padding: 0 0 5px 6px;
   border: 0; background: none; cursor: pointer; font: 500 13px/1 var(--font-body); color: color-mix(in srgb, var(--plane-edge) 60%, var(--plane)); }
 .letter-close:hover, .letter-close:focus-visible { outline: none; color: var(--accent); }
 /* Head: who, where it stands */
 .letter-head { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-.letter-from { margin: 0; font: 500 24px/1.2 var(--font-display); }
+.letter-from { margin: 0; min-width: 0; font: 500 24px/1.2 var(--font-display); overflow-wrap: anywhere; }
 .letter-date { margin: 0; font: 400 12px/1 var(--font-mono); color: color-mix(in srgb, var(--plane-edge) 55%, var(--plane)); }
 
 /* The idea itself: the largest text on the card, ruled like paper */
