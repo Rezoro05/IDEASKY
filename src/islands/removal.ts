@@ -5,11 +5,11 @@ import type { Idea } from "../lib/ideas";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import { byId } from "./dom";
 
-export type Removal = { open(idea: Idea): void; close(): void };
+export type Removal = { open(idea: Idea): void; close(): void; /** Hide the question (another icon was chosen). */ closePanel(): void };
 
 const REMOVE_FAILED = "Couldn’t remove it. Try again later.";
 
-export function startRemoval(opts: { store: Promise<IdeaStore>; removed: (idea: Idea) => void }): Removal {
+export function startRemoval(opts: { store: Promise<IdeaStore>; removed: (idea: Idea) => void; /** The question was just opened by the bin. */ opened?: () => void }): Removal {
   const bin = byId<HTMLButtonElement>("letter-remove"), confirm = byId("remove-confirm");
   const yes = byId<HTMLButtonElement>("remove-yes"), cancel = byId<HTMLButtonElement>("remove-cancel"), error = byId("remove-error");
   let idea: Idea | null = null, owner = false, asking = false, token = 0, store: IdeaStore | null = null;
@@ -20,7 +20,11 @@ export function startRemoval(opts: { store: Promise<IdeaStore>; removed: (idea: 
     confirm.hidden = !asking;
   }
 
-  bin.addEventListener("click", () => { if (!idea || !owner) return; asking = true; error.hidden = true; render(); cancel.focus(); });
+  bin.addEventListener("click", () => {
+    if (!idea || !owner) return;
+    asking = !asking; error.hidden = true; render();
+    if (asking) { opts.opened?.(); cancel.focus(); }
+  });
   cancel.addEventListener("click", () => { asking = false; error.hidden = true; render(); bin.focus(); });
   yes.addEventListener("click", async () => {
     if (!idea || !store) return;
@@ -45,5 +49,6 @@ export function startRemoval(opts: { store: Promise<IdeaStore>; removed: (idea: 
       render();
     },
     close() { token++; idea = null; asking = false; error.hidden = true; render(); },
+    closePanel() { asking = false; error.hidden = true; render(); },
   };
 }

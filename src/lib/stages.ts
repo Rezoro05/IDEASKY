@@ -18,17 +18,10 @@ export const stageLabel = (s: Stage): string => LABEL[s];
 /** Ideas move one step at a time, forward or back. */
 export const isOneStep = (from: Stage, to: Stage): boolean => Math.abs(STAGES.indexOf(from) - STAGES.indexOf(to)) === 1;
 
-/** The question asked before a move. */
-export const moveQuestion = (to: Stage): string => `Move this idea to ${LABEL[to]}?`;
 
 export type StageChoice = { stage: Stage; checked: boolean; enabled: boolean };
 
-/** The stage radios: the picked stage is the one being asked about, else the current one.
- *  Only the owner may pick, only one step away (or back to the current), and not while a move is being asked. */
-export function stageChoices(current: Stage, asking: Stage | null, owner: boolean): StageChoice[] {
-  return STAGES.map((stage) => ({
-    stage,
-    checked: stage === (asking ?? current),
-    enabled: owner && asking === null && (stage === current || isOneStep(current, stage)),
-  }));
+/** The stage radios: the current stage is checked. Only the owner may pick, and only a stage one step away (or the current one). */
+export function stageChoices(current: Stage, owner: boolean): StageChoice[] {
+  return STAGES.map((stage) => ({ stage, checked: stage === current, enabled: owner && (stage === current || isOneStep(current, stage)) }));
 }

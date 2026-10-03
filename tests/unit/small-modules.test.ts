@@ -3,6 +3,7 @@ import { classifyGesture } from "../../src/lib/gesture";
 import { motionProfileFor } from "../../src/lib/motion";
 import { mulberry32, hashString, seedFor } from "../../src/lib/random";
 import { v, clampLen, len } from "../../src/lib/vec";
+import { panelsToClose } from "../../src/lib/icon-menu";
 
 describe("classifyGesture", () => {
   const press = { point: v(0, 0), at: 0 };
@@ -35,5 +36,13 @@ describe("vec", () => {
   it("clampLen keeps direction and caps length", () => {
     expect(len(clampLen(v(30, 40), 10))).toBeCloseTo(10);
     expect(clampLen(v(3, 4), 10)).toEqual(v(3, 4));
+  });
+});
+
+describe("icon menu panels", () => {
+  it("opening one closes the other two", () => {
+    expect(panelsToClose("comment")).toEqual(["update", "remove"]);
+    expect(panelsToClose("update")).toEqual(["comment", "remove"]);
+    expect(panelsToClose("remove")).toEqual(["comment", "update"]);
   });
 });

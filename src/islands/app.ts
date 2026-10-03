@@ -17,6 +17,7 @@ import { startLikes } from "./likes";
 import { startStagePanel } from "./stage-panel";
 import { startUpdates } from "./updates";
 import { startRemoval } from "./removal";
+import { panelsToClose, type Panel } from "../lib/icon-menu";
 import { startShare } from "./share";
 import { byId, prefersReducedMotion, randomBytes } from "./dom";
 
@@ -74,13 +75,16 @@ export function startSite(): void {
   const inbox = inboxFor(FORMSPREE_ENDPOINT, window.fetch.bind(window));
   let nameOf = (id: string) => id;
   let commentPosted = (_ideaId: string) => {};
-  const thread = startThread({ store: stores.then((s) => s.comments), inbox, ideaNameOf: (id) => nameOf(id), posted: (id) => commentPosted(id) });
+  /** The icons that open something below them: choosing one closes the other two. */
+  const closers: Record<Panel, () => void> = { comment: () => thread.closePanel(), update: () => updates.closePanel(), remove: () => removal.closePanel() };
+  const opened = (panel: Panel) => () => { for (const other of panelsToClose(panel)) closers[other](); };
+  const thread = startThread({ store: stores.then((s) => s.comments), inbox, ideaNameOf: (id) => nameOf(id), posted: (id) => commentPosted(id), opened: opened("comment") });
   const likes = startLikes({ store: stores.then((s) => s.likes) });
   let ideaMoved = (_idea: Idea) => {};
-  const updates = startUpdates({ store: stores.then((s) => s.updates) });
+  const updates = startUpdates({ store: stores.then((s) => s.updates), opened: opened("update") });
   const stage = startStagePanel({ store: stores.then((s) => s.ideas), moved: (idea) => ideaMoved(idea) });
   const ideaStore = stores.then((s) => s.ideas);
-  const removal = startRemoval({ store: ideaStore, removed: (idea) => { board.forget(idea.id); letter.dismiss(); } });
+  const removal = startRemoval({ store: ideaStore, removed: (idea) => { board.forget(idea.id); letter.dismiss(); }, opened: opened("remove") });
   const share = startShare({ pageLink: () => location.href.split("#")[0]!, nav: navigator });
   const board = startBoard({ sky, store: ideaStore, openIdea: (id, origin) => letter.open(id, origin) });
   const letter = startLetter({

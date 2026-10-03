@@ -60,34 +60,28 @@ test.describe("stages and links", () => {
     await expect(page.locator("#compose .add-link")).toBeVisible();
   });
 
-  test("the owner moves the idea one step at a time with the stage radios, each move asked first; its plane changes form", async ({ page }) => {
+  test("the owner moves the idea one step at a time by picking a stage, with no question asked; its plane changes form", async ({ page }) => {
     const board = await fakeServices(page);
     await page.goto("/");
     await postWithLinks(page, []);
     await openOnly(page);
     const radio = (stage: string) => page.locator(`#stage-track input[value="${stage}"]`);
+    const pick = (stage: string) => page.locator(`#stage-track label[data-stage="${stage}"]`).click();
     await expect(radio("idea")).toBeChecked();
     await expect(radio("live")).toBeDisabled(); // no jumping two stages
-    await radio("implementation").click();
-    await expect(page.locator("#stage-question")).toHaveText("Move this idea to In Progress?");
-    await expect(page.locator("#stage-yes")).toBeFocused();
-    await page.locator("#stage-cancel").click(); // changed my mind
-    await expect(page.locator("#stage-confirm")).toBeHidden();
-    await expect(radio("idea")).toBeChecked();
-    expect(board.stageMoves ?? []).toHaveLength(0);
-    await radio("implementation").click();
-    await page.locator("#stage-yes").click();
+    await pick("implementation");
     await expect(page.locator("#stage-track label:has(input:checked)")).toContainText("In Progress");
     await expect(page.locator(".plane")).toHaveAttribute("data-stage", "implementation");
     expect(board.stageMoves!.at(-1)).toMatchObject({ p_stage: "implementation", p_key: expect.stringMatching(/^[0-9a-f]{32}$/) });
     await expect(radio("live")).toBeEnabled();
-    await radio("live").click();
-    await page.locator("#stage-yes").click();
+    await pick("live");
     await expect(page.locator("#stage-track label:has(input:checked)")).toContainText("Live");
     await expect(radio("idea")).toBeDisabled();
     await expect(page.locator(".plane")).toHaveAttribute("data-stage", "live");
-    await radio("implementation").click();
-    await expect(page.locator("#stage-question")).toHaveText("Move this idea to In Progress?");
+    await pick("implementation"); // and back, just as directly
+    await expect(page.locator("#stage-track label:has(input:checked)")).toContainText("In Progress");
+    await expect(page.locator(".plane")).toHaveAttribute("data-stage", "implementation");
+    expect(board.stageMoves).toHaveLength(3);
   });
 
   test("other people's ideas show their stage and form, with no way to move them", async ({ page }) => {
@@ -97,7 +91,6 @@ test.describe("stages and links", () => {
     await openOnly(page);
     await expect(page.locator('#stage-track label:has(input:checked)')).toContainText("Live");
     await expect(page.locator("#stage-track input:enabled")).toHaveCount(0);
-    await expect(page.locator("#stage-track input").first()).toBeHidden(); // a plain line, no radio dots
     await expect(page.locator("#letter-links a")).toHaveText(/Market map/);
   });
 
@@ -107,23 +100,9 @@ test.describe("stages and links", () => {
     await postWithLinks(page, []);
     await openOnly(page);
     board.stageDown = true;
-    await page.locator('#stage-track input[value="implementation"]').click();
-    await page.locator("#stage-yes").click();
+    await page.locator('#stage-track label[data-stage="implementation"]').click();
     await expect(page.locator("#stage-error")).toContainText("Couldn’t move it");
     await expect(page.locator('#stage-track label:has(input:checked)')).toContainText("Idea");
     await expect(page.locator(".plane")).toHaveAttribute("data-stage", "idea");
-  });
-
-  test("closing the letter mid-question cancels it", async ({ page }) => {
-    await fakeServices(page);
-    await page.goto("/");
-    await postWithLinks(page, []);
-    await openOnly(page);
-    await page.locator('#stage-track input[value="implementation"]').click();
-    await page.keyboard.press("Escape");
-    await expect(page.locator("#letter")).toBeHidden();
-    await openOnly(page);
-    await expect(page.locator("#stage-confirm")).toBeHidden();
-    await expect(page.locator('#stage-track label:has(input:checked)')).toContainText("Idea");
   });
 });

@@ -7,7 +7,7 @@ import type { CommentStore } from "../boundaries/commentStore";
 import type { Inbox } from "../boundaries/inbox";
 import { byId, randomBytes } from "./dom";
 
-export type Thread = { open(ideaId: string): void; close(): void };
+export type Thread = { open(ideaId: string): void; close(): void; /** Hide the comment form (another icon was chosen); what was typed stays. */ closePanel(): void };
 
 const LOADING = "Loading comments…";
 const UNAVAILABLE = "Comments couldn’t load right now. Try again later.";
@@ -18,6 +18,8 @@ export function startThread(opts: {
   store: Promise<CommentStore>; inbox: Inbox; ideaNameOf: (ideaId: string) => string; now?: () => number;
   /** A comment was saved and shown. */
   posted?: (ideaId: string) => void;
+  /** The comment form was just opened by its icon. */
+  opened?: () => void;
 }): Thread {
   const now = opts.now ?? Date.now;
   const list = byId<HTMLOListElement>("thread-list"), status = byId("thread-status");
@@ -70,6 +72,7 @@ export function startThread(opts: {
   commentBtn.addEventListener("click", () => {
     formWanted = !formWanted;
     showForm();
+    if (formWanted) opts.opened?.();
     if (!form.hidden) field("message").focus();
   });
 
@@ -112,5 +115,6 @@ export function startThread(opts: {
   return {
     open: (id) => { void open(id); },
     close: () => { token++; ideaId = null; },
+    closePanel: () => { formWanted = false; showForm(); },
   };
 }

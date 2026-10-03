@@ -8,13 +8,13 @@ import { byId, randomBytes } from "./dom";
 import { linkRowsIn } from "./link-rows";
 import { linkItems } from "./link-list";
 
-export type Updates = { open(ideaId: string): void; close(): void };
+export type Updates = { open(ideaId: string): void; close(): void; /** Hide the update form (another icon was chosen); what was typed stays. */ closePanel(): void };
 
 const UNAVAILABLE = "Updates couldn’t load right now.";
 const SEND_FAILED = "Couldn’t post your update. Try again in a moment.";
 const REMOVE_FAILED = "Couldn’t remove it. Try again later.";
 
-export function startUpdates(opts: { store: Promise<UpdateStore>; now?: () => number }): Updates {
+export function startUpdates(opts: { store: Promise<UpdateStore>; now?: () => number; /** The update form was just opened by its icon. */ opened?: () => void }): Updates {
   const now = opts.now ?? Date.now;
   const section = byId("updates"), list = byId<HTMLOListElement>("updates-list"), count = byId("updates-count"), status = byId("updates-status");
   const addButton = byId<HTMLButtonElement>("add-update"), form = byId<HTMLFormElement>("update-form"), message = byId<HTMLTextAreaElement>("update-msg");
@@ -27,10 +27,15 @@ export function startUpdates(opts: { store: Promise<UpdateStore>; now?: () => nu
   /** The section shows only when there is something in it: updates, the form, or a status line. "+ Add update" sits in the owner row. */
   function showSectionIfUsed(): void { section.hidden = updates.length === 0 && form.hidden && status.hidden; }
 
-  function closeForm(): void {
-    form.hidden = true; form.reset(); links.clear(); err.hidden = true;
-    addButton.hidden = !owner; addButton.setAttribute("aria-expanded", "false");
+  /** Hide the form but keep what was typed. The + stays visible; it shows as selected while the form is open. */
+  function hideForm(): void {
+    form.hidden = true; addButton.setAttribute("aria-expanded", "false");
     showSectionIfUsed();
+  }
+  function closeForm(): void {
+    form.reset(); links.clear(); err.hidden = true;
+    addButton.hidden = !owner;
+    hideForm();
   }
 
   function render(freshId?: string): void {
@@ -72,7 +77,8 @@ export function startUpdates(opts: { store: Promise<UpdateStore>; now?: () => nu
   }
 
   addButton.addEventListener("click", () => {
-    form.hidden = false; addButton.hidden = true; addButton.setAttribute("aria-expanded", "true"); showSectionIfUsed(); message.focus();
+    if (!form.hidden) { hideForm(); return; }
+    form.hidden = false; addButton.setAttribute("aria-expanded", "true"); showSectionIfUsed(); opts.opened?.(); message.focus();
   });
   byId("update-cancel").addEventListener("click", () => { closeForm(); addButton.focus(); });
 
@@ -113,5 +119,6 @@ export function startUpdates(opts: { store: Promise<UpdateStore>; now?: () => nu
   return {
     open: (id) => { void open(id); },
     close: () => { token++; ideaId = null; },
+    closePanel: hideForm,
   };
 }

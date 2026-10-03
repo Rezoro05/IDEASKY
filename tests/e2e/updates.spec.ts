@@ -58,6 +58,37 @@ test.describe("owner updates", () => {
     await expect(page.locator("#update-msg")).toHaveValue("Keep me");
   });
 
+  test("the comment, + and bin icons open one thing at a time and look the same when selected", async ({ page }) => {
+    await fakeServices(page);
+    await page.goto("/");
+    await postAndOpen(page);
+    const icon = (id: string) => page.locator(`#${id}`);
+    const selected = async (id: string) => icon(id).evaluate((el) => ({ open: el.getAttribute("aria-expanded"), color: getComputedStyle(el).color, chip: getComputedStyle(el).backgroundColor }));
+    await icon("comment-btn").click();
+    await expect(page.locator("#thread-form")).toBeVisible();
+    const look = await selected("comment-btn");
+    expect(look.open).toBe("true");
+    expect(look.chip).not.toBe("rgba(0, 0, 0, 0)");
+    await icon("add-update").click(); // + closes the comment form
+    await expect(page.locator("#update-form")).toBeVisible();
+    await expect(page.locator("#thread-form")).toBeHidden();
+    expect(await selected("comment-btn")).toMatchObject({ open: "false", chip: "rgba(0, 0, 0, 0)" });
+    expect(await selected("add-update")).toEqual(look);
+    await icon("letter-remove").click(); // the bin closes the update form
+    await expect(page.locator("#remove-confirm")).toBeVisible();
+    await expect(page.locator("#update-form")).toBeHidden();
+    expect(await selected("letter-remove")).toEqual(look);
+    await icon("comment-btn").click(); // and the comment icon closes the question
+    await expect(page.locator("#thread-form")).toBeVisible();
+    await expect(page.locator("#remove-confirm")).toBeHidden();
+    await icon("comment-btn").click(); // the same icon again closes its own panel
+    await expect(page.locator("#thread-form")).toBeHidden();
+    expect(await selected("comment-btn")).toMatchObject({ open: "false" });
+    await icon("add-update").click(); await icon("add-update").click();
+    await expect(page.locator("#update-form")).toBeHidden();
+    await expect(icon("add-update")).toBeVisible();
+  });
+
   test("everyone else reads the updates but cannot add or remove them; with none, the section stays out of the way", async ({ page }) => {
     await fakeServices(page, { ...withGio(), updates: [{ id: "upd0001", idea_id: "zzzzzz1", message: "Permit approved", links: [], created_at: "2026-10-01T10:00:00Z" }] });
     await page.goto("/");
