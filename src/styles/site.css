@@ -280,7 +280,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .letter-close { position: absolute; top: 0; right: 0; z-index: 2; width: 34px; height: 34px; display: grid; place-items: end start; padding: 0 0 5px 6px;
   border: 0; background: none; cursor: pointer; font: 500 13px/1 var(--font-body); color: color-mix(in srgb, var(--plane-edge) 60%, var(--plane)); }
 .letter-close:hover, .letter-close:focus-visible { outline: none; color: var(--accent); }
-/* Head: who, where it stands, when */
+/* Head: who, where it stands */
 .letter-head { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .letter-from { margin: 0; font: 500 24px/1.2 var(--font-display); }
 .letter-date { margin: 0; font: 400 12px/1 var(--font-mono); color: color-mix(in srgb, var(--plane-edge) 55%, var(--plane)); }
