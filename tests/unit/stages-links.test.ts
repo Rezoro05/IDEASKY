@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { STAGES, isOneStep, isStage, stageChoices, stageGlyph, stageLabel, stageOrIdea } from "../../src/lib/stages";
+import { fractionAt, knobFraction, settledStage, stageFraction } from "../../src/lib/stage-bar";
 import { checkLinkRows, cleanLink, cleanLinks, siteName, webAddress, LINK_LIMITS } from "../../src/lib/links";
 
 describe("stages", () => {
@@ -64,5 +65,34 @@ describe("links", () => {
     expect(checkLinkRows([{ title: "", url: "" }, { title: "Demo", url: "demo.app" }])).toEqual({ ok: true, links: [{ title: "Demo", url: "https://demo.app/" }] });
     expect(checkLinkRows([{ title: "Demo", url: "demo.app" }, { title: "Oops", url: "not a link" }])).toMatchObject({ ok: false, row: 1 });
     expect(checkLinkRows([{ title: "Title only", url: "" }])).toMatchObject({ ok: false, row: 0 });
+  });
+});
+
+describe("the stage progress bar", () => {
+  it("puts the stages at the left end, the middle and the right end", () => {
+    expect(STAGES.map(stageFraction)).toEqual([0, 0.5, 1]);
+  });
+  it("turns a pointer position into a fraction along the bar, never outside it", () => {
+    expect(fractionAt(150, 100, 200)).toBe(0.25);
+    expect(fractionAt(50, 100, 200)).toBe(0);
+    expect(fractionAt(900, 100, 200)).toBe(1);
+    expect(fractionAt(150, 100, 0)).toBe(0);
+  });
+  it("lets the knob follow the pointer but stops it one stage away", () => {
+    expect(knobFraction("idea", 0.9)).toBe(0.5);
+    expect(knobFraction("idea", 0.3)).toBe(0.3);
+    expect(knobFraction("implementation", 0)).toBe(0);
+    expect(knobFraction("implementation", 1)).toBe(1);
+    expect(knobFraction("live", 0.1)).toBe(0.5);
+    expect(knobFraction("live", 2)).toBe(1);
+  });
+  it("settles on the nearest stage, one step at most", () => {
+    expect(settledStage("idea", 0.2)).toBe("idea");
+    expect(settledStage("idea", 0.3)).toBe("implementation");
+    expect(settledStage("idea", 1)).toBe("implementation"); // no jump to Live
+    expect(settledStage("implementation", 0.1)).toBe("idea");
+    expect(settledStage("implementation", 0.9)).toBe("live");
+    expect(settledStage("implementation", 0.6)).toBe("implementation");
+    expect(settledStage("live", 0)).toBe("implementation");
   });
 });

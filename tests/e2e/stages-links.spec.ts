@@ -84,6 +84,41 @@ test.describe("stages and links", () => {
     expect(board.stageMoves).toHaveLength(3);
   });
 
+  test("the owner drags the knob along the progress bar; it settles on a stage, moves one step at most, and the bar fills up to it", async ({ page }) => {
+    const board = await fakeServices(page);
+    await page.goto("/");
+    await postWithLinks(page, []);
+    await openOnly(page);
+    const bar = page.locator("#stage-track .stage-bar");
+    const at = async (fraction: number) => { const b = (await bar.boundingBox())!; return { x: b.x + b.width * fraction, y: b.y + b.height / 2 }; };
+    const drag = async (from: number, to: number) => {
+      const a = await at(from), z = await at(to);
+      await page.mouse.move(a.x, a.y); await page.mouse.down(); await page.mouse.move(z.x, z.y, { steps: 6 });
+      return { release: () => page.mouse.up() };
+    };
+    const checked = () => page.locator("#stage-track input:checked").getAttribute("value");
+    await expect(page.locator("#stage-track")).toHaveClass(/editable/);
+    // mid-drag the stage it would settle on lights up; nothing is saved until the knob is let go
+    const held = await drag(0, 0.4);
+    await expect(page.locator('#stage-track label[data-stage="implementation"]')).toHaveClass(/target/);
+    expect(board.stageMoves ?? []).toHaveLength(0);
+    await held.release();
+    await expect.poll(checked).toBe("implementation");
+    await expect(page.locator(".plane")).toHaveAttribute("data-stage", "implementation");
+    expect(board.stageMoves).toHaveLength(1);
+    // a short drag that stays nearer the starting stage changes nothing
+    await (await drag(0.5, 0.6)).release();
+    await page.waitForTimeout(300);
+    expect(await checked()).toBe("implementation");
+    expect(board.stageMoves).toHaveLength(1);
+    // all the way to Live, then all the way back: one stage at a time
+    await (await drag(0.5, 1)).release();
+    await expect.poll(checked).toBe("live");
+    await (await drag(1, 0)).release();
+    await expect.poll(checked).toBe("implementation"); // not Idea: no jump
+    expect(board.stageMoves).toHaveLength(3);
+  });
+
   test("other people's ideas show their stage and form, with no way to move them", async ({ page }) => {
     await fakeServices(page, { rows: [{ ...gioRow, stage: "live", links: [{ title: "Market map", url: "https://markets.example.com/" }] }], posts: [], deletes: [], mails: 0 });
     await page.goto("/");
@@ -91,6 +126,11 @@ test.describe("stages and links", () => {
     await openOnly(page);
     await expect(page.locator('#stage-track label:has(input:checked)')).toContainText("Live");
     await expect(page.locator("#stage-track input:enabled")).toHaveCount(0);
+    await expect(page.locator("#stage-track")).not.toHaveClass(/editable/);
+    const b = (await page.locator("#stage-track .stage-bar").boundingBox())!; // dragging the knob of someone else's idea does nothing
+    await page.mouse.move(b.x + b.width, b.y + b.height / 2); await page.mouse.down(); await page.mouse.move(b.x, b.y + b.height / 2, { steps: 6 }); await page.mouse.up();
+    await page.waitForTimeout(300);
+    await expect(page.locator("#stage-track input:checked")).toHaveAttribute("value", "live");
     await expect(page.locator("#letter-links a")).toHaveText(/Market map/);
   });
 

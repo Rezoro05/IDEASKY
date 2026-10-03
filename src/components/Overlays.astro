@@ -14,9 +14,16 @@ import { STAGES, stageGlyph, stageLabel } from "../lib/stages";
     <div class="note-head"><span class="note-label">Idea Note · Public</span><button class="letter-close" id="letter-close" type="button" aria-label="Close">✕</button></div>
     <header class="letter-head">
       <p class="letter-from" id="letter-from"></p>
-      <fieldset class="stage-track" id="stage-track" aria-label="Stage">
-        {STAGES.map((st) => <label data-stage={st}><input type="radio" name="idea-stage" value={st} disabled /><b>{stageGlyph(st)}</b> {stageLabel(st)}</label>)}
-      </fieldset>
+      <div class="stage-track" id="stage-track" role="radiogroup" aria-label="Stage">
+        <div class="stage-bar" aria-hidden="true">
+          <span class="rail"></span><span class="fill"></span>
+          {STAGES.map((_, i) => <i class="stop" style={`left:${(i * 100) / (STAGES.length - 1)}%`}></i>)}
+          <span class="knob"></span>
+        </div>
+        <div class="stage-labels">
+          {STAGES.map((st) => <label data-stage={st}><input type="radio" name="idea-stage" value={st} disabled /><b>{stageGlyph(st)}</b> {stageLabel(st)}</label>)}
+        </div>
+      </div>
       <p class="inline-error" id="stage-error" role="alert" hidden></p>
       <p class="letter-date" id="letter-date"></p>
     </header>

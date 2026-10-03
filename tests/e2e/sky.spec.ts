@@ -30,6 +30,7 @@ test("planes face the way they fly: heading left they are mirrored, heading righ
     return { id: el.getAttribute("data-slug")!, x: r.left, y: r.top, mirrored: (el.querySelector(".body")!.getAttribute("style") ?? "").includes("scaleX(-1)") };
   }));
   const seen = { left: 0, right: 0 };
+  const lastDx = new Map<string, number>(); // a plane is judged only once it has held its direction for two samples: mid-turn it may lag behind
   let before = await sample();
   for (let i = 0; i < 160 && (seen.left < 3 || seen.right < 3); i++) {
     await page.waitForTimeout(150);
@@ -38,7 +39,10 @@ test("planes face the way they fly: heading left they are mirrored, heading righ
       const q = before.find((b) => b.id === p.id);
       if (!q) continue;
       const dx = p.x - q.x, dy = p.y - q.y;
-      if (Math.abs(dx) < 3 || Math.abs(dx) < 2 * Math.abs(dy)) continue; // only clearly sideways motion
+      if (Math.abs(dx) < 3 || Math.abs(dx) < 2 * Math.abs(dy)) { lastDx.delete(p.id); continue; } // only clearly sideways motion
+      const steady = Math.sign(lastDx.get(p.id) ?? 0) === Math.sign(dx);
+      lastDx.set(p.id, dx);
+      if (!steady) continue;
       expect(p.mirrored, `plane moving ${dx < 0 ? "left" : "right"}`).toBe(dx < 0);
       seen[dx < 0 ? "left" : "right"]++;
     }
