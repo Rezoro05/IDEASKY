@@ -21,13 +21,13 @@ import { STAGES, stageGlyph, stageLabel } from "../lib/stages";
         {STAGES.map((st) => <li data-stage={st}><b>{stageGlyph(st)}</b> {stageLabel(st)}</li>)}
       </ol>
       <div class="stage-moves" id="stage-moves" hidden>
-        <button type="button" class="stage-move" id="stage-back"></button>
-        <button type="button" class="stage-move" id="stage-forward"></button>
+        <button type="button" class="text-btn" id="stage-back"></button>
+        <button type="button" class="text-btn" id="stage-forward"></button>
       </div>
       <div class="stage-confirm" id="stage-confirm" role="group" aria-labelledby="stage-question" hidden>
         <p id="stage-question"></p>
         <button type="button" class="stage-yes" id="stage-yes">Yes, move it</button>
-        <button type="button" class="stage-cancel" id="stage-cancel">Cancel</button>
+        <button type="button" class="text-btn quiet" id="stage-cancel">Cancel</button>
       </div>
       <p class="stage-error" id="stage-error" role="alert" hidden></p>
     </section>
@@ -44,7 +44,7 @@ import { STAGES, stageGlyph, stageLabel } from "../lib/stages";
         <p class="note-error" id="update-error" role="alert" hidden></p>
         <div class="update-actions">
           <button type="submit" class="update-send">Post update</button>
-          <button type="button" class="stage-cancel" id="update-cancel">Cancel</button>
+          <button type="button" class="text-btn quiet" id="update-cancel">Cancel</button>
         </div>
       </form>
     </section>
@@ -59,18 +59,18 @@ import { STAGES, stageGlyph, stageLabel } from "../lib/stages";
       </button>
     </div>
     <div class="letter-actions">
-      <button type="button" class="danger" id="letter-remove" hidden>Remove this idea</button>
+      <button type="button" class="text-btn quiet danger" id="letter-remove" hidden>Remove this idea</button>
     </div>
     <section class="thread" id="thread" aria-labelledby="thread-title">
-      <div class="thread-head"><h3 class="thread-title" id="thread-title">Comments</h3><span class="thread-count" id="thread-count"></span></div>
+      <div class="thread-head"><h3 class="thread-title" id="thread-title">Comments</h3></div>
       <p class="thread-status" id="thread-status" role="status" hidden></p>
       <ol class="thread-list" id="thread-list"></ol>
       <form class="thread-form" id="thread-form" novalidate>
         <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp">
-        <label class="note-field" for="comment-msg"><span>Your comment</span>
+        <label class="note-field" for="comment-msg"><span>Comment</span>
           <textarea id="comment-msg" name="message" rows="2" maxlength={COMMENT_LIMITS.message} placeholder="Add your thoughts"></textarea>
         </label>
-        <label class="note-field" for="comment-name"><span>Your name <span class="opt">(optional, shown with your comment)</span></span>
+        <label class="note-field" for="comment-name"><span>Name</span>
           <input id="comment-name" name="name" type="text" autocomplete="name" maxlength={COMMENT_LIMITS.name} placeholder="Steve Gates">
         </label>
         <p class="note-error" id="comment-error" role="alert" hidden></p>

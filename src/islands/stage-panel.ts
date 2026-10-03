@@ -23,7 +23,7 @@ export function startStagePanel(opts: { store: Promise<IdeaStore>; moved: (idea:
     const prev = previousStage(idea.stage), next = nextStage(idea.stage);
     moves.hidden = !owner || asking !== null;
     back.hidden = !prev; forward.hidden = !next;
-    back.textContent = prev ? `← ${stageLabel(prev)}` : ""; forward.textContent = next ? `→ ${stageLabel(next)}` : "";
+    back.textContent = prev ? `← Back to ${stageLabel(prev)}` : ""; forward.textContent = next ? `Move to ${stageLabel(next)} →` : "";
     confirm.hidden = asking === null;
     question.textContent = asking ? moveQuestion(asking) : "";
   }

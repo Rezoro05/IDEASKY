@@ -17,7 +17,7 @@ test.describe("comments on visitor ideas", () => {
     const board = await fakeServices(page, gio());
     await page.goto("/");
     await openGio(page);
-    await expect(page.locator("#thread-count")).toHaveText("1 comment");
+    await expect(page.locator("#comment-count")).toHaveText("1");
     await expect(page.locator("#thread-list li")).toHaveCount(1);
     await expect(page.locator("#thread-list li").first()).toContainText("Ana");
     await expect(page.locator("#thread-list .c-remove")).toHaveCount(0);
@@ -25,7 +25,7 @@ test.describe("comments on visitor ideas", () => {
     await page.locator("#comment-msg").fill("I'd sell khachapuri there");
     await page.locator("#comment-name").fill("Nino");
     await page.locator(".thread-send").click();
-    await expect(page.locator("#thread-count")).toHaveText("2 comments");
+    await expect(page.locator("#comment-count")).toHaveText("2");
     const mine = page.locator("#thread-list li").nth(1);
     await expect(mine).toContainText("I'd sell khachapuri there");
     await expect(mine.locator(".c-remove")).toBeVisible();
@@ -37,7 +37,7 @@ test.describe("comments on visitor ideas", () => {
     await expect(page.locator("#letter")).toBeHidden();
     await openGio(page);
     await page.locator("#thread-list li").nth(1).locator(".c-remove").click();
-    await expect(page.locator("#thread-count")).toHaveText("1 comment");
+    await expect(page.locator("#comment-count")).toHaveText("1");
     expect(board.comments).toHaveLength(1);
   });
 
@@ -63,10 +63,10 @@ test.describe("comments on visitor ideas", () => {
     await page.locator("#comment-btn").click();
     await page.locator("#comment-msg").fill("Second thought");
     await page.locator(".thread-send").click();
-    await expect(page.locator("#thread-count")).toHaveText("2 comments");
+    await expect(page.locator("#comment-count")).toHaveText("2");
     await page.reload();
     await openGio(page);
-    await expect(page.locator("#thread-count")).toHaveText("2 comments");
+    await expect(page.locator("#comment-count")).toHaveText("2");
     await expect(page.locator("#thread-list li").nth(1).locator(".c-remove")).toBeVisible(); // still mine after reload
   });
 
@@ -118,7 +118,7 @@ test.describe("comments on visitor ideas", () => {
     await expect(plane).toHaveCount(1, { timeout: 8000 });
     await plane.focus();
     await page.keyboard.press("Enter");
-    await expect(page.locator("#thread-count")).toHaveText("No comments yet");
+    await expect(page.locator("#comment-count")).toHaveText("");
   });
 
   test.describe("on a phone", () => {

@@ -1,7 +1,7 @@
 /** Comments under a visitor idea, inside its letter. The comments show at once; the form to write one opens from the comment icon.
  *  Thread: loading → ready | unavailable.  Form: closed → editing → sending → editing (added) | failed (text kept).
  *  Every open gets a token, so answers that arrive after the letter closed or switched are ignored. */
-import { commentCountLabel, threadFor, validateCommentDraft, type Comment } from "../lib/comments";
+import { threadFor, validateCommentDraft, type Comment } from "../lib/comments";
 import { newRecordId } from "../lib/ideas";
 import type { CommentStore } from "../boundaries/commentStore";
 import type { Inbox } from "../boundaries/inbox";
@@ -20,7 +20,7 @@ export function startThread(opts: {
   posted?: (ideaId: string) => void;
 }): Thread {
   const now = opts.now ?? Date.now;
-  const list = byId<HTMLOListElement>("thread-list"), status = byId("thread-status"), count = byId("thread-count");
+  const list = byId<HTMLOListElement>("thread-list"), status = byId("thread-status");
   const commentBtn = byId<HTMLButtonElement>("comment-btn"), iconCount = byId("comment-count");
   const form = byId<HTMLFormElement>("thread-form"), err = byId("comment-error"), send = form.querySelector<HTMLButtonElement>(".thread-send")!;
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement;
@@ -31,7 +31,6 @@ export function startThread(opts: {
   function setStatus(text: string | null): void { status.hidden = !text; status.textContent = text ?? ""; }
 
   function render(freshId?: string): void {
-    count.textContent = commentCountLabel(comments.length);
     iconCount.textContent = comments.length ? String(comments.length) : "";
     list.replaceChildren(...comments.map((c) => {
       const li = document.createElement("li");
@@ -55,7 +54,7 @@ export function startThread(opts: {
     const mine = ++token;
     ideaId = id; comments = []; loaded = false; formWanted = false;
     form.reset(); err.hidden = true; send.disabled = false; showForm();
-    list.replaceChildren(); count.textContent = ""; iconCount.textContent = ""; commentBtn.disabled = false; setStatus(LOADING);
+    list.replaceChildren(); iconCount.textContent = ""; commentBtn.disabled = false; setStatus(LOADING);
     store = await opts.store;
     const found = await store.list(id);
     if (mine !== token) return;

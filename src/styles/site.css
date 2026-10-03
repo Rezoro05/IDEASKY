@@ -222,26 +222,23 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .link-remove:hover, .link-remove:focus-visible { outline: none; color: var(--danger); }
 @media (max-width: 420px) { .link-row { grid-template-columns: minmax(0, 1fr) auto; } .link-row .link-title { grid-column: 1; grid-row: 2; } }
 
-/* Text buttons (+ Add link, + Add update) and small remove links */
-.add-link, .add-update { align-self: flex-start; padding: 2px 0; border: 0; background: none; cursor: pointer; font: 500 12px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--tone-cobalt); }
-.add-link:hover, .add-link:focus-visible, .add-update:hover, .add-update:focus-visible { outline: none; text-decoration: underline; }
-.add-link[hidden], .add-update[hidden] { display: none; }
+/* Two kinds of button on paper: solid cobalt for the one main action, plain text for everything else */
+.add-link, .add-update, .text-btn { align-self: flex-start; padding: 2px 0; border: 0; background: none; cursor: pointer;
+  font: 500 12px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--tone-cobalt); }
+.add-link:hover, .add-link:focus-visible, .add-update:hover, .add-update:focus-visible, .text-btn:hover, .text-btn:focus-visible { outline: none; text-decoration: underline; }
+.text-btn.quiet { color: var(--n-muted, color-mix(in srgb, var(--plane-edge) 55%, var(--plane))); }
+.text-btn.danger:hover, .text-btn.danger:focus-visible { color: var(--danger); }
+.text-btn:disabled { opacity: .6; cursor: progress; }
+.add-link[hidden], .add-update[hidden], .text-btn[hidden] { display: none; }
 .c-remove { margin-top: 6px; padding: 0; border: 0; background: none; cursor: pointer; font: 500 10px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--n-muted); }
 .c-remove:hover, .c-remove:focus-visible { outline: none; color: var(--danger); text-decoration: underline; }
 
 /* Buttons on paper: solid cobalt for the main action, outlined for the rest */
-.note-send, .thread-send, .update-send, .stage-yes { border: 0; cursor: pointer; background: var(--tone-cobalt); color: #fff; font: 500 14px/1 var(--font-body); }
-.note-send { align-self: flex-start; display: inline-flex; gap: 10px; align-items: center; margin-top: 4px; padding: 12px 18px; border-radius: 2px; transition: transform .15s; }
-.note-send:hover { transform: translateY(-1px); }
-.thread-send, .update-send { align-self: flex-start; padding: 10px 16px; border-radius: 0; }
-.stage-yes { padding: 8px 14px; font-size: 13px; }
-.thread-send:hover, .update-send:hover { filter: brightness(1.1); }
-.note-send:focus-visible, .thread-send:focus-visible, .update-send:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; }
-.stage-yes:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 2px; }
-.thread-send:disabled, .update-send:disabled, .stage-yes:disabled, .stage-cancel:disabled { opacity: .6; cursor: progress; }
-.stage-move, .stage-cancel { padding: 7px 12px; border: 1px solid color-mix(in srgb, var(--plane-edge) 25%, var(--plane)); background: none; cursor: pointer;
-  font: 500 13px/1 var(--font-body); color: var(--plane-edge); }
-.stage-move:hover, .stage-move:focus-visible, .stage-cancel:hover, .stage-cancel:focus-visible { outline: none; border-color: var(--tone-cobalt); color: var(--tone-cobalt); }
+.note-send, .thread-send, .update-send, .stage-yes { align-self: flex-start; display: inline-flex; gap: 10px; align-items: center; justify-content: center;
+  padding: 10px 16px; border: 0; border-radius: 2px; cursor: pointer; background: var(--tone-cobalt); color: #fff; font: 500 14px/1 var(--font-body); }
+.note-send:hover, .thread-send:hover, .update-send:hover, .stage-yes:hover { filter: brightness(1.1); }
+.note-send:focus-visible, .thread-send:focus-visible, .update-send:focus-visible, .stage-yes:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; }
+.thread-send:disabled, .update-send:disabled, .stage-yes:disabled { opacity: .6; cursor: progress; }
 .note-error, .stage-error { margin: 0; font: 400 13px/1.4 var(--font-body); color: var(--danger); }
 .note[hidden], .note-error[hidden], .stage-error[hidden] { display: none; }
 
@@ -263,9 +260,8 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .note-who { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; padding-top: 14px; border-top: 1px solid var(--n-rule); }
 .note-who input { font-size: 15px; }
 @media (max-width: 420px) { .note-who { grid-template-columns: 1fr; } }
-.note-choice { display: flex; align-items: stretch; align-self: stretch; margin-top: 4px; border: 1.5px solid var(--tone-cobalt); border-radius: 3px; overflow: hidden; }
-.note-choice .note-send { flex: 1 1 auto; justify-content: center; margin: 0; border-radius: 0; }
-.note-choice .note-send:hover { transform: none; filter: brightness(1.1); }
+.note-choice { display: flex; margin-top: 4px; }
+.note-choice .note-send { flex: 1 1 auto; padding-block: 12px; }
 
 /* ============================================================
    The letter: an open idea
@@ -294,15 +290,15 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 
 /* Stage track 0 → – → 1, and the owner's moves */
 .stage { display: flex; flex-direction: column; gap: 10px; padding-block: 4px; }
-.stage-track { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 6px;
+.stage-track { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 8px;
   font: 500 11px/1.2 var(--font-mono); letter-spacing: .04em; color: color-mix(in srgb, var(--plane-edge) 45%, var(--plane)); }
-.stage-track li { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 8px; border-radius: 99px; white-space: nowrap; }
-.stage-track li + li::before { content: ""; align-self: center; width: 14px; height: 1px; margin-right: 6px; background: currentColor; opacity: .5; }
+.stage-track li { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; opacity: .55; }
+.stage-track li + li::before { content: ""; align-self: center; width: 14px; height: 1px; margin-right: 6px; background: color-mix(in srgb, var(--plane-edge) 45%, var(--plane)); }
 .stage-track b { font: 700 13px/1 var(--font-display); }
-.stage-track li[aria-current="step"] { background: var(--tone-cobalt); color: #fff; }
+.stage-track li[aria-current="step"] { opacity: 1; color: var(--tone-cobalt); font-weight: 700; }
 @media (max-width: 420px) { .stage-track li:not([aria-current="step"]) { font-size: 0; } .stage-track li:not([aria-current="step"]) b { font-size: 13px; } }
-.stage-moves, .stage-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
-.stage-moves[hidden], .stage-confirm[hidden], .stage-move[hidden] { display: none; }
+.stage-moves, .stage-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.stage-moves[hidden], .stage-confirm[hidden] { display: none; }
 .stage-confirm p { flex-basis: 100%; margin: 0; font-size: 15px; }
 
 /* Heart and comment icons */
@@ -318,13 +314,9 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .act-comment[aria-expanded="true"] { color: var(--tone-cobalt); }
 @keyframes like-pop { 50% { transform: scale(1.25); } }
 
-/* Remove this idea */
-.letter-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+/* Remove this idea: a quiet text link */
+.letter-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .letter-actions:not(:has(> :not([hidden]))) { display: none; }
-.letter-actions button { padding: 10px 14px; border: 1px solid color-mix(in srgb, var(--plane-edge) 25%, var(--plane)); border-radius: 2px; background: none; cursor: pointer;
-  font: 500 13px/1 var(--font-body); color: var(--plane-edge); }
-.letter-actions button:hover, .letter-actions button:focus-visible { outline: none; border-color: var(--accent); color: var(--accent); }
-.letter-actions .danger:hover, .letter-actions .danger:focus-visible { border-color: var(--danger); color: var(--danger); }
 
 /* Sections inside the letter: updates and comments share one look */
 .updates, .thread { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--n-rule); }

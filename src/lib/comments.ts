@@ -33,4 +33,3 @@ export function validateCommentDraft(d: CommentDraft): CommentCheck {
   return { ok: true, comment: { name: d.name.trim().slice(0, COMMENT_LIMITS.name) || ANONYMOUS, message } };
 }
 
-export const commentCountLabel = (n: number): string => (n === 0 ? "No comments yet" : n === 1 ? "1 comment" : `${n} comments`);

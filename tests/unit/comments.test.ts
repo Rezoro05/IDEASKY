@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { cleanComment, threadFor, validateCommentDraft, commentCountLabel, COMMENT_LIMITS, type Comment } from "../../src/lib/comments";
+import { cleanComment, threadFor, validateCommentDraft, COMMENT_LIMITS, type Comment } from "../../src/lib/comments";
 import { supabaseComments, memoryComments } from "../../src/boundaries/commentStore";
 import { browserKeyStore, COMMENT_KEYS_ITEM, DELETE_KEYS_ITEM } from "../../src/boundaries/keyStore";
 import { commentFields, formspreeInbox } from "../../src/boundaries/inbox";
@@ -24,9 +24,6 @@ describe("comment rules", () => {
     expect(validateCommentDraft({ name: "", message: "hi", trap: "x" })).toEqual({ ok: false, reason: "bot" });
     expect(validateCommentDraft({ name: "", message: "  ", trap: "" })).toEqual({ ok: false, reason: "empty", text: "Write your comment first." });
     expect(validateCommentDraft({ name: " Gio ", message: " nice ", trap: "" })).toEqual({ ok: true, comment: { name: "Gio", message: "nice" } });
-  });
-  it("count labels", () => {
-    expect([0, 1, 5].map(commentCountLabel)).toEqual(["No comments yet", "1 comment", "5 comments"]);
   });
 });
 
