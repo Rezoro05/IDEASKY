@@ -39,6 +39,9 @@ export function cleanLinks(raw: unknown): Link[] {
 }
 
 export type LinkRow = { title: string; url: string };
+const NOT_A_WEB_ADDRESS = "That link isn’t a web address. Try something like example.com.";
+/** A title is typed but the address was left empty (or wiped out): say that, not that the address is wrong. */
+const TITLE_WITHOUT_ADDRESS = "This link has a title but no web address. Add one, or clear the title.";
 export type LinkRowsCheck = { ok: true; links: Link[] } | { ok: false; row: number; text: string };
 
 /** What a visitor typed in the link rows: blank rows are skipped; a row with an address that isn't a web address is an error. */
@@ -47,7 +50,7 @@ export function checkLinkRows(rows: readonly LinkRow[]): LinkRowsCheck {
   for (const [i, row] of rows.entries()) {
     if (!row.url.trim() && !row.title.trim()) continue;
     const link = cleanLink(row);
-    if (!link) return { ok: false, row: i, text: "That link isn’t a web address. Try something like example.com." };
+    if (!link) return { ok: false, row: i, text: row.url.trim() ? NOT_A_WEB_ADDRESS : TITLE_WITHOUT_ADDRESS };
     links.push(link);
   }
   return { ok: true, links: links.slice(0, LINK_LIMITS.perIdea) };

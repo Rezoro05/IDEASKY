@@ -62,6 +62,16 @@ test.describe("stages and links", () => {
     await expect(error).toContainText("isn’t a web address");
   });
 
+  test("a title left without its address gets its own message", async ({ page }) => {
+    await fakeServices(page);
+    await page.goto("/");
+    await postWithLinks(page, [["", "Draft plan"]]);
+    await expect(page.locator("#note-error")).toContainText("title but no web address");
+    await expect(page.locator(".link-row .link-url")).toBeFocused();
+    await page.locator(".link-row .link-title").fill(""); // clearing the title too leaves a blank row, which is ignored
+    await expect(page.locator("#note-error")).toBeHidden();
+  });
+
   test("a link message also goes when its row is removed", async ({ page }) => {
     await fakeServices(page);
     await page.goto("/");

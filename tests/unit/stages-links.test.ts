@@ -4,7 +4,7 @@ import { fractionAt, knobFraction, settledStage, stageFraction } from "../../src
 import { checkLinkRows, cleanLink, cleanLinks, siteName, webAddress, LINK_LIMITS } from "../../src/lib/links";
 
 describe("stages", () => {
-  it("run in order, shown as 0 / – / 1", () => {
+  it("run in order, from Idea to Live", () => {
     expect(STAGES).toEqual(["idea", "implementation", "live"]);
     expect(STAGES.map(stageLabel)).toEqual(["Idea", "In Progress", "Live"]);
   });
@@ -63,7 +63,8 @@ describe("links", () => {
   it("typed rows: blanks skipped, a bad address names its row", () => {
     expect(checkLinkRows([{ title: "", url: "" }, { title: "Demo", url: "demo.app" }])).toEqual({ ok: true, links: [{ title: "Demo", url: "https://demo.app/" }] });
     expect(checkLinkRows([{ title: "Demo", url: "demo.app" }, { title: "Oops", url: "not a link" }])).toMatchObject({ ok: false, row: 1 });
-    expect(checkLinkRows([{ title: "Title only", url: "" }])).toMatchObject({ ok: false, row: 0 });
+    expect(checkLinkRows([{ title: "Title only", url: "" }])).toEqual({ ok: false, row: 0, text: "This link has a title but no web address. Add one, or clear the title." });
+    expect(checkLinkRows([{ title: "Oops", url: "not a link" }])).toMatchObject({ ok: false, text: expect.stringContaining("isn’t a web address") });
   });
 });
 
