@@ -227,20 +227,19 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   font: 500 12px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--tone-cobalt); }
 .add-link:hover, .add-link:focus-visible, .text-btn:hover, .text-btn:focus-visible { outline: none; text-decoration: underline; }
 .text-btn.quiet { color: var(--n-muted, color-mix(in srgb, var(--plane-edge) 55%, var(--plane))); }
-.text-btn.danger:hover, .text-btn.danger:focus-visible { color: var(--danger); }
 .text-btn:disabled { opacity: .6; cursor: progress; }
 .add-link[hidden], .text-btn[hidden] { display: none; }
 .c-remove { margin-top: 6px; padding: 0; border: 0; background: none; cursor: pointer; font: 500 10px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--n-muted); }
 .c-remove:hover, .c-remove:focus-visible { outline: none; color: var(--danger); text-decoration: underline; }
 
 /* Buttons on paper: solid cobalt for the main action, outlined for the rest */
-.note-send, .thread-send, .update-send, .stage-yes { align-self: flex-start; display: inline-flex; gap: 10px; align-items: center; justify-content: center;
+.note-send, .thread-send, .update-send, .confirm-yes { align-self: flex-start; display: inline-flex; gap: 10px; align-items: center; justify-content: center;
   padding: 10px 16px; border: 0; border-radius: 2px; cursor: pointer; background: var(--tone-cobalt); color: #fff; font: 500 14px/1 var(--font-body); }
-.note-send:hover, .thread-send:hover, .update-send:hover, .stage-yes:hover { filter: brightness(1.1); }
-.note-send:focus-visible, .thread-send:focus-visible, .update-send:focus-visible, .stage-yes:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; }
-.thread-send:disabled, .update-send:disabled, .stage-yes:disabled { opacity: .6; cursor: progress; }
-.note-error, .stage-error { margin: 0; font: 400 13px/1.4 var(--font-body); color: var(--danger); }
-.note[hidden], .note-error[hidden], .stage-error[hidden] { display: none; }
+.note-send:hover, .thread-send:hover, .update-send:hover, .confirm-yes:hover { filter: brightness(1.1); }
+.note-send:focus-visible, .thread-send:focus-visible, .update-send:focus-visible, .confirm-yes:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; }
+.thread-send:disabled, .update-send:disabled, .confirm-yes:disabled { opacity: .6; cursor: progress; }
+.note-error, .inline-error { margin: 0; font: 400 13px/1.4 var(--font-body); color: var(--danger); }
+.note[hidden], .note-error[hidden], .inline-error[hidden] { display: none; }
 
 /* ============================================================
    The Idea Note (compose overlay)
@@ -313,25 +312,29 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .letter-bar { display: flex; gap: 18px; align-items: center; }
 .act { display: inline-flex; align-items: center; gap: 6px; padding: 4px 2px; border: 0; background: none; cursor: pointer;
   font: 500 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--plane-edge); }
-.act svg { width: 24px; height: 24px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; transition: transform .15s; }
+.act svg { width: 24px; height: 24px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; transition: transform .15s; }
 .act:hover svg { transform: scale(1.08); }
 .act:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 2px; border-radius: 2px; }
 .act:disabled { opacity: .4; cursor: default; }
+.act[hidden] { display: none; }
 .act-like[aria-pressed="true"] { color: var(--like); }
 .act-like[aria-pressed="true"] svg { fill: currentColor; animation: like-pop .3s ease-out; }
 .act-comment[aria-expanded="true"] { color: var(--tone-cobalt); }
 @keyframes like-pop { 50% { transform: scale(1.25); } }
 
-/* Your idea: the owner's moves, updates and removal in one row; the move is confirmed right below it */
+/* The owner's + and bin sit at the right end of the icon line */
+.owner-acts { margin-left: auto; display: inline-flex; gap: 14px; }
+.act-bin:hover, .act-bin:focus-visible { color: var(--danger); }
+.act-share .act-count { font-size: 11px; color: var(--n-muted); }
+
+/* Questions asked before an owner's move or removal, right under the icon line */
 .owner { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border-radius: 3px;
   background: color-mix(in srgb, var(--tone-cobalt) 5%, var(--plane)); }
-.owner:not(:has(#add-update:not([hidden]), #letter-remove:not([hidden]), #stage-confirm:not([hidden]), #stage-error:not([hidden])))
-  { display: none; }
-.owner-bar, .stage-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
-.owner-label { font: 500 10px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--n-muted); }
-.owner #letter-remove { margin-left: auto; }
-.stage-confirm[hidden], .owner-bar > [hidden] { display: none; }
-.stage-confirm p { flex-basis: 100%; margin: 0; font-size: 15px; }
+.owner:not(:has(> :not([hidden]))) { display: none; }
+.confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.confirm[hidden] { display: none; }
+.confirm p { flex-basis: 100%; margin: 0; font-size: 15px; }
+.confirm-yes.danger { background: var(--danger); }
 
 /* Sections inside the letter: updates and comments share one look */
 .updates, .thread { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--n-rule); }

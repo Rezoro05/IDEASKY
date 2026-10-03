@@ -16,6 +16,8 @@ import { startThread } from "./thread";
 import { startLikes } from "./likes";
 import { startStagePanel } from "./stage-panel";
 import { startUpdates } from "./updates";
+import { startRemoval } from "./removal";
+import { startShare } from "./share";
 import { byId, prefersReducedMotion, randomBytes } from "./dom";
 
 function safeStorage(): Storage | null { try { return window.localStorage; } catch { return null; } }
@@ -78,12 +80,14 @@ export function startSite(): void {
   const updates = startUpdates({ store: stores.then((s) => s.updates) });
   const stage = startStagePanel({ store: stores.then((s) => s.ideas), moved: (idea) => ideaMoved(idea) });
   const ideaStore = stores.then((s) => s.ideas);
+  const removal = startRemoval({ store: ideaStore, removed: (idea) => { board.forget(idea.id); letter.dismiss(); } });
+  const share = startShare({ pageLink: () => location.href.split("#")[0]!, nav: navigator });
   const board = startBoard({ sky, store: ideaStore, openIdea: (id, origin) => letter.open(id, origin) });
   const letter = startLetter({
-    sky, store: ideaStore, ideaOf: board.get, nameOf: board.nameOf, removed: board.forget,
+    sky, ideaOf: board.get, nameOf: board.nameOf,
     hooks: {
-      opened: (idea) => { thread.open(idea.id); likes.open(idea.id); stage.open(idea); updates.open(idea.id); },
-      closed: () => { thread.close(); likes.close(); stage.close(); updates.close(); },
+      opened: (idea) => { thread.open(idea.id); likes.open(idea.id); stage.open(idea); updates.open(idea.id); removal.open(idea); share.open(); },
+      closed: () => { thread.close(); likes.close(); stage.close(); updates.close(); removal.close(); share.close(); },
     },
   });
   ideaMoved = (idea) => { board.update(idea); letter.refresh(idea); };

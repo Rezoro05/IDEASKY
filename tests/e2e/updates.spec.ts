@@ -19,7 +19,7 @@ test.describe("owner updates", () => {
     await page.goto("/");
     await postAndOpen(page);
     await expect(page.locator("#updates")).toBeHidden(); // nothing to show until the first update
-    await expect(page.locator(".owner #add-update")).toBeVisible();
+    await expect(page.locator(".letter-bar .owner-acts #add-update")).toBeVisible(); // the + at the right end of the icon line
     await page.locator("#add-update").click();
     await expect(page.locator("#updates")).toBeVisible();
     await expect(page.locator("#update-msg")).toBeFocused();

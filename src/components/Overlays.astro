@@ -34,20 +34,33 @@ import { STAGES, stageGlyph, stageLabel } from "../lib/stages";
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5h15a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H12l-5 3.6V17H4.5A1.5 1.5 0 0 1 3 15.5v-9A1.5 1.5 0 0 1 4.5 5z"/></svg>
         <span class="act-count" id="comment-count"></span>
       </button>
+      <button class="act act-share" id="share-btn" type="button" aria-label="Share this idea">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5 21 3z"/></svg>
+        <span class="act-count" id="share-status" role="status"></span>
+      </button>
+      <span class="owner-acts">
+        <button class="act act-add" id="add-update" type="button" aria-expanded="false" aria-controls="update-form" aria-label="Add update" title="Add update" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button class="act act-bin" id="letter-remove" type="button" aria-label="Remove this idea" title="Remove this idea" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/></svg>
+        </button>
+      </span>
     </div>
 
     <section class="owner" aria-label="Your idea">
-      <div class="owner-bar">
-        <span class="owner-label">Your idea</span>
-        <button type="button" class="text-btn" id="add-update" aria-expanded="false" aria-controls="update-form" hidden>+ Add update</button>
-        <button type="button" class="text-btn quiet danger" id="letter-remove" hidden>Remove</button>
+      <div class="confirm" id="remove-confirm" role="group" aria-labelledby="remove-question" hidden>
+        <p id="remove-question">Remove this idea for good?</p>
+        <button type="button" class="confirm-yes danger" id="remove-yes">Yes, remove it</button>
+        <button type="button" class="text-btn quiet" id="remove-cancel">Cancel</button>
       </div>
-      <div class="stage-confirm" id="stage-confirm" role="group" aria-labelledby="stage-question" hidden>
+      <p class="inline-error" id="remove-error" role="alert" hidden></p>
+      <div class="confirm" id="stage-confirm" role="group" aria-labelledby="stage-question" hidden>
         <p id="stage-question"></p>
-        <button type="button" class="stage-yes" id="stage-yes">Yes, move it</button>
+        <button type="button" class="confirm-yes" id="stage-yes">Yes, move it</button>
         <button type="button" class="text-btn quiet" id="stage-cancel">Cancel</button>
       </div>
-      <p class="stage-error" id="stage-error" role="alert" hidden></p>
+      <p class="inline-error" id="stage-error" role="alert" hidden></p>
     </section>
 
     <section class="updates" id="updates" aria-labelledby="updates-title" hidden>

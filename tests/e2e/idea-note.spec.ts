@@ -23,7 +23,15 @@ test("post an idea: it flies to the sky, opens as a letter, and its author can r
   await expect(page.locator("#letter")).toBeVisible();
   await expect(page.locator("#letter-body")).toHaveText("A bike-share for Tbilisi hills");
   await expect(page.locator("#letter-date")).toContainText("From Nino");
+  await page.locator("#letter-remove").click(); // the bin asks first
+  await expect(page.locator("#remove-question")).toHaveText("Remove this idea for good?");
+  await expect(page.locator("#remove-cancel")).toBeFocused();
+  await page.locator("#remove-cancel").click();
+  await expect(page.locator("#remove-confirm")).toBeHidden();
+  await page.waitForTimeout(200);
+  expect(board.deletes).toHaveLength(0);
   await page.locator("#letter-remove").click();
+  await page.locator("#remove-yes").click();
   await expect(page.locator("#letter")).toBeHidden();
   await expect(plane).toHaveCount(0);
   expect(board.deletes).toHaveLength(1);

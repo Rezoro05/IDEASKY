@@ -11,6 +11,7 @@ test("other people's ideas can be read but not removed; the owner row stays out 
   await expect(page.locator("#letter-body")).toHaveText("Night markets");
   await expect(page.locator("#letter-remove")).toBeHidden();
   await expect(page.locator(".owner")).toBeHidden();
+  await expect(page.locator("#add-update")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#letter")).toBeHidden();
 });
@@ -51,4 +52,16 @@ test("closing the letter right after opening it closes it for good", async ({ pa
     });
     await expect(page.locator("#letter")).toBeHidden();
   }
+});
+
+test("the share icon copies the page link on a desktop and says so", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await fakeServices(page, withGio());
+  await page.goto("/");
+  await page.locator(".plane").focus();
+  await page.keyboard.press("Enter");
+  await page.locator("#share-btn").click();
+  await expect(page.locator("#share-status")).toHaveText("Link copied");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(page.url().split("#")[0]);
+  await expect(page.locator("#share-status")).toHaveText("", { timeout: 4000 });
 });

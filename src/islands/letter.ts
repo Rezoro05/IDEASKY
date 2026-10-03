@@ -1,8 +1,7 @@
 /** The letter: a caught plane unfolds into a readable paper note, and folds back into its plane when closed.
  *  States: closed → open → folding → closed (flying home), or open → closed directly (removed, or no sky to fly home to).
- *  The board owns the ideas; the letter asks it for one and tells it when its owner removed it. */
+ *  The board owns the ideas; the letter asks it for one. */
 import { letterDateLine, type Idea } from "../lib/ideas";
-import type { IdeaStore } from "../boundaries/ideaStore";
 import { v, type Vec } from "../lib/vec";
 import type { Sky } from "./sky";
 import { byId, cancelPendingOpen, openWithTransition } from "./dom";
@@ -15,23 +14,23 @@ export type Letter = {
   foldAfterComment(ideaId: string): void;
   /** The open idea changed (its owner moved its stage). */
   refresh(idea: Idea): void;
+  /** The open idea is gone (its owner removed it): close at once, nothing to fly home to. */
+  dismiss(): void;
 };
 export type LetterHooks = { opened(idea: Idea): void; closed(): void };
 
-const REMOVE_FAILED = "Couldn’t remove it. Try again later.";
 const FOLD_MS = 750, RETURN_FLIGHT_MS = 900, PAUSE_AFTER_COMMENT_MS = 1000, FADE_MS = 300;
 const dateOf = (at: number) => new Date(at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
 export function startLetter(opts: {
-  sky: Sky | null; store: Promise<IdeaStore>;
-  ideaOf(id: string): Idea | undefined; nameOf(id: string): string; removed(id: string): void;
+  sky: Sky | null;
+  ideaOf(id: string): Idea | undefined; nameOf(id: string): string;
   hooks?: LetterHooks;
 }): Letter {
   const { sky } = opts;
-  const letter = byId("letter"), card = letter.querySelector<HTMLElement>(".letter-card")!, removeBtn = byId<HTMLButtonElement>("letter-remove");
+  const letter = byId("letter"), card = letter.querySelector<HTMLElement>(".letter-card")!;
   const links = byId<HTMLUListElement>("letter-links");
-  let shown: Idea | null = null, returnFocus: Element | null = null, state: "closed" | "open" | "folding" = "closed", opening = 0, store: IdeaStore | null = null;
-  opts.store.then((s) => { store = s; });
+  let shown: Idea | null = null, returnFocus: Element | null = null, state: "closed" | "open" | "folding" = "closed", opening = 0;
 
   function open(id: string, origin?: Vec): void {
     const idea = opts.ideaOf(id);
@@ -43,8 +42,6 @@ export function startLetter(opts: {
     byId("letter-body").textContent = idea.message;
     links.hidden = idea.links.length === 0;
     links.replaceChildren(...linkItems(idea.links));
-    removeBtn.hidden = !store?.ownsKey(idea.id);
-    removeBtn.textContent = "Remove";
     card.style.setProperty("--dx", origin ? origin.x - innerWidth / 2 + "px" : "0px");
     card.style.setProperty("--dy", origin ? origin.y - innerHeight / 2 + "px" : "0px");
     openWithTransition(letter);
@@ -84,17 +81,6 @@ export function startLetter(opts: {
   byId("letter-close").addEventListener("click", fold);
   letter.addEventListener("click", (e) => { if (e.target === letter) fold(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state === "open") fold(); });
-  removeBtn.addEventListener("click", async () => {
-    const idea = shown;
-    if (!idea || !store) return;
-    removeBtn.disabled = true;
-    const ok = await store.remove(idea);
-    removeBtn.disabled = false;
-    if (!ok) { removeBtn.textContent = REMOVE_FAILED; return; }
-    opts.removed(idea.id);
-    close();
-  });
-
   return {
     open,
     foldAfterComment(ideaId) {
@@ -102,5 +88,6 @@ export function startLetter(opts: {
       setTimeout(() => { if (shown?.id === ideaId && opening === sameOpening) fold(); }, PAUSE_AFTER_COMMENT_MS);
     },
     refresh(idea) { if (shown?.id === idea.id) shown = idea; },
+    dismiss() { if (state === "open") close(); },
   };
 }
