@@ -61,7 +61,7 @@ describe("small helpers", () => {
     expect(ideaName(3)).toBe("Idea3");
     expect(previewLine("x".repeat(100))).toHaveLength(90);
     expect(previewLine("short")).toBe("short");
-    expect(letterDateLine(idea("a", 0, { name: "Nino" }), () => "Oct 1")).toBe("From Nino");
-    expect(letterDateLine(idea("a", 1, { name: "Nino" }), () => "Oct 1")).toBe("From Nino · Oct 1");
+    expect(letterDateLine(idea("a", 0, { name: "Nino" }), () => "Oct 1")).toBe("Nino");
+    expect(letterDateLine(idea("a", 1, { name: "Nino" }), () => "Oct 1")).toBe("Nino · Oct 1");
   });
 });

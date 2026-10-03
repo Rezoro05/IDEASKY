@@ -57,5 +57,5 @@ export function previewLine(message: string, max = 90): string {
 }
 
 export function letterDateLine(idea: Idea, formatDate: (at: number) => string): string {
-  return ["From " + idea.name, idea.at ? formatDate(idea.at) : ""].filter(Boolean).join(" · ");
+  return [idea.name, idea.at ? formatDate(idea.at) : ""].filter(Boolean).join(" · ");
 }
