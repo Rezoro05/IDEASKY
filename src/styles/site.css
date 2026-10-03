@@ -184,7 +184,9 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .note, .letter-card { --plane: #FFFFFF; --plane-edge: #14171B; --fold: 34px;
   background: #FFFFFF; border: 1px solid rgba(20,23,27,.08); border-top: 3px solid var(--tone-cobalt); position: relative; transform-origin: 50% 50%;
   /* the corner is cut along the fold so the page shows through */
-  clip-path: polygon(-80px -80px, calc(100% - var(--fold)) -80px, calc(100% - var(--fold)) 0, 100% var(--fold), calc(100% + 80px) var(--fold), calc(100% + 80px) calc(100% + 80px), -80px calc(100% + 80px)); }
+  --folded: polygon(-80px -80px, calc(100% - var(--fold)) -80px, calc(100% - var(--fold)) 0, 100% var(--fold), calc(100% + 80px) var(--fold), calc(100% + 80px) calc(100% + 80px), -80px calc(100% + 80px));
+  --diamond: polygon(50% 0, 50% 0, 50% 0, 100% 50%, 100% 50%, 50% 100%, 0 50%);
+  clip-path: var(--folded); }
 .note::after, .letter-card::after { content: ""; position: absolute; top: -3px; right: -1px; width: var(--fold); height: var(--fold); }
 .note, .thread, .updates {
   --n-ink: var(--plane-edge); --n-muted: color-mix(in srgb, var(--plane-edge) 55%, var(--plane)); --n-rule: color-mix(in srgb, var(--plane-edge) 14%, var(--plane)); }
@@ -192,6 +194,11 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   0% { transform: translate(var(--dx, 0), var(--dy, 0)) scale(.08) rotate(-18deg); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
   55% { transform: none; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
   100% { transform: none; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); } }
+/* The letter card unfolds from a diamond to its own shape, folded corner included (same seven points as the card's clip-path, so the corner never turns white) */
+@keyframes card-unfold {
+  0% { transform: translate(var(--dx, 0), var(--dy, 0)) scale(.08) rotate(-18deg); clip-path: var(--diamond); }
+  55% { transform: none; clip-path: var(--diamond); }
+  100% { transform: none; clip-path: var(--folded); } }
 @keyframes note-fold {
   0% { transform: none; opacity: 1; }
   35% { transform: rotateX(70deg) scaleY(.55); opacity: 1; }
@@ -274,7 +281,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .letter-card { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 24px 24px 22px;
   display: flex; flex-direction: column; gap: 12px; color: var(--plane-edge); box-shadow: 0 30px 60px -28px rgba(0,0,0,.6); }
 .letter-card::after { background: linear-gradient(225deg, transparent 0 50%, color-mix(in srgb, var(--plane-edge) 14%, var(--plane)) 50%); }
-.letter.open .letter-card { animation: letter-unfold .7s cubic-bezier(.2,.8,.2,1) both; }
+.letter.open .letter-card { animation: card-unfold .7s cubic-bezier(.2,.8,.2,1) both; }
 .letter .letter-card.folding { animation: note-fold .75s cubic-bezier(.6,0,.4,1) forwards; pointer-events: none; }
 .letter-card .note-head { align-items: baseline; }
 .letter-close { position: absolute; top: 0; right: 0; z-index: 2; width: 34px; height: 34px; display: grid; place-items: end start; padding: 0 0 5px 6px;
