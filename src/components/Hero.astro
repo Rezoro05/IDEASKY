@@ -1,13 +1,12 @@
 ---
-/* The sky: headline over the plane field, clouds behind, the New York skyline along the bottom.
+/* The sky: headline over the plane field, the New York skyline picture along the bottom, clouds drifting above it.
    Planes are added by the Sky island; without motion the plain list below is the way in. */
 import Clouds from "./Clouds.astro";
-import Skyline from "./Skyline.astro";
 import { HERO } from "../content/site";
 ---
 <section class="field" id="field" aria-label="Ideas in flight">
+  <img class="skyline" src="skyline.webp" width="1983" height="793" alt="" decoding="async" fetchpriority="high" draggable="false" />
   <Clouds />
-  <Skyline />
   <div class="thesis">
     <h1>{HERO.headline}</h1>
     <p>{HERO.lede}</p>

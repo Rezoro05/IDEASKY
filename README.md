@@ -7,6 +7,7 @@ Astro + TypeScript, built as small tested parts. Plan and decisions: `status.md`
 ## Layout
 ```
 src/content/      site name, copy, service settings
+public/           fonts and skyline.webp (the sky picture)
 src/lib/          pure rules, no DOM: ideas, stages, links, comments, updates, likes,
                   flight (sim, flight-path, orientation, motion, gesture), forms (the drawing per stage)
 src/boundaries/   the outside world behind small interfaces, each with a Supabase and an in-memory version:
@@ -16,7 +17,6 @@ src/islands/      page wiring: app (puts it together), sky, board, letter, compo
 src/components/   markup; src/layouts/Site.astro is the one page
 src/styles/       site.css, in sections: tokens, base, page, planes, overlays, paper cards, Idea Note, letter, preferences
 supabase/         SQL for the board, run in order: 01 ideas, 02 comments, 03 likes, 04 stages and links, 05 updates
-scripts/          skyline.py generates the skyline drawing
 tests/unit        Vitest: pure rules and every store against a fake network
 tests/e2e         Playwright, one file per feature, against the test build with the board and inbox faked (fixtures.ts)
 ```

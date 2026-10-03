@@ -1,7 +1,13 @@
 ---
-/* A few soft clouds drifting slowly across the sky; most of the time only one or two are in view. */
-const CLOUD = "M30 70 Q10 70 12 55 Q8 38 28 36 Q32 16 56 20 Q70 2 96 12 Q118 0 134 20 Q160 14 166 36 Q190 38 186 56 Q186 70 166 70 Z";
+/* A few soft clouds drifting slowly across the upper sky, drawn like the picture's own: a cream cumulus top
+   resting on a pale-blue shadow side (the same shape, nudged down and to the right). */
+const CUMULUS = "M20 60 Q8 48 28 44 Q28 28 50 30 Q54 12 80 17 Q92 2 118 10 Q136 0 154 14 Q178 9 188 29 Q214 28 212 46 Q232 52 218 60 Q180 56 120 58 Q64 56 20 60 Z";
 ---
 <div class="clouds" aria-hidden="true">
-  {["c1", "c2", "c3", "c4"].map((c) => <svg class={`cloud ${c}`} viewBox="0 0 200 80"><path d={CLOUD} /></svg>)}
+  {["c1", "c2", "c3", "c4"].map((c) => (
+    <svg class={`cloud ${c}`} viewBox="0 0 240 80">
+      <path class="shade" d={CUMULUS} transform="translate(6 6)" />
+      <path class="top" d={CUMULUS} transform="translate(0 -2)" />
+    </svg>
+  ))}
 </div>
