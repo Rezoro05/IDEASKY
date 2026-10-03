@@ -24,14 +24,18 @@ export function startUpdates(opts: { store: Promise<UpdateStore>; now?: () => nu
 
   function setStatus(text: string | null): void { status.hidden = !text; status.textContent = text ?? ""; }
 
+  /** The section shows only when there is something in it: updates, the form, or a status line. "+ Add update" sits in the owner row. */
+  function showSectionIfUsed(): void { section.hidden = updates.length === 0 && form.hidden && status.hidden; }
+
   function closeForm(): void {
     form.hidden = true; form.reset(); links.clear(); err.hidden = true;
     addButton.hidden = !owner; addButton.setAttribute("aria-expanded", "false");
+    showSectionIfUsed();
   }
 
   function render(freshId?: string): void {
-    section.hidden = updates.length === 0 && !owner && status.hidden;
-    count.textContent = updates.length || owner ? updateCountLabel(updates.length) : "";
+    showSectionIfUsed();
+    count.textContent = updates.length ? updateCountLabel(updates.length) : "";
     list.replaceChildren(...updates.map((u) => {
       const li = document.createElement("li");
       if (u.id === freshId) li.className = "fresh";
@@ -56,19 +60,19 @@ export function startUpdates(opts: { store: Promise<UpdateStore>; now?: () => nu
   async function open(id: string): Promise<void> {
     const mine = ++token;
     ideaId = id; updates = []; owner = false;
-    list.replaceChildren(); setStatus(null); closeForm(); section.hidden = true;
+    list.replaceChildren(); setStatus(null); closeForm();
     store = await opts.store;
     if (mine !== token) return;
     owner = store.canManage(id);
     const found = await store.list(id);
     if (mine !== token) return;
-    if (!found) { setStatus(UNAVAILABLE); addButton.hidden = true; section.hidden = false; return; }
+    if (!found) { setStatus(UNAVAILABLE); addButton.hidden = true; showSectionIfUsed(); return; }
     updates = updatesFor(found, id);
     closeForm(); render();
   }
 
   addButton.addEventListener("click", () => {
-    form.hidden = false; addButton.hidden = true; addButton.setAttribute("aria-expanded", "true"); message.focus();
+    form.hidden = false; addButton.hidden = true; addButton.setAttribute("aria-expanded", "true"); showSectionIfUsed(); message.focus();
   });
   byId("update-cancel").addEventListener("click", () => { closeForm(); addButton.focus(); });
 

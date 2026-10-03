@@ -108,7 +108,7 @@ test.describe("comments on visitor ideas", () => {
     await expect(page.locator("#comment-btn")).toBeDisabled();
   });
 
-  test("a brand-new idea starts with no comments", async ({ page }) => {
+  test("a brand-new idea starts with no comments, and no empty Comments heading until the icon opens the form", async ({ page }) => {
     await fakeServices(page);
     await page.goto("/");
     await page.locator("#idea-btn").click(); await settled(page);
@@ -119,6 +119,10 @@ test.describe("comments on visitor ideas", () => {
     await plane.focus();
     await page.keyboard.press("Enter");
     await expect(page.locator("#comment-count")).toHaveText("");
+    await expect(page.locator("#thread")).toBeHidden();
+    await page.locator("#comment-btn").click();
+    await expect(page.locator("#thread")).toBeVisible();
+    await expect(page.locator("#comment-msg")).toBeFocused();
   });
 
   test.describe("on a phone", () => {

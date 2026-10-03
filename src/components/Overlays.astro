@@ -12,17 +12,39 @@ import { STAGES, stageGlyph, stageLabel } from "../lib/stages";
 <div class="letter" id="letter" role="dialog" aria-modal="true" aria-labelledby="letter-from" hidden>
   <div class="letter-card">
     <div class="note-head"><span class="note-label">Idea Note · Public</span><button class="letter-close" id="letter-close" type="button" aria-label="Close">✕</button></div>
-    <p class="letter-from" id="letter-from"></p>
-    <p class="letter-date" id="letter-date"></p>
-    <p class="letter-body" id="letter-body"></p>
-    <ul class="letter-links" id="letter-links" hidden></ul>
-    <section class="stage" aria-label="Stage">
-      <ol class="stage-track" id="stage-track">
+    <header class="letter-head">
+      <p class="letter-from" id="letter-from"></p>
+      <ol class="stage-track" id="stage-track" aria-label="Stage">
         {STAGES.map((st) => <li data-stage={st}><b>{stageGlyph(st)}</b> {stageLabel(st)}</li>)}
       </ol>
-      <div class="stage-moves" id="stage-moves" hidden>
-        <button type="button" class="text-btn" id="stage-back"></button>
-        <button type="button" class="text-btn" id="stage-forward"></button>
+      <p class="letter-date" id="letter-date"></p>
+    </header>
+
+    <div class="letter-content">
+      <p class="letter-body" id="letter-body"></p>
+      <ul class="letter-links" id="letter-links" hidden></ul>
+    </div>
+
+    <div class="letter-bar">
+      <button class="act act-like" id="like-btn" type="button" aria-pressed="false" aria-label="Like this idea">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3s-7.4-4.5-9.2-9C1.5 8 3.6 4.6 7 4.6c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.4 0 5.5 3.4 4.2 6.7-1.8 4.5-9.2 9-9.2 9z"/></svg>
+        <span class="act-count" id="like-count"></span>
+      </button>
+      <button class="act act-comment" id="comment-btn" type="button" aria-expanded="false" aria-controls="thread-form" aria-label="Write a comment">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5h15a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H12l-5 3.6V17H4.5A1.5 1.5 0 0 1 3 15.5v-9A1.5 1.5 0 0 1 4.5 5z"/></svg>
+        <span class="act-count" id="comment-count"></span>
+      </button>
+    </div>
+
+    <section class="owner" aria-label="Your idea">
+      <div class="owner-bar">
+        <span class="owner-label">Your idea</span>
+        <span class="stage-moves" id="stage-moves" hidden>
+          <button type="button" class="text-btn" id="stage-back"></button>
+          <button type="button" class="text-btn" id="stage-forward"></button>
+        </span>
+        <button type="button" class="text-btn" id="add-update" aria-expanded="false" aria-controls="update-form" hidden>+ Add update</button>
+        <button type="button" class="text-btn quiet danger" id="letter-remove" hidden>Remove</button>
       </div>
       <div class="stage-confirm" id="stage-confirm" role="group" aria-labelledby="stage-question" hidden>
         <p id="stage-question"></p>
@@ -31,11 +53,11 @@ import { STAGES, stageGlyph, stageLabel } from "../lib/stages";
       </div>
       <p class="stage-error" id="stage-error" role="alert" hidden></p>
     </section>
+
     <section class="updates" id="updates" aria-labelledby="updates-title" hidden>
       <div class="thread-head"><h3 class="thread-title" id="updates-title">Updates</h3><span class="thread-count" id="updates-count"></span></div>
       <p class="thread-status" id="updates-status" role="status" hidden></p>
       <ol class="updates-list" id="updates-list"></ol>
-      <button type="button" class="add-update" id="add-update" aria-expanded="false" aria-controls="update-form" hidden>+ Add update</button>
       <form class="update-form" id="update-form" novalidate hidden>
         <label class="note-field" for="update-msg"><span>What’s new</span>
           <textarea id="update-msg" name="message" rows="3" maxlength={UPDATE_LIMITS.message} placeholder="Built a prototype, found a partner…"></textarea>
@@ -48,19 +70,7 @@ import { STAGES, stageGlyph, stageLabel } from "../lib/stages";
         </div>
       </form>
     </section>
-    <div class="letter-bar">
-      <button class="act act-like" id="like-btn" type="button" aria-pressed="false" aria-label="Like this idea">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3s-7.4-4.5-9.2-9C1.5 8 3.6 4.6 7 4.6c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.4 0 5.5 3.4 4.2 6.7-1.8 4.5-9.2 9-9.2 9z"/></svg>
-        <span class="act-count" id="like-count"></span>
-      </button>
-      <button class="act act-comment" id="comment-btn" type="button" aria-expanded="false" aria-controls="thread-form" aria-label="Write a comment">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5h15a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H12l-5 3.6V17H4.5A1.5 1.5 0 0 1 3 15.5v-9A1.5 1.5 0 0 1 4.5 5z"/></svg>
-        <span class="act-count" id="comment-count"></span>
-      </button>
-    </div>
-    <div class="letter-actions">
-      <button type="button" class="text-btn quiet danger" id="letter-remove" hidden>Remove this idea</button>
-    </div>
+
     <section class="thread" id="thread" aria-labelledby="thread-title">
       <div class="thread-head"><h3 class="thread-title" id="thread-title">Comments</h3></div>
       <p class="thread-status" id="thread-status" role="status" hidden></p>

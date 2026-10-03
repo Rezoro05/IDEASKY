@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { fakeServices, withGio } from "./fixtures";
 
-test("other people's ideas can be read but not removed", async ({ page }) => {
+test("other people's ideas can be read but not removed; the owner row stays out of sight", async ({ page }) => {
   await fakeServices(page, withGio());
   await page.goto("/");
   const plane = page.locator(".plane");
@@ -10,6 +10,7 @@ test("other people's ideas can be read but not removed", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(page.locator("#letter-body")).toHaveText("Night markets");
   await expect(page.locator("#letter-remove")).toBeHidden();
+  await expect(page.locator(".owner")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#letter")).toBeHidden();
 });

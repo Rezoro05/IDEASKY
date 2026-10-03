@@ -44,7 +44,7 @@ export function startLetter(opts: {
     links.hidden = idea.links.length === 0;
     links.replaceChildren(...linkItems(idea.links));
     removeBtn.hidden = !store?.ownsKey(idea.id);
-    removeBtn.textContent = "Remove this idea";
+    removeBtn.textContent = "Remove";
     card.style.setProperty("--dx", origin ? origin.x - innerWidth / 2 + "px" : "0px");
     card.style.setProperty("--dy", origin ? origin.y - innerHeight / 2 + "px" : "0px");
     openWithTransition(letter);

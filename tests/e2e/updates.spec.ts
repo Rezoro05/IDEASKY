@@ -18,8 +18,10 @@ test.describe("owner updates", () => {
     const board = await fakeServices(page);
     await page.goto("/");
     await postAndOpen(page);
-    await expect(page.locator("#updates-count")).toHaveText("No updates yet");
+    await expect(page.locator("#updates")).toBeHidden(); // nothing to show until the first update
+    await expect(page.locator(".owner #add-update")).toBeVisible();
     await page.locator("#add-update").click();
+    await expect(page.locator("#updates")).toBeVisible();
     await expect(page.locator("#update-msg")).toBeFocused();
     await page.locator("#update-msg").fill("Found three neighbors with spare drills");
     await page.locator("#update-link-rows .add-link").click();
