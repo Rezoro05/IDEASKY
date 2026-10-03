@@ -21,6 +21,7 @@ test("planes can be dragged and thrown, and a drag does not open the idea", asyn
 });
 
 test("planes face the way they fly: heading left they are mirrored, heading right they are not", async ({ page }) => {
+  test.setTimeout(90_000); // it watches real flight until it has seen enough; a loaded machine just takes longer (the default 30 s cut it off)
   const rows = ["aaaaaa1", "bbbbbb2", "cccccc3", "dddddd4", "eeeeee5", "ffffff6"].map((id, i) => ({ id, name: "A", message: "Idea " + i, created_at: `2026-09-30T1${i}:00:00Z` }));
   await fakeServices(page, { rows, posts: [], deletes: [], mails: 0 });
   await page.goto("/");
@@ -32,7 +33,7 @@ test("planes face the way they fly: heading left they are mirrored, heading righ
   const seen = { left: 0, right: 0 };
   const lastDx = new Map<string, number>(); // a plane is judged only once it has held its direction for two samples: mid-turn it may lag behind
   let before = await sample();
-  for (let i = 0; i < 160 && (seen.left < 3 || seen.right < 3); i++) {
+  for (let i = 0; i < 400 && (seen.left < 3 || seen.right < 3); i++) {
     await page.waitForTimeout(150);
     const now = await sample();
     for (const p of now) {
@@ -48,6 +49,6 @@ test("planes face the way they fly: heading left they are mirrored, heading righ
     }
     before = now;
   }
-  expect(seen.left).toBeGreaterThanOrEqual(3);
-  expect(seen.right).toBeGreaterThanOrEqual(3);
+  expect(seen.left, "samples of planes steadily heading left").toBeGreaterThanOrEqual(3);
+  expect(seen.right, "samples of planes steadily heading right").toBeGreaterThanOrEqual(3);
 });

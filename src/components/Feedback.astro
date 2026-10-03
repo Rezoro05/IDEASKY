@@ -1,0 +1,22 @@
+---
+/* The feedback note: the same paper as the Idea Note, but private. It lives in its own overlay, opened by "Feedback" in the footer. */
+import { FEEDBACK_LIMITS } from "../lib/feedback";
+---
+<form class="note feedback-form" id="feedback-form" novalidate>
+  <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp">
+  <div class="note-head">
+    <span class="note-label">Feedback</span>
+    <span class="note-to">Private</span>
+    <button class="note-close" type="button" id="feedback-close" aria-label="Close">✕</button>
+  </div>
+  <label class="note-field note-idea" for="feedback-msg"><span>Feedback <span class="req" aria-hidden="true">*</span></span>
+    <textarea id="feedback-msg" name="message" rows="4" maxlength={FEEDBACK_LIMITS.message} required aria-required="true" placeholder="What should we know?"></textarea>
+  </label>
+  <label class="note-field" for="feedback-email"><span>Email</span>
+    <input id="feedback-email" name="email" type="text" inputmode="email" autocomplete="email" maxlength={FEEDBACK_LIMITS.email} placeholder="you@company.com">
+  </label>
+  <p class="note-error" id="feedback-error" role="alert" hidden></p>
+  <div class="note-choice">
+    <button class="feedback-send" type="submit">Send <span aria-hidden="true">→</span></button>
+  </div>
+</form>

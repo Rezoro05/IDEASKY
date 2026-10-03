@@ -7,9 +7,10 @@ import type { Board } from "./board";
 import type { Sky } from "./sky";
 import { byId, cancelPendingOpen, openWithTransition, randomBytes } from "./dom";
 import { flyAcrossPage } from "./flier";
+import { startToast } from "./toast";
 import { linkRowsIn } from "./link-rows";
 
-const FOLD_MS = 700, FLIGHT_MS = 1300, SCROLL_WAIT_MS = 3000, TOAST_MS = 6000, THROW_SPEED = 180;
+const FOLD_MS = 700, FLIGHT_MS = 1300, SCROLL_WAIT_MS = 3000, THROW_SPEED = 180;
 const NOT_SAVED = "The public board couldn’t save your idea just now, so for now only you can see your plane.";
 const UP_NO_MOTION = "Your idea is up. Anyone can open it and read it.";
 
@@ -17,7 +18,7 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
   const { board, sky, inbox } = opts;
   const now = opts.now ?? Date.now;
   const form = byId<HTMLFormElement>("note-form"), err = byId("note-error");
-  const compose = byId("compose"), slot = byId("note-slot"), ideaBtn = byId("idea-btn"), toast = byId("toast");
+  const compose = byId("compose"), slot = byId("note-slot"), ideaBtn = byId("idea-btn"), say = startToast();
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement;
   const links = linkRowsIn(byId("note-link-rows"));
 
@@ -39,13 +40,6 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
   byId("note-close").addEventListener("click", () => closeCompose(true));
   compose.addEventListener("click", (e) => { if (e.target === compose) closeCompose(true); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !compose.hidden) closeCompose(true); });
-
-  let toastTimer = 0;
-  function say(text: string): void {
-    toast.textContent = text; toast.hidden = false;
-    clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(() => { toast.hidden = true; }, TOAST_MS);
-  }
 
   function sent(saving: Promise<boolean>): void {
     closeCompose(false);

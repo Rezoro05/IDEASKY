@@ -12,7 +12,7 @@ src/lib/          pure rules, no DOM: ideas, stages, links, comments, updates, l
                   flight (sim, flight-path, orientation, motion, gesture), forms (the drawing per stage)
 src/boundaries/   the outside world behind small interfaces, each with a Supabase and an in-memory version:
                   ideaStore, commentStore, likeStore, updateStore, inbox (Formspree), keyStore (browser keys)
-src/islands/      page wiring: app (puts it together), sky, board, letter, composer (Idea Note),
+src/islands/      page wiring: app (puts it together), sky, board, letter, composer (Idea Note), feedback (footer note, emailed only),
                   thread (comments), likes, stage-panel, updates, flier, link-rows, link-list, dom
 src/components/   markup; src/layouts/Site.astro is the one page
 src/styles/       site.css, in sections: tokens, base, page, planes, overlays, paper cards, Idea Note, letter, preferences

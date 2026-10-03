@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { supabaseStore, supabaseHeaders, memoryStore } from "../../src/boundaries/ideaStore";
 import { browserKeyStore, DELETE_KEYS_ITEM } from "../../src/boundaries/keyStore";
-import { formspreeInbox, inboxFields, inboxFor, unconfiguredInbox } from "../../src/boundaries/inbox";
+import { feedbackFields, formspreeInbox, inboxFields, inboxFor, unconfiguredInbox } from "../../src/boundaries/inbox";
 import type { Idea } from "../../src/lib/ideas";
 
 const idea: Idea = { id: "abc123", name: "Nino", message: "An idea", at: 1000, stage: "idea", links: [{ title: "Demo", url: "https://demo.app/" }] };
@@ -147,5 +147,17 @@ describe("inbox", () => {
     expect(await inbox.send(idea, "", "p")).toBe(false);
     expect(f).not.toHaveBeenCalled();
     expect(inboxFor("https://formspree.io/f/x", f as unknown as typeof fetch)).not.toBe(unconfiguredInbox);
+  });
+  it("says whether an inbox is set up, so feedback can refuse to pretend", () => {
+    expect(unconfiguredInbox.configured).toBe(false);
+    expect(formspreeInbox("https://formspree.io/f/x", vi.fn() as unknown as typeof fetch).configured).toBe(true);
+  });
+  it("feedback goes out with its own subject; email only when given", async () => {
+    expect(feedbackFields({ message: "Love it", email: "" }, "https://x/")).toEqual([["message", "Love it"], ["page", "https://x/"], ["_subject", "Feedback on IDEA SKY"]]);
+    expect(feedbackFields({ message: "Love it", email: "a@b.c" }, "p")[0]).toEqual(["email", "a@b.c"]);
+    const f = vi.fn(async (_u: string, _i?: RequestInit) => res({}));
+    expect(await formspreeInbox("https://formspree.io/f/x", f as unknown as typeof fetch).sendFeedback({ message: "Love it", email: "" }, "p")).toBe(true);
+    expect((f.mock.calls[0]![1] as RequestInit).body).toBeInstanceOf(FormData);
+    expect(await unconfiguredInbox.sendFeedback({ message: "x", email: "" }, "p")).toBe(false);
   });
 });

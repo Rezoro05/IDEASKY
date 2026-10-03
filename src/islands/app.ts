@@ -12,6 +12,8 @@ import { startSky, type Sky } from "./sky";
 import { startBoard } from "./board";
 import { startLetter } from "./letter";
 import { startComposer } from "./composer";
+import { startFeedback } from "./feedback";
+import { startToast } from "./toast";
 import { startThread } from "./thread";
 import { startLikes } from "./likes";
 import { startStagePanel } from "./stage-panel";
@@ -65,7 +67,7 @@ export function startSite(): void {
       onOpen: (id, origin) => openPlane(id, origin),
       covered: () => document.documentElement.classList.contains("sky-covered"),
     });
-    const overlays = [byId("compose"), byId("letter")];
+    const overlays = [byId("compose"), byId("letter"), byId("feedback")];
     const markCovered = () => document.documentElement.classList.toggle("sky-covered", overlays.some((o) => o.classList.contains("open")));
     const watcher = new MutationObserver(markCovered);
     for (const o of overlays) watcher.observe(o, { attributes: true, attributeFilter: ["class"] });
@@ -99,5 +101,6 @@ export function startSite(): void {
   commentPosted = letter.foldAfterComment;
   openPlane = letter.open;
   startComposer({ board, sky, reducedMotion, inbox });
+  startFeedback({ inbox, say: startToast(), reducedMotion });
   board.sync();
 }
