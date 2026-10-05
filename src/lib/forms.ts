@@ -1,6 +1,7 @@
 /** The drawing for each stage of an idea, all facing right in the same box so flight and orientation treat them alike.
- *  Simple line art for now; the near-photographic art replaces these strings later, nothing else changes. */
+ *  Paper plane and airplane: flat shapes with shading. Bird: detailed pigeon (bird-art.ts). */
 import type { Stage } from "./stages";
+import { pigeon } from "./bird-art";
 
 const svg = (body: string): string => `<svg viewBox="-30 -30 60 60" aria-hidden="true">${body}</svg>`;
 
@@ -27,11 +28,5 @@ const AIRPLANE = svg(`
   <path class="pf-glass" d="M24 0 Q23 -1.9 20.2 -1.9 L18 -1.9 L18 1.9 L20.2 1.9 Q23 1.9 24 0 Z"></path>
   <path class="pf-shade" d="M-16 -0.5 L-28 -0.5 L-28 0.5 L-16 0.5 Z"></path>`);
 
-/** Live (1): a bird, wings spread, seen from above. */
-const BIRD = svg(`
-  <path class="pf" d="M27 0 Q21 -2.6 13 -1.6 Q4 -15 -13 -24 Q-6 -11 -4 -1.4 Q-14 -0.8 -27 -5 Q-21 0 -27 5 Q-14 0.8 -4 1.4 Q-6 11 -13 24 Q4 15 13 1.6 Q21 2.6 27 0 Z"></path>
-  <circle class="pf-eye" cx="21" cy="0" r="1"></circle>`);
-
-const FORMS: Record<Stage, string> = { idea: PAPER_PLANE, implementation: AIRPLANE, live: BIRD };
-
-export const formFor = (stage: Stage): string => FORMS[stage];
+/** The drawing for a stage. `uid` (the idea's id) keeps the bird's gradient ids unique on the page; the other forms don't use it. */
+export const formFor = (stage: Stage, uid: string = "form"): string => stage === "live" ? pigeon(uid) : stage === "idea" ? PAPER_PLANE : AIRPLANE;

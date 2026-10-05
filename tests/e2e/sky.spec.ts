@@ -6,6 +6,7 @@ test("planes can be dragged and thrown, and a drag does not open the idea", asyn
   await page.goto("/");
   const plane = page.locator(".plane");
   await expect(plane).toHaveCount(1);
+  await expect(plane, "the sky should have placed the plane (its first frame)").toHaveAttribute("style", /translate3d/);
   await page.waitForTimeout(400);
   await plane.focus(); // pause it so we can grab it reliably
   const box = (await plane.boundingBox())!;
@@ -90,4 +91,33 @@ test("a paper plane leaves no trail", async ({ page }) => {
   await expect(page.locator('.plane[data-stage="idea"]')).toHaveCount(1);
   await page.waitForTimeout(3000);
   expect(await trailPainted(page)).toBe(false);
+});
+
+test("a bird's wings fold and beat on their own: the body keeps its shape", async ({ page }) => {
+  await fakeServices(page, { rows: [{ id: "aaaaaa1", name: "A", message: "A live idea", stage: "live", created_at: "2026-09-30T10:00:00Z" }], posts: [], deletes: [], mails: 0 });
+  await page.goto("/");
+  const plane = page.locator(".plane");
+  await expect(plane).toHaveCount(1);
+  await page.waitForTimeout(400);
+  await plane.focus(); // paused: the bird holds still while we look
+  // the sim sets the look every frame, so hold each one in place while it is measured
+  await plane.evaluate((el) => { (window as any).__look = "glide"; new MutationObserver(() => { if (el.dataset.state !== (window as any).__look) el.dataset.state = (window as any).__look; }).observe(el, { attributes: true, attributeFilter: ["data-state"] }); });
+  const look = (name: string) => page.evaluate((n) => { (window as any).__look = n; document.querySelector<HTMLElement>(".plane")!.dataset.state = n; }, name);
+  const scaleY = (selector: string) => page.locator(selector).first().evaluate((el) => { const m = getComputedStyle(el).transform; return m === "none" ? 1 : new DOMMatrix(m).d; });
+  // a transition only runs as frames are drawn, so wait for each value to settle rather than for a fixed time
+  const settles = (selector: string, value: number, why: string) => expect.poll(() => scaleY(selector), { timeout: 8000, message: why }).toBeCloseTo(value, 2);
+  await look("glide");
+  await settles(".wing", 1, "gliding wings should be fully spread");
+  await look("perch");
+  await settles(".wing", 0.28, "perched wings should be folded in");
+  const svgScale = await page.locator(".plane .body svg").evaluate((el) => { const m = new DOMMatrix(getComputedStyle(el).transform); return [m.a, m.d]; });
+  expect(svgScale[0]).toBeCloseTo(svgScale[1]!, 3); // the bird as a whole is scaled evenly, never squashed
+  expect(await scaleY(".bird-body")).toBeCloseTo(1, 2);
+  // flapping is a running CSS animation on the wings (asked of the browser, not sampled over time, since a busy test machine can stop drawing frames for a moment)
+  const wingAnimations = () => page.locator(".wing").first().evaluate((el) => el.getAnimations().filter((a) => a.playState === "running").map((a) => (a as CSSAnimation).animationName));
+  expect(await wingAnimations(), "folded wings are not beating").not.toContain("wingbeat");
+  await look("flap");
+  await expect.poll(wingAnimations, { timeout: 8000, message: "flapping wings should be running the wingbeat animation" }).toContain("wingbeat");
+  await look("glide");
+  await expect.poll(wingAnimations, { timeout: 8000, message: "gliding wings should be still" }).not.toContain("wingbeat");
 });

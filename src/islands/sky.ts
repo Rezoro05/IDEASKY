@@ -60,7 +60,7 @@ export function startSky(opts: {
     a.dataset.slug = slug;
     a.style.setProperty("--s", config.planeSize + "px");
     a.setAttribute("aria-label", spec.label);
-    a.innerHTML = `<span class="body">${formFor(spec.stage)}</span><span class="tag"></span>`;
+    a.innerHTML = `<span class="body">${formFor(spec.stage, slug)}</span><span class="tag"></span>`;
     a.dataset.stage = spec.stage;
     a.querySelector(".tag")!.textContent = spec.tag;
     a.addEventListener("focus", () => pausedSlugs.add(slug));
@@ -185,7 +185,7 @@ export function startSky(opts: {
       const a = els.get(slug);
       if (!a || a.dataset.stage === stage) return;
       a.dataset.stage = stage;
-      a.querySelector(".body")!.innerHTML = formFor(stage);
+      a.querySelector(".body")!.innerHTML = formFor(stage, slug);
       world = setStage(world, slug, stage);
     },
     remove(slug) {
