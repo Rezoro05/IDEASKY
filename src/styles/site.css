@@ -164,7 +164,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .plane:hover .pf, .plane:focus-visible .pf, .plane.held .pf { fill: var(--accent); stroke: var(--paper); }
 /* The bird (live ideas) is six photos stacked in the body box; the sky names the one to show in data-frame. Each photo is placed by its own anchor
    (--ax, --ay: where on the picture the plane's position is) and scaled so the flight photos' bodies are about the size of the other forms. */
-.plane[data-stage="live"] .body { --bk: calc(var(--s) / 160); }
+.plane[data-stage="live"] .body { --bk: calc(var(--s) / 230); }
 .bird-frame { position: absolute; left: 50%; top: 50%; width: calc(var(--w) * var(--bk)); height: calc(var(--h) * var(--bk)); max-width: none;
   translate: calc(var(--ax) * var(--w) * var(--bk) * -1) calc(var(--ay) * var(--h) * var(--bk) * -1); opacity: 0; pointer-events: none; user-select: none; -webkit-user-drag: none;
   filter: drop-shadow(0 2px 3px rgb(20 40 80 / .25)); transition: filter .2s; }

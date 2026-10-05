@@ -17,7 +17,7 @@ export const BIRD_SPRITES: Record<FrameId, Sprite> = {
 };
 
 /** The plane size (--s) maps to this many picture px: a flight photo's body is about this wide, so the bird is about as big as the other forms. */
-export const SIZE_AT_SCALE = 160;
+export const SIZE_AT_SCALE = 230;
 
 /** How far a cruising bird rises and sinks (lift 1), as a share of the plane size. */
 export const BOB_SHARE = 0.2;

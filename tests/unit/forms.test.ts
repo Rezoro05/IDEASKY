@@ -24,3 +24,11 @@ describe("the drawing for each stage", () => {
     for (const stage of ["idea", "implementation", "live"] as const) expect(formFor(stage)).toBe(formFor(stage));
   });
 });
+
+describe("the bird's size", () => {
+  it("is set in one place: the stylesheet scales the photos by the same number as SIZE_AT_SCALE", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { SIZE_AT_SCALE } = await import("../../src/lib/bird-sprites");
+    expect(readFileSync("src/styles/site.css", "utf8")).toContain(`--bk: calc(var(--s) / ${SIZE_AT_SCALE})`);
+  });
+});
