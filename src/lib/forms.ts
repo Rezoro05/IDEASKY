@@ -1,7 +1,6 @@
 /** The drawing for each stage of an idea, all facing right so flight and orientation treat them alike.
- *  Paper plane and airplane: flat shapes with shading in one svg box. Bird: the six photos of a bluebird, stacked, one shown at a time (lib/bird-frames picks it). */
+ *  Paper plane and airplane: flat shapes with shading in one svg box. Bird: a geometric bird whose wings the sky moves (lib/bird-pose). */
 import type { Stage } from "./stages";
-import { BIRD_SPRITES, FRAME_IDS } from "./bird-sprites";
 
 const svg = (body: string): string => `<svg viewBox="-30 -30 60 60" aria-hidden="true">${body}</svg>`;
 
@@ -28,11 +27,20 @@ const AIRPLANE = svg(`
   <path class="pf-glass" d="M24 0 Q23 -1.9 20.2 -1.9 L18 -1.9 L18 1.9 L20.2 1.9 Q23 1.9 24 0 Z"></path>
   <path class="pf-shade" d="M-16 -0.5 L-28 -0.5 L-28 0.5 L-16 0.5 Z"></path>`);
 
-/** Live: every photo of the bird, each positioned by its own anchor (CSS reads --w --h --ax --ay); only the one named by the plane's data-frame shows. They all load at once, so changing the frame never waits on the network. */
-const BIRD = FRAME_IDS.map((id) => {
-  const { w, h, ax, ay } = BIRD_SPRITES[id];
-  return `<img class="bird-frame" data-frame="${id}" src="birds/${id}.webp" width="${w}" height="${h}" alt="" draggable="false" decoding="async" style="--w:${w};--h:${h};--ax:${ax};--ay:${ay}">`;
-}).join("");
-
+/** Live: a geometric bird, side view. Each wing is a group hinged on the back (the sky sets its .bw transform every frame, so it beats smoothly);
+ *  the far wing sits behind the body and is darker. Legs show only on a perch (CSS). Drawn at 0.75 so it is smaller than the planes. */
+const wing = (cls: string) => `<g class="bw-hinge" transform="translate(-2,-4)"><g class="bw ${cls}">
+    <polygon class="pf" points="7,0 -11,0 -9,-11 -2,-19"></polygon>
+    <polygon class="pf-shade" points="-1,0 -11,0 -9,-11"></polygon></g></g>`;
+const BIRD = svg(`<g transform="scale(0.75)">
+  ${wing("bw-far")}
+  <polygon class="pf" points="-12,-2 -28,-8 -25,2 -11,3"></polygon>
+  <g class="bird-legs"><polyline points="-1,6 -2,12 -4,12"></polyline><polyline points="4,6 3,12 1,12"></polyline></g>
+  <polygon class="pf" points="-14,-1 -4,-8 8,-9 15,-4 12,4 1,7 -10,4"></polygon>
+  <polygon class="pf-shade" points="-10,4 1,7 12,4 6,2 -4,2"></polygon>
+  <circle class="pf" cx="13" cy="-8" r="6"></circle>
+  <polygon class="pf-beak" points="18.6,-10 25,-7.5 18.6,-6"></polygon>
+  <circle class="pf-eye" cx="15" cy="-9.2" r="1.1"></circle>
+  ${wing("bw-near")}</g>`);
 /** The drawing for a stage. */
 export const formFor = (stage: Stage): string => stage === "live" ? BIRD : stage === "idea" ? PAPER_PLANE : AIRPLANE;

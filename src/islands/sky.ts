@@ -1,7 +1,7 @@
 /** The hero sky: renders the pure flight simulation, and turns pointer and keyboard input into held/paused planes. */
 import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
 import { wingLook } from "../lib/bird";
-import { birdPose } from "../lib/bird-frames";
+import { blendedPose, type LookChange } from "../lib/bird-pose";
 import { birdOrientation, birdTransform } from "../lib/bird-orientation";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
 import { isOverCage, type Rect } from "../lib/cage";
@@ -50,6 +50,7 @@ export function startSky(opts: {
   const bounds = (): Bounds => ({ width: field.clientWidth, height: field.clientHeight });
   let world: World = createWorld([], opts.visitSeed, bounds(), config);
   const els = new Map<string, HTMLAnchorElement>(), facing = new Map<string, Orientation>();
+  const changes = new Map<string, LookChange>(); // per bird: what it is doing and since when, so changes blend in
   const trails = new Map<string, TrailPoint[]>(), trailLayer = createTrailLayer(field); // airplanes leave a faint line
   const pausedSlugs = new Set<string>(); // keyboard focus only; hover just recolors
   let mouse: (PointerInfo & { at: number }) | null = null; // the mouse over the sky: birds flee it; touch has no hover, so it never sets this
@@ -133,6 +134,14 @@ export function startSky(opts: {
     opts.onOpen(a.dataset.slug!, v(r.left + r.width / 2, r.top));
   });
 
+  /** The wings hinge on the back: 1 fully up, -1 fully down (the far wing a little less, as seen from the side). */
+  function setWings(el: HTMLElement, wing: number): void {
+    el.querySelectorAll<SVGGElement>(".bw").forEach((g) => {
+      const k = g.classList.contains("bw-far") ? 0.8 * wing : wing;
+      g.setAttribute("transform", `matrix(1 0 0 ${k.toFixed(3)} 0 0)`);
+    });
+  }
+
   let last = performance.now();
   function frame(now: number) {
     const dt = (now - last) / 1000;
@@ -147,13 +156,17 @@ export function startSky(opts: {
       el.style.transform = `translate3d(${p.position.x}px, ${p.position.y}px, 0)`;
       if (FORM_FLIGHT[p.stage].trails) trails.set(p.slug, extendTrail(trails.get(p.slug) ?? [], tailPoint(p.position, p.velocity, config.planeSize * TRAIL.tailOffset), world.time, config.trailSeconds));
       else trails.delete(p.slug);
-      const look = wingLook(p); // what a bird is doing with its wings (the photo shown follows from it)
+      const look = wingLook(p); // what a bird is doing with its wings
       if (look && el.dataset.state !== look) el.dataset.state = look;
-      else if (!look && el.dataset.state) { delete el.dataset.state; delete el.dataset.frame; }
-      const pose = look ? birdPose(look, world.time, p.slug) : null;
-      if (pose && el.dataset.frame !== pose.frame) el.dataset.frame = pose.frame;
+      else if (!look && el.dataset.state) delete el.dataset.state;
+      const was = changes.get(p.slug);
+      if (look && was?.look !== look) changes.set(p.slug, { look, from: was?.look ?? null, since: world.time }); // blend into the new way of flying
+      else if (!look && was) changes.delete(p.slug);
+      const change = changes.get(p.slug);
+      const pose = change ? blendedPose(change, world.time, p.slug) : null;
+      if (pose) setWings(el, pose.wing);
       let o = facing.get(p.slug);
-      if (o && look) o = birdOrientation(o, look === "perch" || look === "held"); // a photographed bird tilts only a little, and sits upright
+      if (o && look) o = birdOrientation(o, look === "perch" || look === "held"); // a bird tilts only part of the way, and sits upright
       if (o) (el.firstElementChild as HTMLElement).style.transform = pose ? birdTransform(o, pose, config.planeSize) : orientationTransform(o);
     }
     trailLayer.draw([...trails.values()].flatMap((t) => trailSegments(t, world.time, config.trailSeconds)));
@@ -200,6 +213,7 @@ export function startSky(opts: {
       els.delete(slug);
       facing.delete(slug);
       trails.delete(slug);
+      changes.delete(slug);
     },
   };
 }

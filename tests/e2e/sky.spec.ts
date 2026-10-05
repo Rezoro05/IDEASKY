@@ -94,69 +94,63 @@ test("a paper plane leaves no trail", async ({ page }) => {
 });
 
 const liveRow = { id: "aaaaaa1", name: "A", message: "A live idea", stage: "live", created_at: "2026-09-30T10:00:00Z" };
-/** Every (look, photo) pair the bird shows from now on, and every photo it passes through (the sim sets both each frame). */
-const recordPhotos = (plane: Locator) => plane.evaluate((el) => {
-  const w = window as any; w.__pairs = new Set<string>(); w.__frames = [];
-  const note = () => { const f = el.dataset.frame; if (el.dataset.state && f) { w.__pairs.add(`${el.dataset.state}:${f}`); if (w.__frames[w.__frames.length - 1] !== f) w.__frames.push(f); } };
-  new MutationObserver(note).observe(el, { attributes: true, attributeFilter: ["data-state", "data-frame"] }); note();
+/** Records every value the near wing takes from now on (the sky sets it every frame: 1 up, -1 down). */
+const recordWing = (plane: Locator) => plane.evaluate((el) => {
+  const g = el.querySelector<SVGGElement>(".bw-near")!, seen: number[] = ((window as any).__wing = []);
+  new MutationObserver(() => { const m = /matrix\(1 0 0 (-?[\d.]+) 0 0\)/.exec(g.getAttribute("transform") ?? ""); if (m) seen.push(Number(m[1])); }).observe(g, { attributes: true, attributeFilter: ["transform"] });
 });
+const wingSeen = (page: Page) => page.evaluate(() => (window as any).__wing as number[]);
+/** How many times the wing changed direction (each beat turns twice). */
+const turns = (w: number[]) => w.filter((x, i) => i > 1 && Math.sign(w[i - 1]! - w[i - 2]!) !== Math.sign(x - w[i - 1]!) && x !== w[i - 1]).length;
 
-test("all six photos of the bird load, and only the one the sky names is shown", async ({ page }) => {
-  await fakeServices(page, { rows: [liveRow], posts: [], deletes: [], mails: 0 });
-  await page.goto("/");
-  await expect(page.locator(".plane")).toHaveCount(1);
-  await expect(page.locator(".plane")).toHaveAttribute("data-frame", /.+/);
-  const frames = page.locator(".plane .bird-frame");
-  await expect(frames).toHaveCount(6);
-  await expect.poll(() => frames.evaluateAll((els) => els.filter((e) => (e as HTMLImageElement).complete && (e as HTMLImageElement).naturalWidth > 0).length), { message: "every photo should have loaded" }).toBe(6);
-  // read the shown photo and the sky's name for it in one go (the bird changes photo many times a second)
-  const { shown, named } = await page.evaluate(() => {
-    const el = document.querySelector<HTMLElement>(".plane")!;
-    return { shown: [...el.querySelectorAll<HTMLElement>(".bird-frame")].filter((e) => getComputedStyle(e).opacity === "1").map((e) => e.dataset.frame), named: el.dataset.frame };
-  });
-  expect(shown).toHaveLength(1);
-  expect(shown[0]).toBe(named);
-});
-
-test("a bird in the hand beats its wings frantically and struggles", async ({ page }) => {
+test("the bird is drawn with shapes, and the sky moves its wings smoothly (no pictures to swap)", async ({ page }) => {
   await fakeServices(page, { rows: [liveRow], posts: [], deletes: [], mails: 0 });
   await page.goto("/");
   const plane = page.locator(".plane");
-  await expect(plane).toHaveCount(1);
+  await expect(plane).toHaveAttribute("style", /translate3d/);
+  await expect(plane.locator("img")).toHaveCount(0);
+  await expect(plane.locator(".bw-near")).toHaveCount(1);
+  await expect(plane.locator(".bw-far")).toHaveCount(1);
+  await recordWing(plane);
+  await page.waitForTimeout(2500);
+  const w = await wingSeen(page);
+  expect(new Set(w.map((x) => x.toFixed(2))).size, "the wing should take many positions, not a few").toBeGreaterThan(5);
+  expect(w.some((x) => Math.abs(x) > 0.2 && Math.abs(x) < 0.9), "in-between positions show it moves continuously").toBe(true);
+  for (const x of w) { expect(x).toBeLessThanOrEqual(1); expect(x).toBeGreaterThanOrEqual(-1); }
+});
+
+test("a bird in the hand beats its wings fast and struggles", async ({ page }) => {
+  await fakeServices(page, { rows: [liveRow], posts: [], deletes: [], mails: 0 });
+  await page.goto("/");
+  const plane = page.locator(".plane");
   await expect(plane).toHaveAttribute("style", /translate3d/); // the sky has placed it
   await plane.focus(); // paused, so it holds still to be grabbed
   const box = (await plane.locator(".body").boundingBox())!;
-  await recordPhotos(plane);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await expect(plane).toHaveAttribute("data-state", "held");
-  await page.waitForTimeout(700);
-  const { pairs, frames } = await page.evaluate(() => ({ pairs: [...(window as any).__pairs] as string[], frames: (window as any).__frames as string[] }));
-  for (const p of pairs.filter((x) => x.startsWith("held:"))) expect(p).toMatch(/^held:fly-(spread|up)$/);
-  expect(new Set(frames).size, "the wings should change photo while held").toBeGreaterThanOrEqual(2);
+  await page.waitForTimeout(400); // past the blend into the held beat
+  await recordWing(plane);
+  await page.waitForTimeout(1000);
+  const w = await wingSeen(page);
+  expect(Math.max(...w) - Math.min(...w), "full strokes").toBeGreaterThan(1);
+  expect(turns(w), "many beats in a second").toBeGreaterThanOrEqual(4);
   const running = await plane.locator(".body").evaluate((el) => el.getAnimations().filter((a) => a.playState === "running").map((a) => (a as CSSAnimation).animationName));
   expect(running).toContain("tug");
   await page.mouse.up();
 });
 
-test("the photo always matches what the bird is doing: bursts of flaps and folded coasting when cruising, steady flapping, a resting pose on a perch", async ({ page }) => {
+test("a perched bird shows its legs; a flying one tucks them away", async ({ page }) => {
   await fakeServices(page, { rows: [liveRow], posts: [], deletes: [], mails: 0 });
   await page.goto("/");
   const plane = page.locator(".plane");
   await expect(plane).toHaveAttribute("style", /translate3d/);
-  await recordPhotos(plane);
-  await page.waitForTimeout(2500);
-  const pairs = await page.evaluate(() => [...(window as any).__pairs] as string[]);
-  expect(pairs.some((x) => x.startsWith("glide:")), "it should be cruising").toBe(true);
-  await page.evaluate(() => { const body = document.querySelector<HTMLElement>(".plane .body")!, seen = ((window as any).__transforms = new Set<string>()); new MutationObserver(() => seen.add(body.style.transform)).observe(body, { attributes: true, attributeFilter: ["style"] }); });
-  await page.waitForTimeout(1500);
-  const seenTransforms = new Set<string>(await page.evaluate(() => [...(window as any).__transforms] as string[]));
-  expect(seenTransforms.size, "the whole body moves (rises, lunges, noses up and down), not only the wings").toBeGreaterThan(4);
-  expect([...seenTransforms].every((t) => /translateY\(.*rotate\(.*translateX\(.*rotate\(/.test(t))).toBe(true);
-  expect(new Set(pairs.filter((x) => x.startsWith("glide:"))).size, "cruising should show flaps as well as the folded coast").toBeGreaterThanOrEqual(3);
-  for (const p of pairs) {
-    if (p.startsWith("glide:")) expect(p).toMatch(/^glide:fly-/);
-    if (p.startsWith("flap:")) expect(p).toMatch(/^flap:fly-/);
-    if (p.startsWith("perch:")) expect(p).toMatch(/^perch:rest-/);
-  }
+  // the sky sets the state every frame, so hold each one while it is looked at
+  await plane.evaluate((el) => { (window as any).__look = "glide"; new MutationObserver(() => { if (el.dataset.state !== (window as any).__look) el.dataset.state = (window as any).__look; }).observe(el, { attributes: true, attributeFilter: ["data-state"] }); });
+  const look = (name: string) => page.evaluate((n) => { (window as any).__look = n; document.querySelector<HTMLElement>(".plane")!.dataset.state = n; }, name);
+  const legs = () => plane.locator(".bird-legs").evaluate((el) => Number(getComputedStyle(el).opacity));
+  await look("glide");
+  await expect.poll(legs, { timeout: 8000 }).toBe(0);
+  await look("perch");
+  await expect.poll(legs, { timeout: 8000 }).toBe(1);
 });

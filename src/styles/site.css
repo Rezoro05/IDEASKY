@@ -162,17 +162,11 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   font: 500 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--graphite); transition: color .2s; }
 .plane:hover .tag, .plane:focus-visible .tag, .plane.held .tag { color: var(--accent); }
 .plane:hover .pf, .plane:focus-visible .pf, .plane.held .pf { fill: var(--accent); stroke: var(--paper); }
-/* The bird (live ideas) is six photos stacked in the body box; the sky names the one to show in data-frame. Each photo is placed by its own anchor
-   (--ax, --ay: where on the picture the plane's position is) and scaled so the flight photos' bodies are about the size of the other forms. */
-.plane[data-stage="live"] .body { --bk: calc(var(--s) / 330); }
-.bird-frame { position: absolute; left: 50%; top: 50%; width: calc(var(--w) * var(--bk)); height: calc(var(--h) * var(--bk)); max-width: none;
-  translate: calc(var(--ax) * var(--w) * var(--bk) * -1) calc(var(--ay) * var(--h) * var(--bk) * -1); opacity: 0; pointer-events: none; user-select: none; -webkit-user-drag: none;
-  filter: drop-shadow(0 2px 3px rgb(20 40 80 / .25)); transition: filter .2s; }
-.plane:not([data-frame]) .bird-frame[data-frame="fly-glide"], .plane[data-frame="rest-side"] .bird-frame[data-frame="rest-side"], .plane[data-frame="rest-back"] .bird-frame[data-frame="rest-back"],
-.plane[data-frame="rest-preen"] .bird-frame[data-frame="rest-preen"], .plane[data-frame="fly-glide"] .bird-frame[data-frame="fly-glide"], .plane[data-frame="fly-up"] .bird-frame[data-frame="fly-up"],
-.plane[data-frame="fly-spread"] .bird-frame[data-frame="fly-spread"] { opacity: 1; pointer-events: auto; } /* the shown photo takes the press, so a perched bird is grabbed by its whole body */
-.plane:hover .bird-frame, .plane:focus-visible .bird-frame, .plane.held .bird-frame { filter: drop-shadow(0 0 5px var(--accent)) drop-shadow(0 0 2px var(--accent)); }
-/* The perch pose is drawn at its own anchor; a bird in the hand is rotated about its body so the beat reads as struggling */
+/* The bird (live ideas): wings are set by the sky every frame; the far one is darker; legs only on a perch; beak and eye keep their colour */
+.plane .bw-far .pf { fill: color-mix(in srgb, var(--sky-plane) 72%, var(--sky-plane-edge)); }
+.plane .pf-beak { fill: #E0A030; stroke: var(--sky-plane-edge); stroke-width: .8; stroke-linejoin: round; }
+.plane .bird-legs { fill: none; stroke: var(--sky-plane-edge); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity .2s; }
+.plane[data-state="perch"] .bird-legs { opacity: 1; }
 .plane:focus-visible .body { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 50%; }
 .plane.held .body { cursor: grabbing; }
 .plane.held[data-stage="live"] .body { animation: tug .09s linear infinite alternate; } /* a bird in the hand struggles hard (the translate property composes with the facing transform set inline) */

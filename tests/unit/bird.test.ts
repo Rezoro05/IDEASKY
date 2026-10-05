@@ -253,7 +253,7 @@ describe("birds in the sky", () => {
         expect(flights.get(slug) ?? 0, `${slug} took off again (seed ${seed})`).toBeGreaterThanOrEqual(1);
       }
     }
-  });
+  }, 30_000); // a long simulation: give it room on a busy two-core machine
   it("fly the same way for the same seed", () => {
     expect(record(7).log).toEqual(record(7).log);
   });

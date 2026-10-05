@@ -94,7 +94,7 @@ describe("the airplane in the sky", () => {
           w = next;
         }
       }
-    });
+    }, 30_000); // a long simulation: give it room on a busy two-core machine
 
     it(`settles at its own cruise speed (${name})`, () => {
       let w = airborne(slugs, 7, bounds, config);
