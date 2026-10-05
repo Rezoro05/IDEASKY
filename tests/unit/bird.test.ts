@@ -8,11 +8,11 @@ import { GRID, perchLines } from "../../src/lib/perches";
 import { v, len, sub, add, scale, type Vec } from "../../src/lib/vec";
 
 const profile = FLIGHT_CONFIGS.full;
-const config = configFor(profile, FORM_FLIGHT.live);
+const config = configFor(profile, FORM_FLIGHT.idea);
 const bounds = { width: 1200, height: 600 };
 const dt = 1 / 60;
 const ctx = (over: Partial<BirdContext> = {}): BirdContext => ({ dt, time: 100, visitSeed: 1, bounds, config, steer: v(0, 0), pointer: null, taken: [], ...over });
-const bird = (state: BirdState | undefined, position: Vec = v(600, 300), velocity: Vec = v(40, 0)): Plane => ({ slug: "b", stage: "live", position, velocity, ...(state ? { bird: state } : {}) });
+const bird = (state: BirdState | undefined, position: Vec = v(600, 300), velocity: Vec = v(40, 0)): Plane => ({ slug: "b", stage: "idea", position, velocity, ...(state ? { bird: state } : {}) });
 const moving = (position: Vec, speed = 300): PointerInfo => ({ position, speed });
 /** Runs one bird, frame by frame, until `until(plane)` or `max` seconds pass. */
 const fly = (plane: Plane, over: (t: number) => Partial<BirdContext>, until: (p: Plane) => boolean, max = 60): { plane: Plane; time: number } => {
@@ -220,7 +220,7 @@ describe("birds in the sky", () => {
   const input = (over: Partial<StepInput> = {}): StepInput => ({ dt, bounds, held: null, pausedSlugs: new Set(), ...over });
   const flock = (seed: number): World => {
     let w = createWorld(["a", "b", "c", "d", "e"], seed, bounds, profile);
-    for (const s of ["a", "b", "c", "d", "e"]) w = setStage(w, s, "live");
+    for (const s of ["a", "b", "c", "d", "e"]) w = setStage(w, s, "idea");
     return w;
   };
   const record = (seed: number) => {
@@ -278,7 +278,7 @@ describe("how hard a bird is to catch", () => {
   /** A pointer chases a lone bird from 300 px away at `speed` px/s for 8 s; true if it ever gets within 30 px. */
   const chased = (speed: number, seed: number): boolean => {
     const input = (pointer: PointerInfo): StepInput => ({ dt, bounds, held: null, pausedSlugs: new Set(), pointer });
-    let w = setStage(createWorld(["a"], seed, bounds, profile), "a", "live");
+    let w = setStage(createWorld(["a"], seed, bounds, profile), "a", "idea");
     for (let f = 0; f < 120; f++) w = step(w, { dt, bounds, held: null, pausedSlugs: new Set() }, profile);
     let p = add(w.planes[0]!.position, v(300, 0)), prev = p;
     for (let f = 0; f < 480; f++) {

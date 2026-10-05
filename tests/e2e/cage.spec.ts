@@ -1,10 +1,10 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import { fakeServices } from "./fixtures";
 
-const idea = (stage: "idea" | "implementation" | "live") => ({ rows: [{ id: "bbbbbb2", name: "Bea", message: "A caught idea", stage, created_at: "2026-09-30T12:00:00Z" }], posts: [], deletes: [], mails: 0 });
+const idea = (stage: "implementation" | "live" | "idea") => ({ rows: [{ id: "bbbbbb2", name: "Bea", message: "A caught idea", stage, created_at: "2026-09-30T12:00:00Z" }], posts: [], deletes: [], mails: 0 });
 
 /** A paused plane (keyboard focus holds it still) and the middle of it, so a press lands on it reliably. */
-async function pausedPlane(page: Page, stage: "idea" | "implementation" | "live") {
+async function pausedPlane(page: Page, stage: "implementation" | "live" | "idea") {
   await fakeServices(page, idea(stage));
   await page.goto("/");
   const plane = page.locator(".plane");
@@ -41,13 +41,13 @@ async function carry(page: Page, from: { x: number; y: number }, to: { x: number
 }
 
 test("a bird dropped in the cage opens its idea", async ({ page }) => {
-  const { at } = await pausedPlane(page, "live");
+  const { at } = await pausedPlane(page, "idea");
   await carry(page, at, await centerOf(page, "#cage"));
   await expect(page.locator("#letter-body")).toHaveText("A caught idea");
 });
 
 test("a bird let go anywhere else opens nothing and flies off flapping", async ({ page }) => {
-  const { plane, at } = await pausedPlane(page, "live");
+  const { plane, at } = await pausedPlane(page, "idea");
   await recordLooks(plane);
   await carry(page, at, { x: at.x > 500 ? at.x - 160 : at.x + 160, y: at.y + 40 }, true, unpause(plane));
   await expect(page.locator("#letter")).toBeHidden();
@@ -55,7 +55,7 @@ test("a bird let go anywhere else opens nothing and flies off flapping", async (
 });
 
 test("a tap on a bird catches it and lets it go; it does not open the idea", async ({ page }) => {
-  const { plane, at } = await pausedPlane(page, "live");
+  const { plane, at } = await pausedPlane(page, "idea");
   await recordLooks(plane);
   await page.mouse.move(at.x, at.y);
   await page.mouse.down();
@@ -67,7 +67,7 @@ test("a tap on a bird catches it and lets it go; it does not open the idea", asy
 });
 
 test("the cage lights up while a bird is held, and more when it is over the cage", async ({ page }) => {
-  const { at } = await pausedPlane(page, "live");
+  const { at } = await pausedPlane(page, "idea");
   const cage = await centerOf(page, "#cage");
   const away = { x: Math.max(60, cage.x - 500), y: cage.y + 300 }; // far from the cage, wherever the bird was
   await expect(page.locator("#field")).not.toHaveClass(/holding-bird/);
@@ -83,16 +83,16 @@ test("the cage lights up while a bird is held, and more when it is over the cage
 });
 
 test("the cage says what it is for when you point at it", async ({ page }) => {
-  await pausedPlane(page, "live");
+  await pausedPlane(page, "idea");
   const hint = page.locator(".cage-hint");
-  await expect(hint).toHaveText("Catch a live idea and put it in the cage to see it.");
+  await expect(hint).toHaveText("Catch an idea and put it in the cage to see it.");
   await expect(hint).toHaveCSS("opacity", "0");
   await page.locator("#cage").hover();
   await expect(hint).toHaveCSS("opacity", "1");
 });
 
 test("a bird opened from the cage waits there and flies off when the letter closes", async ({ page }) => {
-  const { plane, at } = await pausedPlane(page, "live");
+  const { plane, at } = await pausedPlane(page, "idea");
   const cage = await centerOf(page, "#cage");
   await carry(page, at, cage, true, unpause(plane));
   await expect(page.locator("#letter-body")).toHaveText("A caught idea");
@@ -103,7 +103,7 @@ test("a bird opened from the cage waits there and flies off when the letter clos
 });
 
 test("a paper plane is not caged: a tap opens it, and dropping it on the cage only throws it", async ({ page }) => {
-  const { plane, at } = await pausedPlane(page, "idea");
+  const { plane, at } = await pausedPlane(page, "implementation");
   await page.mouse.move(at.x, at.y);
   await page.mouse.down();
   await page.mouse.up();
@@ -117,7 +117,7 @@ test("a paper plane is not caged: a tap opens it, and dropping it on the cage on
 });
 
 test("a bird still opens from the keyboard", async ({ page }) => {
-  const { plane } = await pausedPlane(page, "live");
+  const { plane } = await pausedPlane(page, "idea");
   await plane.focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("#letter-body")).toHaveText("A caught idea");

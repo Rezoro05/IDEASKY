@@ -54,16 +54,16 @@ test("planes face the way they fly: heading left they are mirrored, heading righ
   expect(seen.right, "samples of planes steadily heading right").toBeGreaterThanOrEqual(3);
 });
 
-test("a live idea flies as a bird with a wing look; an idea in the first stage stays a paper plane", async ({ page }) => {
+test("a new idea (first stage) flies as a bird with a wing look; one In Progress is a paper plane", async ({ page }) => {
   const rows = [
-    { id: "aaaaaa1", name: "A", message: "A live idea", stage: "live", created_at: "2026-09-30T10:00:00Z" },
-    { id: "bbbbbb2", name: "B", message: "A fresh idea", stage: "idea", created_at: "2026-09-30T11:00:00Z" },
+    { id: "aaaaaa1", name: "A", message: "A new idea", stage: "idea", created_at: "2026-09-30T10:00:00Z" },
+    { id: "bbbbbb2", name: "B", message: "An idea in progress", stage: "implementation", created_at: "2026-09-30T11:00:00Z" },
   ];
   await fakeServices(page, { rows, posts: [], deletes: [], mails: 0 });
   await page.goto("/");
   await expect(page.locator(".plane")).toHaveCount(2);
-  const bird = page.locator('.plane[data-stage="live"]');
-  const paper = page.locator('.plane[data-stage="idea"]');
+  const bird = page.locator('.plane[data-stage="idea"]');
+  const paper = page.locator('.plane[data-stage="implementation"]');
   await expect(bird).toHaveCount(1);
   await expect(bird).toHaveAttribute("data-state", /^(glide|flap|held|perch)$/);
   await expect(paper).toHaveCount(1);
@@ -76,24 +76,24 @@ const trailPainted = (page: Page) => page.locator(".sky-trails").evaluate((c: HT
   for (let i = 3; i < d.length; i += 4) if (d[i]! > 0) return true;
   return false;
 });
-const oneIdea = (stage: "idea" | "implementation") => ({ rows: [{ id: "cccccc3", name: "C", message: "An idea", stage, created_at: "2026-09-30T12:00:00Z" }], posts: [], deletes: [], mails: 0 });
+const oneIdea = (stage: "implementation" | "live") => ({ rows: [{ id: "cccccc3", name: "C", message: "An idea", stage, created_at: "2026-09-30T12:00:00Z" }], posts: [], deletes: [], mails: 0 });
 
-test("an In Progress airplane leaves a faint trail behind it", async ({ page }) => {
-  await fakeServices(page, oneIdea("implementation"));
+test("a Live airplane leaves a faint trail behind it", async ({ page }) => {
+  await fakeServices(page, oneIdea("live"));
   await page.goto("/");
-  await expect(page.locator('.plane[data-stage="implementation"]')).toHaveCount(1);
+  await expect(page.locator('.plane[data-stage="live"]')).toHaveCount(1);
   await expect.poll(() => trailPainted(page), { timeout: 8000, message: "an airplane should have painted a trail" }).toBe(true);
 });
 
 test("a paper plane leaves no trail", async ({ page }) => {
-  await fakeServices(page, oneIdea("idea"));
+  await fakeServices(page, oneIdea("implementation"));
   await page.goto("/");
-  await expect(page.locator('.plane[data-stage="idea"]')).toHaveCount(1);
+  await expect(page.locator('.plane[data-stage="implementation"]')).toHaveCount(1);
   await page.waitForTimeout(3000);
   expect(await trailPainted(page)).toBe(false);
 });
 
-const liveRow = { id: "aaaaaa1", name: "A", message: "A live idea", stage: "live", created_at: "2026-09-30T10:00:00Z" };
+const birdRow = { id: "aaaaaa1", name: "A", message: "A new idea", stage: "idea", created_at: "2026-09-30T10:00:00Z" };
 /** Records every value the near wing takes from now on (the sky sets it every frame: 1 up, -1 down). */
 const recordWing = (plane: Locator) => plane.evaluate((el) => {
   const g = el.querySelector<SVGGElement>(".bw-near")!, seen: number[] = ((window as any).__wing = []);
@@ -104,7 +104,7 @@ const wingSeen = (page: Page) => page.evaluate(() => (window as any).__wing as n
 const turns = (w: number[]) => w.filter((x, i) => i > 1 && Math.sign(w[i - 1]! - w[i - 2]!) !== Math.sign(x - w[i - 1]!) && x !== w[i - 1]).length;
 
 test("the bird is drawn with shapes, and the sky moves its wings smoothly (no pictures to swap)", async ({ page }) => {
-  await fakeServices(page, { rows: [liveRow], posts: [], deletes: [], mails: 0 });
+  await fakeServices(page, { rows: [birdRow], posts: [], deletes: [], mails: 0 });
   await page.goto("/");
   const plane = page.locator(".plane");
   await expect(plane).toHaveAttribute("style", /translate3d/);
@@ -120,7 +120,7 @@ test("the bird is drawn with shapes, and the sky moves its wings smoothly (no pi
 });
 
 test("a bird in the hand beats its wings fast and struggles", async ({ page }) => {
-  await fakeServices(page, { rows: [liveRow], posts: [], deletes: [], mails: 0 });
+  await fakeServices(page, { rows: [birdRow], posts: [], deletes: [], mails: 0 });
   await page.goto("/");
   const plane = page.locator(".plane");
   await expect(plane).toHaveAttribute("style", /translate3d/); // the sky has placed it
@@ -141,7 +141,7 @@ test("a bird in the hand beats its wings fast and struggles", async ({ page }) =
 });
 
 test("a perched bird shows its legs; a flying one tucks them away", async ({ page }) => {
-  await fakeServices(page, { rows: [liveRow], posts: [], deletes: [], mails: 0 });
+  await fakeServices(page, { rows: [birdRow], posts: [], deletes: [], mails: 0 });
   await page.goto("/");
   const plane = page.locator(".plane");
   await expect(plane).toHaveAttribute("style", /translate3d/);

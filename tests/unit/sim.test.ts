@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { createWorld, setStage, step, modeOf, boundsSteer, separationSteer, containWithin, addPlane, removePlane, EDGE_INSET, MAX_DT, type Plane, type World, type StepInput } from "../../src/lib/sim";
 import { FLIGHT_CONFIGS } from "../../src/lib/motion";
+import { BIRD_STAGE, DRIFT_STAGE } from "../../src/lib/flight-forms";
 import { v, len, type Vec } from "../../src/lib/vec";
 import type { Stage } from "../../src/lib/stages";
 
 const config = FLIGHT_CONFIGS.full;
-const aPlane = (slug: string, position: Vec, velocity: Vec, stage: Stage = "idea"): Plane => ({ slug, stage, position, velocity });
+const aPlane = (slug: string, position: Vec, velocity: Vec, stage: Stage = DRIFT_STAGE): Plane => ({ slug, stage, position, velocity }); // a plain drifting plane unless a test says otherwise
 const bounds = { width: 1200, height: 600 };
 const none = new Set<string>();
 const input = (over: Partial<StepInput> = {}): StepInput => ({ dt: 1 / 60, bounds, held: null, pausedSlugs: none, ...over });
@@ -68,7 +69,7 @@ describe("step", () => {
     expect(w1.planes[1]).not.toEqual(w0.planes[1]);
   });
   it("a paused plane that becomes a bird is a bird at once (with its bird state), still holding still", () => {
-    const w0 = setStage(createWorld(["a"], 3, bounds, config), "a", "live");
+    const w0 = setStage(createWorld(["a"], 3, bounds, config), "a", BIRD_STAGE);
     expect(w0.planes[0]!.bird).toBeUndefined();
     const w1 = step(w0, input({ pausedSlugs: new Set(["a"]) }), config);
     expect(w1.planes[0]!.bird).toBeDefined();

@@ -4,14 +4,14 @@ import type { Stage } from "./stages";
 
 const svg = (body: string): string => `<svg viewBox="-30 -30 60 60" aria-hidden="true">${body}</svg>`;
 
-/** Idea (0): a folded paper plane. */
+/** In Progress: a folded paper plane. */
 const PAPER_PLANE = svg(`
   <polygon class="pf pf-hi" points="26,-2.2 -22.6,-18.6 -18.1,-6.3"></polygon>
   <polygon class="pf pf-mid" points="26,-2.2 -18.1,-6.3 -28,9.5 -14.8,2.4"></polygon>
   <polygon class="pf pf-lo" points="-28,9.5 -14.8,2.4 -13.8,8.7"></polygon>
   <polygon class="pf pf-hi2" points="26,-2.2 -14.8,2.4 -9.2,18.6"></polygon>`);
 
-/** In Progress: an airliner seen from above. Swept wings with engine pods, tailplane, fin, cockpit glass; the shade shapes give it depth. */
+/** Live: an airliner seen from above. Swept wings with engine pods, tailplane, fin, cockpit glass; the shade shapes give it depth. */
 const AIRPLANE = svg(`
   <polygon class="pf" points="9,-2.4 -7,-25 -12.5,-25 -4.5,-2.4"></polygon>
   <polygon class="pf" points="9,2.4 -7,25 -12.5,25 -4.5,2.4"></polygon>
@@ -27,7 +27,7 @@ const AIRPLANE = svg(`
   <path class="pf-glass" d="M24 0 Q23 -1.9 20.2 -1.9 L18 -1.9 L18 1.9 L20.2 1.9 Q23 1.9 24 0 Z"></path>
   <path class="pf-shade" d="M-16 -0.5 L-28 -0.5 L-28 0.5 L-16 0.5 Z"></path>`);
 
-/** Live: a geometric bird, side view. Each wing is a group hinged on the back (the sky sets its .bw transform every frame, so it beats smoothly);
+/** Idea (the first stage): a geometric bird, side view. Each wing is a group hinged on the back (the sky sets its .bw transform every frame, so it beats smoothly);
  *  the far wing sits behind the body and is darker. Legs show only on a perch (CSS). Drawn at 0.75 so it is smaller than the planes. */
 const wing = (cls: string) => `<g class="bw-hinge" transform="translate(-2,-4)"><g class="bw ${cls}">
     <polygon class="pf" points="7,0 -11,0 -9,-11 -2,-19"></polygon>
@@ -43,4 +43,4 @@ const BIRD = svg(`<g transform="scale(0.75)">
   <circle class="pf-eye" cx="15" cy="-9.2" r="1.1"></circle>
   ${wing("bw-near")}</g>`);
 /** The drawing for a stage. */
-export const formFor = (stage: Stage): string => stage === "live" ? BIRD : stage === "idea" ? PAPER_PLANE : AIRPLANE;
+export const formFor = (stage: Stage): string => stage === "idea" ? BIRD : stage === "implementation" ? PAPER_PLANE : AIRPLANE; // a new idea is a bird, then a paper plane, then an airplane

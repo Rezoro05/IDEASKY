@@ -25,11 +25,11 @@ describe("over the cage", () => {
 });
 
 describe("which ideas can be caught", () => {
-  it("only live ones", () => expect(STAGES.filter(isCatchable)).toEqual(["live"]));
+  it("only birds: new ideas, at the Idea stage", () => expect(STAGES.filter(isCatchable)).toEqual(["idea"]));
 });
 
 describe("how a press ends", () => {
-  const end = (over: Partial<PressEnd>): PressEnd => ({ stage: "live", gesture: "drag", overCage: false, canceled: false, ...over });
+  const end = (over: Partial<PressEnd>): PressEnd => ({ stage: "idea", gesture: "drag", overCage: false, canceled: false, ...over });
   it("cages a bird dropped over the cage", () => expect(pressOutcome(end({ overCage: true }))).toBe("caged"));
   it("lets a bird go anywhere else, tap or drag", () => {
     expect(pressOutcome(end({ gesture: "open" }))).toBe("released"); // a tap on a bird does not open it
@@ -37,13 +37,13 @@ describe("how a press ends", () => {
   });
   it("never cages a bird whose pointer was taken away", () => expect(pressOutcome(end({ overCage: true, canceled: true }))).toBe("released"));
   it("opens a paper plane or an airplane on a tap", () => {
-    for (const stage of ["idea", "implementation"] as const) expect(pressOutcome(end({ stage, gesture: "open" }))).toBe("open");
+    for (const stage of ["implementation", "live"] as const) expect(pressOutcome(end({ stage, gesture: "open" }))).toBe("open");
   });
   it("throws a paper plane or an airplane on a drag, even one dropped over the cage", () => {
-    for (const stage of ["idea", "implementation"] as const) {
+    for (const stage of ["implementation", "live"] as const) {
       expect(pressOutcome(end({ stage, gesture: "drag" }))).toBe("thrown");
       expect(pressOutcome(end({ stage, gesture: "drag", overCage: true }))).toBe("thrown");
     }
   });
-  it("throws rather than opens when a plane's pointer was taken away", () => expect(pressOutcome(end({ stage: "idea", gesture: "open", canceled: true }))).toBe("thrown"));
+  it("throws rather than opens when a plane's pointer was taken away", () => expect(pressOutcome(end({ stage: "implementation", gesture: "open", canceled: true }))).toBe("thrown"));
 });

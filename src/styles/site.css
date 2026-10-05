@@ -166,7 +166,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .plane[data-state="perch"] .bird-legs, .plane.landing .bird-legs { opacity: 1; }
 .plane:focus-visible .body { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 50%; }
 .plane.held .body { cursor: grabbing; }
-.plane.held[data-stage="live"] .body { animation: tug .09s linear infinite alternate; } /* a bird in the hand struggles hard (the translate property composes with the facing transform set inline) */
+.plane.held[data-stage="idea"] .body { animation: tug .09s linear infinite alternate; } /* a bird in the hand struggles hard (the translate property composes with the facing transform set inline) */
 @keyframes tug { from { translate: -5px 3px; rotate: -7deg; } to { translate: 5px -4px; rotate: 7deg; } }
 /* A plane just posted from this browser pulses a ring for a few seconds */
 .plane.fresh .body::after { content: ""; position: absolute; inset: -14px; border-radius: 50%; border: 1.5px solid var(--accent); pointer-events: none;
@@ -432,7 +432,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   .cloud.c1 { transform: translateX(62vw); } .cloud.c2 { transform: translateX(18vw); } .cloud.c3 { transform: translateX(84vw); } .cloud.c4 { display: none; }
   .btn-idea, .btn-idea::after, .act svg, .stage-bar .fill, .stage-bar .knob { transition: none; }
   .btn-idea:hover { transform: none; }
-  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="live"] .body, .holding-bird .cage svg { animation: none; }
+  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="idea"] .body, .holding-bird .cage svg { animation: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .letter, .toast, .plane .tag { -webkit-backdrop-filter: none; backdrop-filter: none; }

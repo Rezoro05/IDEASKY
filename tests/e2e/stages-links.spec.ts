@@ -117,7 +117,7 @@ test.describe("stages and links", () => {
     expect(board.stageMoves).toHaveLength(3);
   });
 
-  test("moved to Live, the plane becomes a bird at once, wings and all, without a reload", async ({ page }) => {
+  test("moved back to Idea, the plane becomes a bird at once, wings and all, without a reload", async ({ page }) => {
     await fakeServices(page);
     await page.goto("/");
     await postWithLinks(page, []);
@@ -125,8 +125,9 @@ test.describe("stages and links", () => {
     const pick = (stage: string) => page.locator(`#stage-track label[data-stage="${stage}"]`).click();
     await pick("implementation");
     await expect(page.locator(".plane")).toHaveAttribute("data-stage", "implementation");
-    await pick("live");
-    await expect(page.locator(".plane")).toHaveAttribute("data-stage", "live");
+    await expect(page.locator(".plane .bw-near")).toHaveCount(0); // a paper plane now
+    await pick("idea");
+    await expect(page.locator(".plane")).toHaveAttribute("data-stage", "idea");
     await page.keyboard.press("Escape");
     await expect(page.locator("#letter")).toBeHidden();
     // the plane keeps focus after the letter closes (so it holds still), and it must still be drawn as a bird: a wing look and set wings

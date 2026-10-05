@@ -3,7 +3,7 @@ import { type Vec, v, add, sub, scale, len, clampLen } from "./vec";
 import { mulberry32, seedFor } from "./random";
 import type { FlightConfig } from "./motion";
 import type { Stage } from "./stages";
-import { FORM_FLIGHT, configFor } from "./flight-forms";
+import { DRIFT_STAGE, FORM_FLIGHT, configFor } from "./flight-forms";
 import { bank } from "./banking";
 import { asBird, flyBird, grabbed, perchSpots } from "./bird";
 import type { Plane, PointerInfo } from "./plane";
@@ -27,7 +27,7 @@ export function createWorld(slugs: readonly string[], visitSeed: number, bounds:
     const angle = rand() * Math.PI * 2;
     return {
       slug,
-      stage: "idea" as Stage,
+      stage: DRIFT_STAGE, // plain drifting planes (the paper plane); the sky adds each idea with its own stage
       position: v(
         config.boundsMargin + rand() * Math.max(1, bounds.width - 2 * config.boundsMargin),
         bounds.height * 0.5 + rand() * Math.max(1, bounds.height * 0.5 - config.boundsMargin),

@@ -1,6 +1,6 @@
 /** Pure: how each form of an idea flies. The sim looks a plane's settings up by its stage, so changing stage changes the flight and nothing else.
- *  Paper plane (idea): today's flight, unchanged. Airplane (in progress): faster, can only bank so fast, and starts turning away from an edge early.
- *  Bird (live): glides at the paper plane's speed and has its own states (lib/bird): perch, rest, take off, flee. */
+ *  Bird (idea, the first stage): its own states (lib/bird): glide, perch, rest, take off, flee; caught rather than tapped.
+ *  Paper plane (in progress): free drift-and-steer flight. Airplane (live): faster, can only bank so fast, starts turning away from an edge early, leaves a trail. */
 import type { Stage } from "./stages";
 import type { FlightConfig } from "./motion";
 
@@ -18,10 +18,14 @@ export type FormFlight = {
 };
 
 export const FORM_FLIGHT: Record<Stage, FormFlight> = {
-  idea: { kind: "drift", cruiseScale: 1, marginScale: 1, maxTurnRate: null, trails: false },
-  implementation: { kind: "banked", cruiseScale: 1.3, marginScale: 4, maxTurnRate: 0.6, trails: true },
-  live: { kind: "bird", cruiseScale: 1, marginScale: 1, maxTurnRate: null, trails: false },
+  idea: { kind: "bird", cruiseScale: 1, marginScale: 1, maxTurnRate: null, trails: false },
+  implementation: { kind: "drift", cruiseScale: 1, marginScale: 1, maxTurnRate: null, trails: false },
+  live: { kind: "banked", cruiseScale: 1.3, marginScale: 4, maxTurnRate: 0.6, trails: true },
 };
+
+/** The stage whose form is the bird (the one that is caught and has its own flight states), and the one whose form drifts freely. */
+export const BIRD_STAGE = (Object.keys(FORM_FLIGHT) as Stage[]).find((s) => FORM_FLIGHT[s].kind === "bird")!;
+export const DRIFT_STAGE = (Object.keys(FORM_FLIGHT) as Stage[]).find((s) => FORM_FLIGHT[s].kind === "drift")!;
 
 /** The profile's flight settings, scaled for one form. For the paper plane every number comes back unchanged. */
 export function configFor(config: FlightConfig, flight: FormFlight): FlightConfig {

@@ -11,7 +11,7 @@ import { formFor } from "../lib/forms";
 import type { Stage } from "../lib/stages";
 import { headingDeg, len, v, type Vec } from "../lib/vec";
 import { orientationFor, orientationTransform, type Orientation } from "../lib/orientation";
-import { FORM_FLIGHT, configFor } from "../lib/flight-forms";
+import { BIRD_STAGE, FORM_FLIGHT, configFor } from "../lib/flight-forms";
 import { TRAIL, extendTrail, tailPoint, trailSegments, type TrailPoint } from "../lib/trail";
 import { createTrailLayer } from "./trail-canvas";
 
@@ -52,7 +52,7 @@ export function startSky(opts: {
   const els = new Map<string, HTMLAnchorElement>(), facing = new Map<string, Orientation>();
   const changes = new Map<string, LookChange>(); // per bird: what it is doing and since when, so changes blend in
   const efforts = new Map<string, number>(); // per bird: how hard its wings are working now (eases toward what it needs)
-  const birdCruise = configFor(config, FORM_FLIGHT.live).cruise;
+  const birdCruise = configFor(config, FORM_FLIGHT[BIRD_STAGE]).cruise;
   const trails = new Map<string, TrailPoint[]>(), trailLayer = createTrailLayer(field); // airplanes leave a faint line
   const pausedSlugs = new Set<string>(); // keyboard focus only; hover just recolors
   let mouse: (PointerInfo & { at: number }) | null = null; // the mouse over the sky: birds flee it; touch has no hover, so it never sets this

@@ -17,7 +17,7 @@ export type Plane = {
   readonly stage: Stage;
   readonly position: Vec;
   readonly velocity: Vec;
-  /** Only birds (stage "live") have one; it starts out unset and the bird model sets it on the first frame. */
+  /** Only birds (stage "idea") have one; it starts out unset and the bird model sets it on the first frame. */
   readonly bird?: BirdState;
 };
 

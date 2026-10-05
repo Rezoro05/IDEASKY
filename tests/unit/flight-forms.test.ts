@@ -7,7 +7,7 @@ import { v, len, type Vec } from "../../src/lib/vec";
 import { mulberry32 } from "../../src/lib/random";
 
 const dt = 1 / 60;
-const AIRPLANE = FORM_FLIGHT.implementation;
+const AIRPLANE = FORM_FLIGHT.live;
 const MAX_TURN = AIRPLANE.maxTurnRate!;
 const none = new Set<string>();
 const input = (bounds: { width: number; height: number }, over: Partial<StepInput> = {}): StepInput => ({ dt, bounds, held: null, pausedSlugs: none, ...over });
@@ -19,7 +19,7 @@ const turnBetween = (a: Vec, b: Vec): number => {
   return Math.abs(d);
 };
 /** Planes scattered through the part of the field an airplane has room to turn in (inside its early-turn margin), with the seed's headings. */
-const airborne = (slugs: string[], seed: number, bounds: { width: number; height: number }, config: FlightConfig, stages: (i: number) => "idea" | "implementation" = () => "implementation"): World => {
+const airborne = (slugs: string[], seed: number, bounds: { width: number; height: number }, config: FlightConfig, stages: (i: number) => "implementation" | "live" = () => "live"): World => {
   const margin = config.boundsMargin * AIRPLANE.marginScale, rand = mulberry32(seed + 1000);
   const made = createWorld(slugs, seed, bounds, config);
   let w: World = { ...made, planes: made.planes.map((p) => ({ ...p, position: v(margin + rand() * (bounds.width - 2 * margin), margin + rand() * (bounds.height - 2 * margin)) })) };
@@ -30,12 +30,12 @@ const airborne = (slugs: string[], seed: number, bounds: { width: number; height
 describe("the paper plane's settings", () => {
   it("leave the profile's flight exactly as it is", () => {
     for (const config of Object.values(FLIGHT_CONFIGS)) {
-      expect(configFor(config, FORM_FLIGHT.idea)).toEqual(config);
-      expect(configFor(config, FORM_FLIGHT.live)).toEqual(config); // the bird flies like a paper plane until its own model arrives
+      expect(configFor(config, FORM_FLIGHT.implementation)).toEqual(config);
+      expect(configFor(config, FORM_FLIGHT.idea)).toEqual(config); // the bird keeps the paper plane's speed and margin; its own model does the rest
     }
   });
   it("only the airplane is limited in how fast it turns", () => {
-    expect(FORM_FLIGHT.idea.maxTurnRate).toBeNull();
+    expect(FORM_FLIGHT.implementation.maxTurnRate).toBeNull();
     expect(AIRPLANE.maxTurnRate).toBeGreaterThan(0);
     expect(AIRPLANE.cruiseScale).toBeGreaterThan(1);
   });
@@ -104,7 +104,7 @@ describe("the airplane in the sky", () => {
     });
 
     it(`shares a sky with paper planes without anyone leaving it (${name})`, () => {
-      let w = airborne(["p1", "a1", "p2", "a2", "p3", "a3"], 5, bounds, config, (i) => (i % 2 ? "implementation" : "idea"));
+      let w = airborne(["p1", "a1", "p2", "a2", "p3", "a3"], 5, bounds, config, (i) => (i % 2 ? "live" : "implementation"));
       for (let f = 0; f < 3600; f++) w = step(w, input(bounds), config);
       for (const p of w.planes) {
         expect(p.position.x).toBeGreaterThanOrEqual(EDGE_INSET);
@@ -127,20 +127,20 @@ describe("the airplane in the sky", () => {
   it("changing stage keeps position and velocity, then the new form's rules take over", () => {
     const { config, bounds } = fields[0]!;
     const w0 = createWorld(["a", "b"], 11, bounds, config);
-    const w1 = setStage(w0, "a", "implementation");
-    expect(w1.planes[0]).toEqual({ ...w0.planes[0], stage: "implementation" });
+    const w1 = setStage(w0, "a", "live");
+    expect(w1.planes[0]).toEqual({ ...w0.planes[0], stage: "live" });
     expect(w1.planes[1]).toEqual(w0.planes[1]);
     let w = w1;
     for (let f = 0; f < 900; f++) w = step(w, input(bounds), config);
     expect(len(w.planes[0]!.velocity)).toBeGreaterThan(config.cruise * 1.25); // the airplane picked up its faster cruise
-    const back = setStage(w, "a", "idea");
+    const back = setStage(w, "a", "implementation");
     expect(back.planes[0]!.position).toEqual(w.planes[0]!.position);
     expect(back.planes[0]!.velocity).toEqual(w.planes[0]!.velocity);
   });
 
   it("an idea added straight to the sky at a standstill still gets going", () => {
     const { config, bounds } = fields[0]!;
-    let w = addPlane(createWorld([], 1, bounds, config), { slug: "x", stage: "implementation", position: v(600, 400), velocity: v(0, 0) });
+    let w = addPlane(createWorld([], 1, bounds, config), { slug: "x", stage: "live", position: v(600, 400), velocity: v(0, 0) });
     for (let f = 0; f < 600; f++) w = step(w, input(bounds), config);
     expect(len(w.planes[0]!.velocity)).toBeGreaterThan(config.cruise);
   });
@@ -148,9 +148,9 @@ describe("the airplane in the sky", () => {
 
 describe("trails", () => {
   it("only the airplane leaves one", () => {
-    expect(FORM_FLIGHT.implementation.trails).toBe(true);
+    expect(FORM_FLIGHT.live.trails).toBe(true);
+    expect(FORM_FLIGHT.implementation.trails).toBe(false);
     expect(FORM_FLIGHT.idea.trails).toBe(false);
-    expect(FORM_FLIGHT.live.trails).toBe(false);
   });
   it("is shorter on phones, but still there", () => {
     expect(FLIGHT_CONFIGS.lite.trailSeconds).toBeGreaterThan(0);

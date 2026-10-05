@@ -7,7 +7,7 @@ import type { Stage } from "./stages";
 /** open: show the idea. thrown: sent flying. caged: a bird dropped in the cage (show the idea). released: a bird let go outside it (it flies off). */
 export type PressOutcome = "open" | "thrown" | "caged" | "released";
 
-/** Only live ideas (birds) are caught, and a press on one catches it at once. */
+/** Only birds (new ideas, at the Idea stage) are caught, and a press on one catches it at once. */
 export const isCatchable = (stage: Stage): boolean => FORM_FLIGHT[stage].kind === "bird";
 
 export type PressEnd = {

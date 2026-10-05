@@ -16,7 +16,7 @@ export function flyAcrossPage(opts: {
   target: () => Vec;
   durationMs: number;
   scaleAt: (u: number) => number;
-  /** Which form flies: a new idea is a paper plane; a letter flies home as its idea's form. */
+  /** Which form flies: a new idea is a bird; a letter flies home as its idea's form. */
   stage: Stage;
   mayLand?: (elapsedMs: number) => boolean;
 }): Promise<Landing> {
