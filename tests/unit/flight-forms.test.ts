@@ -145,3 +145,15 @@ describe("the airplane in the sky", () => {
     expect(len(w.planes[0]!.velocity)).toBeGreaterThan(config.cruise);
   });
 });
+
+describe("trails", () => {
+  it("only the airplane leaves one", () => {
+    expect(FORM_FLIGHT.implementation.trails).toBe(true);
+    expect(FORM_FLIGHT.idea.trails).toBe(false);
+    expect(FORM_FLIGHT.live.trails).toBe(false);
+  });
+  it("is shorter on phones, but still there", () => {
+    expect(FLIGHT_CONFIGS.lite.trailSeconds).toBeGreaterThan(0);
+    expect(FLIGHT_CONFIGS.lite.trailSeconds).toBeLessThan(FLIGHT_CONFIGS.full.trailSeconds);
+  });
+});

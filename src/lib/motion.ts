@@ -10,11 +10,13 @@ export type FlightConfig = {
   boundsMargin: number;
   throwDamping: number;
   planeSize: number;
+  /** How long (seconds) the faint trail behind an airplane is. */
+  trailSeconds: number;
 };
 
 export const FLIGHT_CONFIGS: Record<Exclude<MotionProfile, "none">, FlightConfig> = {
-  full: { cruise: 42, maxSpeed: 1400, wanderStrength: 1.6, shieldRadius: 110, boundsMargin: 60, throwDamping: 1.4, planeSize: 54 },
-  lite: { cruise: 26, maxSpeed: 1000, wanderStrength: 1.2, shieldRadius: 80, boundsMargin: 36, throwDamping: 1.8, planeSize: 42 },
+  full: { cruise: 42, maxSpeed: 1400, wanderStrength: 1.6, shieldRadius: 110, boundsMargin: 60, throwDamping: 1.4, planeSize: 54, trailSeconds: 1.5 },
+  lite: { cruise: 26, maxSpeed: 1000, wanderStrength: 1.2, shieldRadius: 80, boundsMargin: 36, throwDamping: 1.8, planeSize: 42, trailSeconds: 1 },
 };
 
 export const PHONE_BREAKPOINT = 640;

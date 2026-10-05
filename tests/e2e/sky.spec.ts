@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { fakeServices, withGio } from "./fixtures";
 
 test("planes can be dragged and thrown, and a drag does not open the idea", async ({ page }) => {
@@ -67,4 +67,27 @@ test("a live idea flies as a bird with a wing look; an idea in the first stage s
   await expect(bird).toHaveAttribute("data-state", /^(glide|flap|perch)$/);
   await expect(paper).toHaveCount(1);
   expect(await paper.getAttribute("data-state")).toBeNull();
+});
+
+/** True once anything has been painted on the sky's trail canvas. */
+const trailPainted = (page: Page) => page.locator(".sky-trails").evaluate((c: HTMLCanvasElement) => {
+  const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+  for (let i = 3; i < d.length; i += 4) if (d[i]! > 0) return true;
+  return false;
+});
+const oneIdea = (stage: "idea" | "implementation") => ({ rows: [{ id: "cccccc3", name: "C", message: "An idea", stage, created_at: "2026-09-30T12:00:00Z" }], posts: [], deletes: [], mails: 0 });
+
+test("an In Progress airplane leaves a faint trail behind it", async ({ page }) => {
+  await fakeServices(page, oneIdea("implementation"));
+  await page.goto("/");
+  await expect(page.locator('.plane[data-stage="implementation"]')).toHaveCount(1);
+  await expect.poll(() => trailPainted(page), { timeout: 8000, message: "an airplane should have painted a trail" }).toBe(true);
+});
+
+test("a paper plane leaves no trail", async ({ page }) => {
+  await fakeServices(page, oneIdea("idea"));
+  await page.goto("/");
+  await expect(page.locator('.plane[data-stage="idea"]')).toHaveCount(1);
+  await page.waitForTimeout(3000);
+  expect(await trailPainted(page)).toBe(false);
 });

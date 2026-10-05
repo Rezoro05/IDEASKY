@@ -7,6 +7,9 @@ import { formFor } from "../lib/forms";
 import type { Stage } from "../lib/stages";
 import { headingDeg, len, v, type Vec } from "../lib/vec";
 import { orientationFor, orientationTransform, type Orientation } from "../lib/orientation";
+import { FORM_FLIGHT } from "../lib/flight-forms";
+import { TRAIL, extendTrail, tailPoint, trailSegments, type TrailPoint } from "../lib/trail";
+import { createTrailLayer } from "./trail-canvas";
 
 export type PlaneSpec = { tag: string; label: string; stage: Stage; from?: Vec; velocity?: Vec; fresh?: boolean };
 export type Sky = {
@@ -41,6 +44,7 @@ export function startSky(opts: {
   const bounds = (): Bounds => ({ width: field.clientWidth, height: field.clientHeight });
   let world: World = createWorld([], opts.visitSeed, bounds(), config);
   const els = new Map<string, HTMLAnchorElement>(), facing = new Map<string, Orientation>();
+  const trails = new Map<string, TrailPoint[]>(), trailLayer = createTrailLayer(field); // airplanes leave a faint line
   const pausedSlugs = new Set<string>(); // keyboard focus only; hover just recolors
   let mouse: (PointerInfo & { at: number }) | null = null; // the mouse over the sky: birds flee it; touch has no hover, so it never sets this
   let held: Held | null = null, press: (PointerMark & { slug: string }) | null = null, suppressClick = false;
@@ -118,12 +122,15 @@ export function startSky(opts: {
       if (!el) continue;
       if (len(p.velocity) > MIN_SPEED_FOR_HEADING) facing.set(p.slug, orientationFor(headingDeg(p.velocity), facing.get(p.slug)?.mirrored ?? false));
       el.style.transform = `translate3d(${p.position.x}px, ${p.position.y}px, 0)`;
+      if (FORM_FLIGHT[p.stage].trails) trails.set(p.slug, extendTrail(trails.get(p.slug) ?? [], tailPoint(p.position, p.velocity, config.planeSize * TRAIL.tailOffset), world.time, config.trailSeconds));
+      else trails.delete(p.slug);
       const look = wingLook(p); // a bird's wings: still, beating or folded (CSS reads this)
       if (look && el.dataset.state !== look) el.dataset.state = look;
       else if (!look && el.dataset.state) delete el.dataset.state;
       const o = facing.get(p.slug);
       if (o) (el.firstElementChild as HTMLElement).style.transform = orientationTransform(o);
     }
+    trailLayer.draw([...trails.values()].flatMap((t) => trailSegments(t, world.time, config.trailSeconds)));
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -166,6 +173,7 @@ export function startSky(opts: {
       els.get(slug)?.remove();
       els.delete(slug);
       facing.delete(slug);
+      trails.delete(slug);
     },
   };
 }

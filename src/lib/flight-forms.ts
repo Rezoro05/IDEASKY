@@ -13,12 +13,14 @@ export type FormFlight = {
   readonly marginScale: number;
   /** Fastest the heading may change, in radians per second. null = free to turn (the paper plane's drift-and-steer flight). */
   readonly maxTurnRate: number | null;
+  /** Whether the form leaves a faint trail behind it (how long: FlightConfig.trailSeconds). */
+  readonly trails: boolean;
 };
 
 export const FORM_FLIGHT: Record<Stage, FormFlight> = {
-  idea: { kind: "drift", cruiseScale: 1, marginScale: 1, maxTurnRate: null },
-  implementation: { kind: "banked", cruiseScale: 1.3, marginScale: 4, maxTurnRate: 0.6 },
-  live: { kind: "bird", cruiseScale: 1, marginScale: 1, maxTurnRate: null },
+  idea: { kind: "drift", cruiseScale: 1, marginScale: 1, maxTurnRate: null, trails: false },
+  implementation: { kind: "banked", cruiseScale: 1.3, marginScale: 4, maxTurnRate: 0.6, trails: true },
+  live: { kind: "bird", cruiseScale: 1, marginScale: 1, maxTurnRate: null, trails: false },
 };
 
 /** The profile's flight settings, scaled for one form. For the paper plane every number comes back unchanged. */
