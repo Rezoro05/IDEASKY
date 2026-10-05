@@ -10,6 +10,10 @@ test("the home page opens with IDEA SKY content and no errors", async ({ page })
   await expect(page.locator(".closing")).toHaveCount(0); // one section: the sky
   await expect(page.locator(".bar .wordmark")).toHaveCount(0); // the name is the headline now, not repeated top left
   await expect(page.locator(".thesis p").first()).toHaveText(/^Idea without execution is just a thought exercise\./);
+  const rez = page.locator(".foot a", { hasText: "REZ" }); // the footer credits REZ and links to his site
+  await expect(page.locator(".foot")).toContainText("IDEA SKY · ideas from REZ");
+  await expect(rez).toHaveAttribute("href", "https://revazkuparadze.com");
+  await expect(rez).toHaveAttribute("target", "_blank");
   await page.waitForTimeout(500);
   expect(errors).toEqual([]);
 });
