@@ -22,6 +22,7 @@ import { startUpdates } from "./updates";
 import { startRemoval } from "./removal";
 import { panelsToClose, type Panel } from "../lib/icon-menu";
 import { startShare } from "./share";
+import { ideaLink, linkedIdeaId } from "../lib/idea-link";
 import { byId, prefersReducedMotion, randomBytes } from "./dom";
 
 function safeStorage(): Storage | null { try { return window.localStorage; } catch { return null; } }
@@ -89,13 +90,13 @@ export function startSite(): void {
   const stage = startStagePanel({ store: stores.then((s) => s.ideas), moved: (idea) => ideaMoved(idea) });
   const ideaStore = stores.then((s) => s.ideas);
   const removal = startRemoval({ store: ideaStore, removed: (idea) => { board.forget(idea.id); letter.dismiss(); }, opened: opened("remove") });
-  const share = startShare({ pageLink: () => location.href.split("#")[0]!, nav: navigator });
+  const share = startShare({ linkTo: (id) => ideaLink(location.href, id), nav: navigator });
   const board = startBoard({ sky, store: ideaStore, openIdea: (id, origin) => letter.open(id, origin) });
   const letter = startLetter({
     sky, ideaOf: board.get, nameOf: board.nameOf,
     hooks: {
-      opened: (idea) => { thread.open(idea.id); likes.open(idea.id); stage.open(idea); updates.open(idea.id); removal.open(idea); share.open(); },
-      closed: () => { thread.close(); likes.close(); stage.close(); updates.close(); removal.close(); share.close(); },
+      opened: (idea) => { thread.open(idea.id); likes.open(idea.id); stage.open(idea); updates.open(idea.id); removal.open(idea); share.open(idea.id); },
+      closed: () => { thread.close(); likes.close(); stage.close(); updates.close(); removal.close(); share.close(); forgetLink(); },
     },
   });
   ideaMoved = (idea) => { board.update(idea); letter.refresh(idea); };
@@ -103,6 +104,21 @@ export function startSite(): void {
   commentPosted = letter.foldAfterComment;
   openPlane = letter.open;
   startComposer({ board, sky, reducedMotion, inbox });
-  startFeedback({ inbox, say: startToast(), reducedMotion });
+  const say = startToast();
+  startFeedback({ inbox, say, reducedMotion });
   board.sync();
+
+  /** A link to one idea (#idea-<id>) opens it once the board has loaded; a link to one that is gone says so. */
+  function openLinked(): void {
+    const id = linkedIdeaId(location.hash);
+    if (!id) return;
+    if (board.get(id)) letter.open(id);
+    else { say("That idea isn’t on the board anymore."); forgetLink(); }
+  }
+  /** Take the idea link off the address once its letter closes, so a reload doesn't open it again. */
+  function forgetLink(): void {
+    if (linkedIdeaId(location.hash)) history.replaceState(null, "", location.pathname + location.search);
+  }
+  board.loaded.then(openLinked);
+  addEventListener("hashchange", () => board.loaded.then(openLinked));
 }

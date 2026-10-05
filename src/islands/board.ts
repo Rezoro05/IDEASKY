@@ -18,6 +18,8 @@ export type Board = {
   /** Its owner removed it. */
   forget(id: string): void;
   sync(): void;
+  /** Resolves once the board has its first list of ideas (so a link to one can be opened). */
+  loaded: Promise<void>;
 };
 
 const NEW_IDEA_SPEED = 40;
@@ -27,10 +29,13 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
   const rand = opts.random ?? Math.random;
   let all = new Map<string, Idea>();
   const unsaved = new Set<string>(), inFlight = new Set<string>();
+  let markLoaded = () => {};
+  const loaded = new Promise<void>((resolve) => { markLoaded = resolve; });
   opts.store.then((s) => s.subscribe((ideas) => {
     for (const id of unsaved) { const n = all.get(id); if (n) ideas.set(id, n); } // keep this visit's unsaved ideas
     all = ideas;
     sync();
+    markLoaded();
   }));
 
   const nameOf = (id: string) => ideaName(ideaNumbers(all.values()).get(id));
@@ -90,5 +95,6 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
     update(idea) { if (all.has(idea.id)) { all.set(idea.id, idea); sync(); } },
     forget(id) { all.delete(id); unsaved.delete(id); sync(); },
     sync,
+    loaded,
   };
 }
