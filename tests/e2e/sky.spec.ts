@@ -135,17 +135,18 @@ test("a bird in the hand beats its wings frantically and struggles", async ({ pa
   await page.mouse.up();
 });
 
-test("the photo always matches what the bird is doing: wings folded gliding, a beat flapping, a resting pose on a perch", async ({ page }) => {
+test("the photo always matches what the bird is doing: bursts of flaps and folded coasting when cruising, steady flapping, a resting pose on a perch", async ({ page }) => {
   await fakeServices(page, { rows: [liveRow], posts: [], deletes: [], mails: 0 });
   await page.goto("/");
   const plane = page.locator(".plane");
   await expect(plane).toHaveAttribute("style", /translate3d/);
   await recordPhotos(plane);
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(2500);
   const pairs = await page.evaluate(() => [...(window as any).__pairs] as string[]);
-  expect(pairs).toContain("glide:fly-glide");
+  expect(pairs.some((x) => x.startsWith("glide:")), "it should be cruising").toBe(true);
+  expect(new Set(pairs.filter((x) => x.startsWith("glide:"))).size, "cruising should show flaps as well as the folded coast").toBeGreaterThanOrEqual(3);
   for (const p of pairs) {
-    if (p.startsWith("glide:")) expect(p).toBe("glide:fly-glide");
+    if (p.startsWith("glide:")) expect(p).toMatch(/^glide:fly-/);
     if (p.startsWith("flap:")) expect(p).toMatch(/^flap:fly-/);
     if (p.startsWith("perch:")) expect(p).toMatch(/^perch:rest-/);
   }

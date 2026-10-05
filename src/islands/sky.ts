@@ -1,7 +1,8 @@
 /** The hero sky: renders the pure flight simulation, and turns pointer and keyboard input into held/paused planes. */
 import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
 import { wingLook } from "../lib/bird";
-import { birdFrame } from "../lib/bird-frames";
+import { birdPose } from "../lib/bird-frames";
+import { BOB_SHARE } from "../lib/bird-sprites";
 import { birdOrientation } from "../lib/bird-orientation";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
 import { isOverCage, type Rect } from "../lib/cage";
@@ -150,10 +151,11 @@ export function startSky(opts: {
       const look = wingLook(p); // what a bird is doing with its wings (the photo shown follows from it)
       if (look && el.dataset.state !== look) el.dataset.state = look;
       else if (!look && el.dataset.state) { delete el.dataset.state; delete el.dataset.frame; }
-      if (look) { const frame = birdFrame(look, world.time, p.slug); if (el.dataset.frame !== frame) el.dataset.frame = frame; }
+      const pose = look ? birdPose(look, world.time, p.slug) : null;
+      if (pose && el.dataset.frame !== pose.frame) el.dataset.frame = pose.frame;
       let o = facing.get(p.slug);
       if (o && look) o = birdOrientation(o, look === "perch" || look === "held"); // a photographed bird tilts only a little, and sits upright
-      if (o) (el.firstElementChild as HTMLElement).style.transform = orientationTransform(o);
+      if (o) (el.firstElementChild as HTMLElement).style.transform = (pose ? `translateY(${-pose.lift * config.planeSize * BOB_SHARE}px) ` : "") + orientationTransform(o);
     }
     trailLayer.draw([...trails.values()].flatMap((t) => trailSegments(t, world.time, config.trailSeconds)));
     requestAnimationFrame(frame);
