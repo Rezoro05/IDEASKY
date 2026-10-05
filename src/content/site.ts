@@ -5,8 +5,8 @@ export const SITE = {
 } as const;
 
 export const HERO = {
-  headline: "Ideas are everywhere.",
-  lede: "But an idea without execution is just a thought exercise. Fold yours into a paper plane and send it into this sky, where anyone can catch it, read it, and maybe bring it to life.",
+  headline: "IDEA SKY",
+  lede: "Idea without execution is just a thought exercise. Fold yours into a paper plane and send it into this sky, where anyone can catch it, read it, and maybe bring it to life.",
 } as const;
 
 /* Services come from the build environment, so nothing points at a real service by accident.

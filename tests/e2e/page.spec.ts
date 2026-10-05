@@ -6,9 +6,10 @@ test("the home page opens with IDEA SKY content and no errors", async ({ page })
   const errors = watchErrors(page);
   await page.goto("/");
   await expect(page).toHaveTitle("IDEA SKY · Share ideas, bring them to life");
-  await expect(page.locator("h1")).toHaveText("Ideas are everywhere.");
+  await expect(page.locator("h1")).toHaveText("IDEA SKY");
   await expect(page.locator(".closing")).toHaveCount(0); // one section: the sky
-  await expect(page.locator(".bar")).toContainText("IDEA SKY");
+  await expect(page.locator(".bar .wordmark")).toHaveCount(0); // the name is the headline now, not repeated top left
+  await expect(page.locator(".thesis p").first()).toHaveText(/^Idea without execution is just a thought exercise\./);
   await page.waitForTimeout(500);
   expect(errors).toEqual([]);
 });
@@ -18,7 +19,7 @@ test("unknown URLs get the 404 page, which still works as the site", async ({ pa
   const res = await page.goto("/nope/");
   expect(res?.status()).toBe(404);
   await expect(page.locator("#field")).toBeVisible();
-  await expect(page.locator("h1")).toHaveText("Ideas are everywhere.");
+  await expect(page.locator("h1")).toHaveText("IDEA SKY");
 });
 
 test.describe("reduced motion", () => {
