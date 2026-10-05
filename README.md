@@ -54,4 +54,4 @@ GitHub Pages at `rezoro05.github.io/IDEASKY/`, built by `.github/workflows/deplo
 2. **Formspree:** one form that emails the owner. Copy its endpoint.
 3. **GitHub, repo Settings:** Pages → Source = "GitHub Actions". Secrets and variables → Actions → **Variables**: `PUBLIC_BOARD_URL`, `PUBLIC_BOARD_KEY`, `PUBLIC_FORMSPREE_ENDPOINT`. (They end up in the public site by design, so they are Variables, not Secrets.)
 
-The workflow refuses to build if any of the three is missing, so a deploy can't quietly ship an in-memory board. Pushes happen only when the owner says "push".
+With **none** of the three set, the workflow publishes a **preview**: an in-memory board with five example ideas (nothing is saved or emailed) — so the site can go up before Supabase and Formspree exist. With **some** set, it fails and names what is missing, so a half-configured deploy can't ship. Pushes happen only when the owner says "push".

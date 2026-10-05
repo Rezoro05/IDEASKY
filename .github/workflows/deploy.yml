@@ -1,5 +1,6 @@
 # Publishes the site to GitHub Pages on every push to main.
-# One-time setup (repo Settings): Pages → Source = "GitHub Actions"; Variables → PUBLIC_BOARD_URL, PUBLIC_BOARD_KEY, PUBLIC_FORMSPREE_ENDPOINT.
+# One-time setup (repo Settings): Pages → Source = "GitHub Actions". For the real site also set Variables → PUBLIC_BOARD_URL, PUBLIC_BOARD_KEY, PUBLIC_FORMSPREE_ENDPOINT;
+# with none of them set it publishes a preview (in-memory board with example ideas); with only some set it fails.
 # These three values end up in the public site by design, so they are Variables, not Secrets.
 name: Deploy
 
@@ -33,12 +34,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # A build without its services would quietly ship an in-memory board, so refuse to.
-      - name: Services are configured
-        run: |
-          for v in PUBLIC_BOARD_URL PUBLIC_BOARD_KEY PUBLIC_FORMSPREE_ENDPOINT; do
-            if [ -z "${!v}" ]; then echo "::error::Repository variable $v is not set (Settings → Secrets and variables → Actions → Variables)"; exit 1; fi
-          done
+      # All three services set: the live site. None set: a preview (in-memory board, example ideas). Some set: stop, naming what is missing.
+      - name: Choose live or preview
+        run: node scripts/deploy-mode.mjs
       - run: npm run check
       - run: npm test
       - run: npm run build
