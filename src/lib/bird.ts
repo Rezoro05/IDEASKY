@@ -33,6 +33,8 @@ export const BIRD = {
   perchSpacing: 44,
   /** Close enough to the perch to land. */
   arrive: 3,
+  /** A bird let go of bolts at least this fast, in cruise speeds (a harder throw keeps its own speed). */
+  panicScale: 5,
 } as const;
 
 export type BirdContext = {
@@ -73,11 +75,12 @@ const awayFrom = (position: Vec, pointer: PointerInfo): Vec => {
 };
 
 /** How the wings should look: still while gliding, beating while flying to a perch, taking off or held in a hand, folded on a perch. Null for anything that isn't a bird yet. */
-export type WingLook = "glide" | "flap" | "perch";
+export type WingLook = "glide" | "flap" | "held" | "perch";
 export function wingLook(plane: Plane): WingLook | null {
   switch (plane.bird?.mode) {
     case "gliding": return "glide";
-    case "approaching": case "takingOff": case "held": return "flap";
+    case "approaching": case "takingOff": return "flap";
+    case "held": return "held";
     case "perched": return "perch";
     default: return null;
   }
@@ -94,8 +97,15 @@ export function flyBird(plane: Plane, ctx: BirdContext): Plane {
     case "approaching": return scared ? gliding(plane, glide(plane, state.n, ctx.time, ctx.visitSeed), true, ctx) : approaching(plane, state, ctx);
     case "perched": return perched(plane, state, scared, ctx);
     case "takingOff": return takingOff(plane, state, scared, ctx);
-    case "held": return takingOff(plane, { mode: "takingOff", until: ctx.time + BIRD.takeOff, n: state.n + 1 }, scared, ctx); // let go: it flaps away
+    case "held": return takingOff(panicked(plane, state, ctx), { mode: "takingOff", until: ctx.time + BIRD.takeOff, n: state.n + 1 }, scared, ctx); // let go: it bolts, flapping
   }
+}
+
+/** A bird let go of is startled: it keeps the direction of the throw (any direction if it was let go standing still) and leaves at panic speed or faster. */
+function panicked(plane: Plane, state: Extract<BirdState, { mode: "held" }>, ctx: BirdContext): Plane {
+  const speed = len(plane.velocity);
+  const heading = speed > 1e-6 ? scale(plane.velocity, 1 / speed) : randomHeading(decision(plane, state.n, ctx.visitSeed));
+  return { ...plane, velocity: scale(heading, Math.max(speed, ctx.config.cruise * BIRD.panicScale)) };
 }
 
 /** Free flight: the usual steering plus, when scared, a push away from the pointer and a higher top speed. */

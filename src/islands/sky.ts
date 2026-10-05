@@ -1,6 +1,8 @@
 /** The hero sky: renders the pure flight simulation, and turns pointer and keyboard input into held/paused planes. */
 import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
 import { wingLook } from "../lib/bird";
+import { birdFrame } from "../lib/bird-frames";
+import { birdOrientation } from "../lib/bird-orientation";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
 import { isOverCage, type Rect } from "../lib/cage";
 import { isCatchable, pressOutcome } from "../lib/catch";
@@ -60,7 +62,7 @@ export function startSky(opts: {
     a.dataset.slug = slug;
     a.style.setProperty("--s", config.planeSize + "px");
     a.setAttribute("aria-label", spec.label);
-    a.innerHTML = `<span class="body">${formFor(spec.stage, slug)}</span><span class="tag"></span>`;
+    a.innerHTML = `<span class="body">${formFor(spec.stage)}</span><span class="tag"></span>`;
     a.dataset.stage = spec.stage;
     a.querySelector(".tag")!.textContent = spec.tag;
     a.addEventListener("focus", () => pausedSlugs.add(slug));
@@ -145,10 +147,12 @@ export function startSky(opts: {
       el.style.transform = `translate3d(${p.position.x}px, ${p.position.y}px, 0)`;
       if (FORM_FLIGHT[p.stage].trails) trails.set(p.slug, extendTrail(trails.get(p.slug) ?? [], tailPoint(p.position, p.velocity, config.planeSize * TRAIL.tailOffset), world.time, config.trailSeconds));
       else trails.delete(p.slug);
-      const look = wingLook(p); // a bird's wings: still, beating or folded (CSS reads this)
+      const look = wingLook(p); // what a bird is doing with its wings (the photo shown follows from it)
       if (look && el.dataset.state !== look) el.dataset.state = look;
-      else if (!look && el.dataset.state) delete el.dataset.state;
-      const o = facing.get(p.slug);
+      else if (!look && el.dataset.state) { delete el.dataset.state; delete el.dataset.frame; }
+      if (look) { const frame = birdFrame(look, world.time, p.slug); if (el.dataset.frame !== frame) el.dataset.frame = frame; }
+      let o = facing.get(p.slug);
+      if (o && look) o = birdOrientation(o, look === "perch" || look === "held"); // a photographed bird tilts only a little, and sits upright
       if (o) (el.firstElementChild as HTMLElement).style.transform = orientationTransform(o);
     }
     trailLayer.draw([...trails.values()].flatMap((t) => trailSegments(t, world.time, config.trailSeconds)));
@@ -185,7 +189,7 @@ export function startSky(opts: {
       const a = els.get(slug);
       if (!a || a.dataset.stage === stage) return;
       a.dataset.stage = stage;
-      a.querySelector(".body")!.innerHTML = formFor(stage, slug);
+      a.querySelector(".body")!.innerHTML = formFor(stage);
       world = setStage(world, slug, stage);
     },
     remove(slug) {

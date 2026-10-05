@@ -162,37 +162,21 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   font: 500 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--graphite); transition: color .2s; }
 .plane:hover .tag, .plane:focus-visible .tag, .plane.held .tag { color: var(--accent); }
 .plane:hover .pf, .plane:focus-visible .pf, .plane.held .pf { fill: var(--accent); stroke: var(--paper); }
-/* A bird's wings (the drawing faces right, so the wings spread up and down from its body): still while gliding, beating while it flies to a perch or takes off, folded when it sits.
-   Only the wing groups move, so the body keeps its shape. */
-.wing { transform-origin: 6px 0; transition: transform .25s ease; }
-.plane[data-state="flap"] .wing { animation: wingbeat .3s ease-in-out infinite alternate; }
-.plane[data-state="perch"] .wing { transform: scaleY(.28); }
-.plane[data-state="perch"] .body svg { transform: scale(.9); transform-origin: 50% 50%; transition: transform .25s ease; }
-@keyframes wingbeat { from { transform: scaleY(1); } to { transform: scaleY(.45); } }
-/* The pigeon (live ideas): colors are variables so hover and holding can recolor it with the accent; gradient stops read them too */
-.plane { --b-hi: #e3e8ee; --b-mid: #a4b0bf; --b-lo: #66758b; --b-dark: #2c3648; --b-light: #f6f7fa; --b-sheen1: #2f9a78; --b-sheen2: #8a56b0; }
-.plane:hover, .plane:focus-visible, .plane.held { --b-hi: color-mix(in srgb, var(--accent) 30%, #fff); --b-mid: color-mix(in srgb, var(--accent) 70%, #fff); --b-lo: var(--accent); --b-dark: color-mix(in srgb, var(--accent) 55%, #000); --b-sheen1: var(--accent); --b-sheen2: color-mix(in srgb, var(--accent) 60%, #fff); }
-.s-dark { stop-color: var(--b-dark); } .s-hi { stop-color: var(--b-hi); } .s-mid { stop-color: var(--b-mid); } .s-lo { stop-color: var(--b-lo); } .s-sheen1 { stop-color: var(--b-sheen1); } .s-sheen2 { stop-color: var(--b-sheen2); }
-.bf { stroke: var(--b-dark); stroke-width: .3; stroke-opacity: .55; stroke-linejoin: round; }
-.bf-prim { fill: color-mix(in srgb, var(--b-lo) 65%, var(--b-dark)); }
-.bf-sec { fill: var(--b-mid); }
-.bf-cov { fill: color-mix(in srgb, var(--b-hi) 70%, var(--b-mid)); }
-.bf-cov2 { fill: color-mix(in srgb, var(--b-mid) 70%, var(--b-hi)); }
-
-.bf-bar { fill: none; stroke: var(--b-dark); stroke-width: 1.6; stroke-linecap: round; stroke-opacity: .8; }
-.bf-edge { fill: none; stroke: #fff; stroke-opacity: .6; stroke-width: .8; stroke-linecap: round; }
-.wing-down { opacity: .94; }
-.bird-body, .bird-neck, .bird-head { stroke: var(--b-dark); stroke-opacity: .45; stroke-width: .4; }
-.bird-rump { fill: var(--b-light); fill-opacity: .9; }
-.bird-spine { fill: none; stroke: var(--b-dark); stroke-opacity: .3; stroke-width: .5; }
-.bird-beak { fill: #d6b494; stroke: var(--b-dark); stroke-opacity: .5; stroke-width: .3; }
-.bird-cere { fill: #f3eee8; }
-.bird-eye { fill: #e98a2c; stroke: #5a2a05; stroke-width: .3; }
-.bird-pupil { fill: #111; }
+/* The bird (live ideas) is six photos stacked in the body box; the sky names the one to show in data-frame. Each photo is placed by its own anchor
+   (--ax, --ay: where on the picture the plane's position is) and scaled so the flight photos' bodies are about the size of the other forms. */
+.plane[data-stage="live"] .body { --bk: calc(var(--s) / 160); }
+.bird-frame { position: absolute; left: 50%; top: 50%; width: calc(var(--w) * var(--bk)); height: calc(var(--h) * var(--bk)); max-width: none;
+  translate: calc(var(--ax) * var(--w) * var(--bk) * -1) calc(var(--ay) * var(--h) * var(--bk) * -1); opacity: 0; pointer-events: none; user-select: none; -webkit-user-drag: none;
+  filter: drop-shadow(0 2px 3px rgb(20 40 80 / .25)); transition: filter .2s; }
+.plane:not([data-frame]) .bird-frame[data-frame="fly-glide"], .plane[data-frame="rest-side"] .bird-frame[data-frame="rest-side"], .plane[data-frame="rest-back"] .bird-frame[data-frame="rest-back"],
+.plane[data-frame="rest-preen"] .bird-frame[data-frame="rest-preen"], .plane[data-frame="fly-glide"] .bird-frame[data-frame="fly-glide"], .plane[data-frame="fly-up"] .bird-frame[data-frame="fly-up"],
+.plane[data-frame="fly-spread"] .bird-frame[data-frame="fly-spread"] { opacity: 1; pointer-events: auto; } /* the shown photo takes the press, so a perched bird is grabbed by its whole body */
+.plane:hover .bird-frame, .plane:focus-visible .bird-frame, .plane.held .bird-frame { filter: drop-shadow(0 0 5px var(--accent)) drop-shadow(0 0 2px var(--accent)); }
+/* The perch pose is drawn at its own anchor; a bird in the hand is rotated about its body so the beat reads as struggling */
 .plane:focus-visible .body { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 50%; }
 .plane.held .body { cursor: grabbing; }
-.plane.held[data-stage="live"] .body { animation: tug .16s linear infinite alternate; } /* a bird in the hand pulls (the translate property composes with the facing transform set inline) */
-@keyframes tug { from { translate: -2px 1px; } to { translate: 2px -1.5px; } }
+.plane.held[data-stage="live"] .body { animation: tug .09s linear infinite alternate; } /* a bird in the hand struggles hard (the translate property composes with the facing transform set inline) */
+@keyframes tug { from { translate: -5px 3px; rotate: -7deg; } to { translate: 5px -4px; rotate: 7deg; } }
 /* A plane just posted from this browser pulses a ring for a few seconds */
 .plane.fresh .body::after { content: ""; position: absolute; inset: -14px; border-radius: 50%; border: 1.5px solid var(--accent); pointer-events: none;
   animation: fresh-ring 1.6s ease-out 4; }
@@ -457,7 +441,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   .cloud.c1 { transform: translateX(62vw); } .cloud.c2 { transform: translateX(18vw); } .cloud.c3 { transform: translateX(84vw); } .cloud.c4 { display: none; }
   .btn-idea, .btn-idea::after, .act svg, .stage-bar .fill, .stage-bar .knob { transition: none; }
   .btn-idea:hover { transform: none; }
-  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane[data-state="flap"] .wing, .plane.held[data-stage="live"] .body, .holding-bird .cage svg { animation: none; }
+  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="live"] .body, .holding-bird .cage svg { animation: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .letter, .toast, .plane .tag { -webkit-backdrop-filter: none; backdrop-filter: none; }

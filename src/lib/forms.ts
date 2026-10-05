@@ -1,7 +1,7 @@
-/** The drawing for each stage of an idea, all facing right in the same box so flight and orientation treat them alike.
- *  Paper plane and airplane: flat shapes with shading. Bird: detailed pigeon (bird-art.ts). */
+/** The drawing for each stage of an idea, all facing right so flight and orientation treat them alike.
+ *  Paper plane and airplane: flat shapes with shading in one svg box. Bird: the six photos of a bluebird, stacked, one shown at a time (lib/bird-frames picks it). */
 import type { Stage } from "./stages";
-import { pigeon } from "./bird-art";
+import { BIRD_SPRITES, FRAME_IDS } from "./bird-sprites";
 
 const svg = (body: string): string => `<svg viewBox="-30 -30 60 60" aria-hidden="true">${body}</svg>`;
 
@@ -28,5 +28,11 @@ const AIRPLANE = svg(`
   <path class="pf-glass" d="M24 0 Q23 -1.9 20.2 -1.9 L18 -1.9 L18 1.9 L20.2 1.9 Q23 1.9 24 0 Z"></path>
   <path class="pf-shade" d="M-16 -0.5 L-28 -0.5 L-28 0.5 L-16 0.5 Z"></path>`);
 
-/** The drawing for a stage. `uid` (the idea's id) keeps the bird's gradient ids unique on the page; the other forms don't use it. */
-export const formFor = (stage: Stage, uid: string = "form"): string => stage === "live" ? pigeon(uid) : stage === "idea" ? PAPER_PLANE : AIRPLANE;
+/** Live: every photo of the bird, each positioned by its own anchor (CSS reads --w --h --ax --ay); only the one named by the plane's data-frame shows. They all load at once, so changing the frame never waits on the network. */
+const BIRD = FRAME_IDS.map((id) => {
+  const { w, h, ax, ay } = BIRD_SPRITES[id];
+  return `<img class="bird-frame" data-frame="${id}" src="birds/${id}.webp" width="${w}" height="${h}" alt="" draggable="false" decoding="async" style="--w:${w};--h:${h};--ax:${ax};--ay:${ay}">`;
+}).join("");
+
+/** The drawing for a stage. */
+export const formFor = (stage: Stage): string => stage === "live" ? BIRD : stage === "idea" ? PAPER_PLANE : AIRPLANE;

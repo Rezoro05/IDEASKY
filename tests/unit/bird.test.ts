@@ -175,11 +175,26 @@ describe("being picked up and let go", () => {
     expect(later.time - 100).toBeGreaterThanOrEqual(BIRD.takeOff - 0.1);
     expect(later.plane.bird?.mode).toBe("gliding");
   });
-  it("keeps a bird in a hand flapping", () => expect(wingLook(bird({ mode: "held", n: 1 }))).toBe("flap"));
+  it("keeps a bird in a hand beating its wings (its own look: a frantic one)", () => expect(wingLook(bird({ mode: "held", n: 1 }))).toBe("held"));
+  it("panics when let go: leaves at least BIRD.panicScale cruise speeds fast, in the direction it was thrown", () => {
+    const cruise = ctx().config.cruise;
+    const slow = flyBird(bird({ mode: "held", n: 4 }, v(600, 300), v(0, -5)), ctx());
+    expect(len(slow.velocity)).toBeGreaterThanOrEqual(cruise * BIRD.panicScale * 0.9);
+    expect(slow.velocity.y).toBeLessThan(0);
+    expect(Math.abs(slow.velocity.x)).toBeLessThan(Math.abs(slow.velocity.y) * 0.2);
+  });
+  it("doesn't slow a bird that was thrown harder than its panic", () => {
+    const fast = flyBird(bird({ mode: "held", n: 4 }, v(600, 300), v(900, 0)), ctx());
+    expect(len(fast.velocity)).toBeGreaterThan(800);
+  });
+  it("still bolts, in some direction, when let go standing still", () => {
+    const out = flyBird(bird({ mode: "held", n: 4 }, v(600, 300), v(0, 0)), ctx());
+    expect(len(out.velocity)).toBeGreaterThanOrEqual(ctx().config.cruise * BIRD.panicScale * 0.9);
+  });
 });
 
 describe("how the wings look", () => {
-  it("is still gliding, beating while flying to a perch or taking off, folded when perched, and nothing for a bird with no state yet", () => {
+  it("is still gliding, beating while flying to a perch or taking off, frantic in a hand, folded when perched, and nothing for a bird with no state yet", () => {
     expect(wingLook(bird({ mode: "gliding", until: 1, n: 1 }))).toBe("glide");
     expect(wingLook(bird({ mode: "approaching", target: v(1, 1), n: 1 }))).toBe("flap");
     expect(wingLook(bird({ mode: "takingOff", until: 1, n: 1 }))).toBe("flap");
