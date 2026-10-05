@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { birdPose, FLAP_HZ, HELD_HZ, FRAME_IDS, REST_FRAMES, FLAP_CYCLE, HELD_CYCLE } from "../../src/lib/bird-frames";
-import { BIRD_SPRITES } from "../../src/lib/bird-sprites";
-import { birdOrientation, TILT } from "../../src/lib/bird-orientation";
+import { BIRD_SPRITES, PITCH_DEG } from "../../src/lib/bird-sprites";
+import { birdOrientation, birdTransform, TILT } from "../../src/lib/bird-orientation";
 
 
 const posesOver = (look: "glide" | "flap" | "held", slug: string, seconds: number, step = 0.005) => {
@@ -84,6 +84,35 @@ describe("how a bird's body rises and falls", () => {
   });
 });
 
+describe("how the whole body moves with the wings", () => {
+  const all = (look: "glide" | "flap", slug = "abc", seconds = 6, step = 0.004) => posesOver(look, slug, seconds, step);
+  it("pitches nose-up while it climbs and nose-down while it sinks (cruising)", () => {
+    const poses = all("glide");
+    const climbing = poses.filter((p, i) => i > 0 && p.lift > poses[i - 1]!.lift).map((p) => p.pitch);
+    const sinking = poses.filter((p, i) => i > 0 && p.lift < poses[i - 1]!.lift).map((p) => p.pitch);
+    const mean = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length;
+    expect(mean(climbing)).toBeGreaterThan(0.2);
+    expect(mean(sinking)).toBeLessThan(-0.2);
+  });
+  it("surges forward on each downstroke and eases back between", () => {
+    const surges = all("flap").map((p) => p.surge);
+    expect(Math.max(...surges)).toBeGreaterThan(0.3);
+    expect(Math.min(...surges)).toBeLessThan(-0.3);
+  });
+  it("keeps pitch and surge within -1..1, and smooth from one moment to the next", () => {
+    for (const look of ["glide", "flap"] as const) {
+      const poses = all(look);
+      for (const [i, p] of poses.entries()) {
+        expect(Math.abs(p.pitch)).toBeLessThanOrEqual(1); expect(Math.abs(p.surge)).toBeLessThanOrEqual(1);
+        if (i) { expect(Math.abs(p.pitch - poses[i - 1]!.pitch)).toBeLessThan(0.15); expect(Math.abs(p.surge - poses[i - 1]!.surge)).toBeLessThan(0.15); }
+      }
+    }
+  });
+  it("holds still on a perch; in a hand the whole bird thrashes (the page shakes it), so no pose motion", () => {
+    for (const look of ["perch", "held"] as const) { const p = birdPose(look, 1.7, "abc"); expect([p.pitch, p.surge]).toEqual([0, 0]); }
+  });
+});
+
 describe("the sprite table", () => {
   it("keeps every anchor inside its picture", () => {
     for (const id of FRAME_IDS) { const s = BIRD_SPRITES[id]; expect(s.ax).toBeGreaterThan(0); expect(s.ax).toBeLessThan(1); expect(s.ay).toBeGreaterThan(0); expect(s.ay).toBeLessThan(1); }
@@ -107,5 +136,25 @@ describe("how a photographed bird turns", () => {
   });
   it("sits upright on a perch and while held", () => {
     expect(birdOrientation({ rotateDeg: 40, mirrored: true }, true)).toEqual({ rotateDeg: 0, mirrored: true });
+  });
+});
+
+describe("the transform that puts the body where its pose says", () => {
+  const pose = { frame: "fly-up", lift: 1, pitch: 1, surge: 1 } as const;
+  it("raises the body (up is negative y), turns it, then lunges and noses up in its own frame", () => {
+    const t = birdTransform({ rotateDeg: 10, mirrored: false }, pose, 50);
+    expect(t.indexOf("translateY(-")).toBe(0);
+    expect(t.indexOf("rotate(10deg)")).toBeGreaterThan(t.indexOf("translateY"));
+    expect(t.indexOf("translateX(")).toBeGreaterThan(t.indexOf("rotate(10deg)"));
+    expect(t.endsWith(`rotate(${-PITCH_DEG}deg)`)).toBe(true); // nose up is counter-clockwise
+  });
+  it("applies the mirror before the lunge, so a bird flying left lunges the way it faces", () => {
+    const t = birdTransform({ rotateDeg: 0, mirrored: true }, pose, 50);
+    expect(t.indexOf("scaleX(-1)")).toBeLessThan(t.indexOf("translateX("));
+  });
+  it("does nothing for a bird at rest", () => {
+    const t = birdTransform({ rotateDeg: 0, mirrored: false }, { frame: "rest-side", lift: 0, pitch: 0, surge: 0 }, 50);
+    expect(t).toContain("translateY(0px)");
+    expect(t).toContain("translateX(0px)");
   });
 });

@@ -109,9 +109,13 @@ test("all six photos of the bird load, and only the one the sky names is shown",
   const frames = page.locator(".plane .bird-frame");
   await expect(frames).toHaveCount(6);
   await expect.poll(() => frames.evaluateAll((els) => els.filter((e) => (e as HTMLImageElement).complete && (e as HTMLImageElement).naturalWidth > 0).length), { message: "every photo should have loaded" }).toBe(6);
-  const shown = await frames.evaluateAll((els) => els.filter((e) => getComputedStyle(e).opacity === "1").map((e) => (e as HTMLElement).dataset.frame));
+  // read the shown photo and the sky's name for it in one go (the bird changes photo many times a second)
+  const { shown, named } = await page.evaluate(() => {
+    const el = document.querySelector<HTMLElement>(".plane")!;
+    return { shown: [...el.querySelectorAll<HTMLElement>(".bird-frame")].filter((e) => getComputedStyle(e).opacity === "1").map((e) => e.dataset.frame), named: el.dataset.frame };
+  });
   expect(shown).toHaveLength(1);
-  expect(shown[0]).toBe(await page.locator(".plane").getAttribute("data-frame"));
+  expect(shown[0]).toBe(named);
 });
 
 test("a bird in the hand beats its wings frantically and struggles", async ({ page }) => {
@@ -144,6 +148,11 @@ test("the photo always matches what the bird is doing: bursts of flaps and folde
   await page.waitForTimeout(2500);
   const pairs = await page.evaluate(() => [...(window as any).__pairs] as string[]);
   expect(pairs.some((x) => x.startsWith("glide:")), "it should be cruising").toBe(true);
+  await page.evaluate(() => { const body = document.querySelector<HTMLElement>(".plane .body")!, seen = ((window as any).__transforms = new Set<string>()); new MutationObserver(() => seen.add(body.style.transform)).observe(body, { attributes: true, attributeFilter: ["style"] }); });
+  await page.waitForTimeout(1500);
+  const seenTransforms = new Set<string>(await page.evaluate(() => [...(window as any).__transforms] as string[]));
+  expect(seenTransforms.size, "the whole body moves (rises, lunges, noses up and down), not only the wings").toBeGreaterThan(4);
+  expect([...seenTransforms].every((t) => /translateY\(.*rotate\(.*translateX\(.*rotate\(/.test(t))).toBe(true);
   expect(new Set(pairs.filter((x) => x.startsWith("glide:"))).size, "cruising should show flaps as well as the folded coast").toBeGreaterThanOrEqual(3);
   for (const p of pairs) {
     if (p.startsWith("glide:")) expect(p).toMatch(/^glide:fly-/);

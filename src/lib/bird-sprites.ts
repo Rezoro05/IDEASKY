@@ -20,4 +20,7 @@ export const BIRD_SPRITES: Record<FrameId, Sprite> = {
 export const SIZE_AT_SCALE = 160;
 
 /** How far a cruising bird rises and sinks (lift 1), as a share of the plane size. */
-export const BOB_SHARE = 0.16;
+export const BOB_SHARE = 0.2;
+/** How far the body lunges forward on a flap (surge 1), as a share of the plane size, and how far it noses up or down (pitch 1), in degrees. */
+export const SURGE_SHARE = 0.09;
+export const PITCH_DEG = 7;

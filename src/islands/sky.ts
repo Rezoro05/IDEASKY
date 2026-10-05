@@ -2,8 +2,7 @@
 import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
 import { wingLook } from "../lib/bird";
 import { birdPose } from "../lib/bird-frames";
-import { BOB_SHARE } from "../lib/bird-sprites";
-import { birdOrientation } from "../lib/bird-orientation";
+import { birdOrientation, birdTransform } from "../lib/bird-orientation";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
 import { isOverCage, type Rect } from "../lib/cage";
 import { isCatchable, pressOutcome } from "../lib/catch";
@@ -155,7 +154,7 @@ export function startSky(opts: {
       if (pose && el.dataset.frame !== pose.frame) el.dataset.frame = pose.frame;
       let o = facing.get(p.slug);
       if (o && look) o = birdOrientation(o, look === "perch" || look === "held"); // a photographed bird tilts only a little, and sits upright
-      if (o) (el.firstElementChild as HTMLElement).style.transform = (pose ? `translateY(${-pose.lift * config.planeSize * BOB_SHARE}px) ` : "") + orientationTransform(o);
+      if (o) (el.firstElementChild as HTMLElement).style.transform = pose ? birdTransform(o, pose, config.planeSize) : orientationTransform(o);
     }
     trailLayer.draw([...trails.values()].flatMap((t) => trailSegments(t, world.time, config.trailSeconds)));
     requestAnimationFrame(frame);

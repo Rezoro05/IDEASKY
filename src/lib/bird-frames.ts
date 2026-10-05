@@ -18,7 +18,15 @@ const BURST = CRUISE.flaps / CRUISE.hz;
 const PERIOD = BURST + CRUISE.coast;
 
 /** A bird's picture and how far its body is raised: lift runs from -1 (lowest) to 1 (highest), 0 when it isn't flying; the caller scales it to px. */
-export type Pose = { readonly frame: FrameId; readonly lift: number };
+export type Pose = {
+  readonly frame: FrameId;
+  readonly lift: number;
+  /** Nose up (+) or down (-), -1..1: climbing noses up, sinking noses down. The caller scales it to degrees. */
+  readonly pitch: number;
+  /** Forward (+) or back (-) along the heading, -1..1: the body lunges on each downstroke and eases between. */
+  readonly surge: number;
+};
+const still = (frame: FrameId): Pose => ({ frame, lift: 0, pitch: 0, surge: 0 });
 
 const offsetOf = (slug: string): number => (hashString(slug) % 1000) / 1000; // each bird starts at its own moment
 const beat = (frames: readonly FrameId[], phase: number): FrameId => frames[Math.floor((phase % 1) * frames.length)]!;
@@ -26,13 +34,19 @@ const beat = (frames: readonly FrameId[], phase: number): FrameId => frames[Math
 export function birdPose(look: WingLook, time: number, slug: string): Pose {
   const off = offsetOf(slug);
   switch (look) {
-    case "perch": return { frame: REST_FRAMES[hashString(slug) % REST_FRAMES.length]!, lift: 0 };
-    case "held": return { frame: beat(HELD_CYCLE, time * HELD_HZ + off), lift: 0 };
-    case "flap": return { frame: beat(FLAP_CYCLE, time * FLAP_HZ + off), lift: 0.4 * Math.sin(2 * Math.PI * (time * FLAP_HZ + off) - Math.PI / 2) }; // a small rise on each downstroke
+    case "perch": return still(REST_FRAMES[hashString(slug) % REST_FRAMES.length]!);
+    case "held": return still(beat(HELD_CYCLE, time * HELD_HZ + off));
+    case "flap": { // a small rise, a nod and a lunge with each beat
+      const w = 2 * Math.PI * (time * FLAP_HZ + off);
+      return { frame: beat(FLAP_CYCLE, time * FLAP_HZ + off), lift: 0.4 * Math.sin(w - Math.PI / 2), pitch: 0.5 * Math.sin(w), surge: 0.6 * Math.sin(w - Math.PI / 2) };
+    }
     case "glide": {
       const at = ((time + off * PERIOD) % PERIOD + PERIOD) % PERIOD;
       const frame = at < BURST ? beat(FLAP_CYCLE, (at / BURST) * CRUISE.flaps) : "fly-glide";
-      return { frame, lift: Math.sin(2 * Math.PI * (at / PERIOD) - Math.PI / 6) }; // climbs through the burst, sinks through the coast (smooth, one wave per burst)
+      const w = 2 * Math.PI * (at / PERIOD) - Math.PI / 6; // one wave per burst: climbs through the flaps, sinks through the coast
+      const beatW = 2 * Math.PI * ((at / BURST) * CRUISE.flaps);
+      const flapping = at < BURST;
+      return { frame, lift: Math.sin(w), pitch: Math.cos(w), surge: flapping ? 0.6 * Math.sin(beatW) : 0 }; // each flap lunges it forward (starting and ending at rest, so the coast joins smoothly)
     }
   }
 }
