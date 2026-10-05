@@ -4,7 +4,8 @@ import { demoIdeas } from "../content/demo-ideas";
 import { FLIGHT_CONFIGS, motionProfileFor } from "../lib/motion";
 import { memoryStore, supabaseStore, toHex, type IdeaStore } from "../boundaries/ideaStore";
 import type { Idea } from "../lib/ideas";
-import { browserKeyStore, COMMENT_KEYS_ITEM, LIKES_ITEM } from "../boundaries/keyStore";
+import { browserKeyStore, COMMENT_KEYS_ITEM, COMMENT_LIKES_ITEM, LIKES_ITEM } from "../boundaries/keyStore";
+import { memoryCommentLikes, supabaseCommentLikes, type CommentLikeStore } from "../boundaries/commentLikeStore";
 import { likerIdFrom, memoryLikes, supabaseLikes, type LikeStore } from "../boundaries/likeStore";
 import { memoryComments, supabaseComments, type CommentStore } from "../boundaries/commentStore";
 import { inboxFor } from "../boundaries/inbox";
@@ -35,21 +36,23 @@ async function sha256Hex(text: string): Promise<string> {
   return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))));
 }
 
-type Stores = { ideas: IdeaStore; comments: CommentStore; likes: LikeStore; updates: UpdateStore };
+type Stores = { ideas: IdeaStore; comments: CommentStore; commentLikes: CommentLikeStore; likes: LikeStore; updates: UpdateStore };
 
 /** Supabase when a board is configured; otherwise everything lives in memory for this visit. */
 function chooseStores(): Stores {
   if (!PUBLIC_BOARD.url) {
     const ideas = memoryStore(DEMO_IDEAS ? demoIdeas(Date.now()) : []);
-    return { ideas, comments: memoryComments(), likes: memoryLikes(), updates: memoryUpdates((id) => ideas.ownsKey(id)) };
+    return { ideas, comments: memoryComments(), commentLikes: memoryCommentLikes(), likes: memoryLikes(), updates: memoryUpdates((id) => ideas.ownsKey(id)) };
   }
   const base = { url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window), randomBytes, sha256Hex };
   const likeKeys = browserKeyStore(safeStorage(), LIKES_ITEM), ideaKeys = browserKeyStore(safeStorage());
+  const likerId = likerIdFrom(likeKeys, randomBytes); // one liker id for ideas and comments alike
   return {
     ideas: supabaseStore({ ...base, keys: ideaKeys }),
     updates: supabaseUpdates({ ...base, ideaKeys }),
     comments: supabaseComments({ ...base, keys: browserKeyStore(safeStorage(), COMMENT_KEYS_ITEM) }),
-    likes: supabaseLikes({ ...base, keys: likeKeys, likerId: likerIdFrom(likeKeys, randomBytes), pageIsLeaving: () => leaving }),
+    likes: supabaseLikes({ ...base, keys: likeKeys, likerId, pageIsLeaving: () => leaving }),
+    commentLikes: supabaseCommentLikes({ ...base, keys: browserKeyStore(safeStorage(), COMMENT_LIKES_ITEM), likerId, pageIsLeaving: () => leaving }),
   };
 }
 
@@ -83,7 +86,7 @@ export function startSite(): void {
   /** The icons that open something below them: choosing one closes the other two. */
   const closers: Record<Panel, () => void> = { comment: () => thread.closePanel(), update: () => updates.closePanel(), remove: () => removal.closePanel() };
   const opened = (panel: Panel) => () => { for (const other of panelsToClose(panel)) closers[other](); };
-  const thread = startThread({ store: stores.then((s) => s.comments), inbox, ideaNameOf: (id) => nameOf(id), posted: (id) => commentPosted(id), opened: opened("comment") });
+  const thread = startThread({ store: stores.then((s) => s.comments), likes: stores.then((s) => s.commentLikes), inbox, ideaNameOf: (id) => nameOf(id), posted: (id) => commentPosted(id), opened: opened("comment") });
   const likes = startLikes({ store: stores.then((s) => s.likes) });
   let ideaMoved = (_idea: Idea) => {};
   const updates = startUpdates({ store: stores.then((s) => s.updates), opened: opened("update") });

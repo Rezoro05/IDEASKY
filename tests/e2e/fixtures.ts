@@ -4,21 +4,34 @@ import { createHash } from "node:crypto";
 
 /** Fake the outside world: the test build points at board.test and inbox.test (see build:test), and both are intercepted here. */
 export type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[] };
-export type CommentRow = Row & { idea_id: string };
-export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean };
+export type CommentRow = Row & { idea_id: string; parent_id?: string | null };
+export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean };
 export async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [], mails: 0 }) {
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.abort());
   await page.route("https://board.test/**", async (r: Route) => {
     if (board.down) return r.fulfill({ status: 500, body: "down" });
     const url = r.request().url(), method = r.request().method();
+    if (url.includes("/rest/v1/comment_likes") || url.includes("unlike_comment")) {
+      board.commentLikes ??= [];
+      if (method === "GET") { const ids = new URL(url).searchParams.get("comment_id")!.replace(/^in\.\(|\)$/g, "").split(","); return r.fulfill({ json: board.commentLikes.filter((l) => ids.includes(l.comment_id)).map((l) => ({ comment_id: l.comment_id })) }); }
+      if (url.includes("unlike_comment")) {
+        const { p_comment_id, p_liker } = r.request().postDataJSON(), hash = createHash("sha256").update(p_liker).digest("hex");
+        board.commentLikes = board.commentLikes.filter((l) => !(l.comment_id === p_comment_id && l.liker_hash === hash));
+        return r.fulfill({ json: true });
+      }
+      const b = r.request().postDataJSON();
+      if (board.commentLikes.some((l) => l.comment_id === b.comment_id && l.liker_hash === b.liker_hash)) return r.fulfill({ status: 409, body: "" });
+      board.commentLikes.push(b);
+      return r.fulfill({ status: 201, body: "" });
+    }
     if (url.includes("/rest/v1/comments") || url.includes("delete_comment")) {
       board.comments ??= [];
       if (board.commentsDown) return r.fulfill({ status: 500, body: "down" });
       if (method === "GET") { const id = new URL(url).searchParams.get("idea_id")!.slice(3); return r.fulfill({ json: board.comments.filter((x) => x.idea_id === id) }); }
       if (board.commentPostsDown) return r.fulfill({ status: 500, body: "down" });
-      if (url.includes("delete_comment")) { const { p_id } = r.request().postDataJSON(); board.comments = board.comments.filter((x) => x.id !== p_id); return r.fulfill({ json: true }); }
+      if (url.includes("delete_comment")) { const { p_id } = r.request().postDataJSON(); board.comments = board.comments.filter((x) => x.id !== p_id && x.parent_id !== p_id); return r.fulfill({ json: true }); } // replies go with their comment
       const b = r.request().postDataJSON();
-      board.comments.push({ id: b.id, idea_id: b.idea_id, name: b.name, message: b.message, created_at: new Date().toISOString() });
+      board.comments.push({ id: b.id, idea_id: b.idea_id, parent_id: b.parent_id ?? null, name: b.name, message: b.message, created_at: new Date().toISOString() });
       return r.fulfill({ status: 201, body: "" });
     }
     if (url.includes("/rest/v1/likes") || url.includes("unlike_idea")) {

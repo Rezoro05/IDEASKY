@@ -9,6 +9,8 @@ export const DELETE_KEYS_ITEM = "idea-delete-keys";
 export const COMMENT_KEYS_ITEM = "comment-delete-keys";
 /** Ideas liked from this browser, plus this browser's liker id under "liker" (idea ids are 6+ characters, so no clash). */
 export const LIKES_ITEM = "idea-likes";
+/** Comments liked from this browser. */
+export const COMMENT_LIKES_ITEM = "comment-likes";
 
 /** Storage can be missing or throw (private mode, blocked site data): every call is safe. */
 export function browserKeyStore(storage: Pick<Storage, "getItem" | "setItem"> | null, item: string = DELETE_KEYS_ITEM): KeyStore {

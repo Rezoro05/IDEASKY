@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { cleanComment, threadFor, validateCommentDraft, COMMENT_LIMITS, type Comment } from "../../src/lib/comments";
+import { cleanComment, threadFor, commentGroups, replyParent, tally, validateCommentDraft, COMMENT_LIMITS, type Comment } from "../../src/lib/comments";
 import { supabaseComments, memoryComments } from "../../src/boundaries/commentStore";
 import { browserKeyStore, COMMENT_KEYS_ITEM, DELETE_KEYS_ITEM } from "../../src/boundaries/keyStore";
 import { commentFields, formspreeInbox } from "../../src/boundaries/inbox";
 
-const c = (id: string, at: number, extra: Partial<Comment> = {}): Comment => ({ id, ideaId: "idea01", name: "A", message: "m", at, ...extra });
+const c = (id: string, at: number, extra: Partial<Comment> = {}): Comment => ({ id, ideaId: "idea01", parentId: null, name: "A", message: "m", at, ...extra });
 const res = (body: unknown, ok = true) => ({ ok, json: async () => body }) as Response;
 const memStorage = () => { const m = new Map<string, string>(); return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), m }; };
 
@@ -27,14 +27,46 @@ describe("comment rules", () => {
   });
 });
 
+describe("replies", () => {
+  it("cleanComment keeps a well-formed parent and drops a bad or self-pointing one", () => {
+    expect(cleanComment({ id: "abcdef", ideaId: "idea01", message: "x", parentId: "parent1" })!.parentId).toBe("parent1");
+    expect(cleanComment({ id: "abcdef", ideaId: "idea01", message: "x" })!.parentId).toBeNull();
+    expect(cleanComment({ id: "abcdef", ideaId: "idea01", message: "x", parentId: "BAD!" })!.parentId).toBeNull();
+    expect(cleanComment({ id: "abcdef", ideaId: "idea01", message: "x", parentId: "abcdef" })!.parentId).toBeNull();
+  });
+  it("groups one idea's comments: top-level oldest first, each with its replies oldest first", () => {
+    const all = [c("top002", 5), c("rep001", 9, { parentId: "top001" }), c("top001", 1), c("rep002", 7, { parentId: "top001" }), c("rep003", 6, { parentId: "top002" }), c("elsewh", 0, { ideaId: "other1" })];
+    expect(commentGroups(all, "idea01").map((g) => [g.comment.id, g.replies.map((r) => r.id)])).toEqual([["top001", ["rep002", "rep001"]], ["top002", ["rep003"]]]);
+  });
+  it("never loses a reply whose comment isn't there: it shows on its own", () => {
+    const groups = commentGroups([c("top001", 1), c("orphan", 2, { parentId: "gone01" })], "idea01");
+    expect(groups.map((g) => g.comment.id)).toEqual(["top001", "orphan"]);
+  });
+  it("files a reply to a reply under the same top-level comment (one level deep)", () => {
+    expect(replyParent(c("top001", 1))).toBe("top001");
+    expect(replyParent(c("rep001", 2, { parentId: "top001" }))).toBe("top001");
+  });
+});
+
+describe("comment likes", () => {
+  it("tally counts each id", () => {
+    expect(Object.fromEntries(tally(["a", "b", "a", "a"]))).toEqual({ a: 3, b: 1 });
+    expect(tally([]).size).toBe(0);
+  });
+});
+
 describe("supabaseComments", () => {
   const deps = (f: typeof fetch) => ({ url: "https://x.supabase.co", key: "sb_publishable_k", fetch: f, keys: browserKeyStore(memStorage(), COMMENT_KEYS_ITEM),
     randomBytes: (n: number) => new Uint8Array(n).fill(171), sha256Hex: async (t: string) => "hash:" + t });
   it("lists one idea's comments, oldest first, cleaning rows", async () => {
     const f = vi.fn(async (_u: string) => res([{ id: "cmt001", idea_id: "idea01", name: "", message: "hi", created_at: "2026-10-01T00:00:00Z" }, { id: "x" }]));
     const got = await supabaseComments(deps(f as unknown as typeof fetch)).list("idea01");
-    expect(got).toEqual([{ id: "cmt001", ideaId: "idea01", name: "Anonymous", message: "hi", at: Date.parse("2026-10-01T00:00:00Z") }]);
-    expect(f.mock.calls[0]![0]).toContain("/rest/v1/comments?select=id,idea_id,name,message,created_at&idea_id=eq.idea01&order=created_at.asc");
+    expect(got).toEqual([{ id: "cmt001", ideaId: "idea01", parentId: null, name: "Anonymous", message: "hi", at: Date.parse("2026-10-01T00:00:00Z") }]);
+    expect(f.mock.calls[0]![0]).toContain("/rest/v1/comments?select=id,idea_id,parent_id,name,message,created_at&idea_id=eq.idea01&order=created_at.asc");
+  });
+  it("reads a reply's parent", async () => {
+    const f = vi.fn(async (_u: string) => res([{ id: "rep001", idea_id: "idea01", parent_id: "cmt001", name: "B", message: "yes", created_at: "2026-10-01T00:00:00Z" }]));
+    expect((await supabaseComments(deps(f as unknown as typeof fetch)).list("idea01"))![0]!.parentId).toBe("cmt001");
   });
   it("adds with only the key's hash; the key stays in this browser", async () => {
     const f = vi.fn(async (_u: string, _i?: RequestInit) => res(null));
@@ -44,6 +76,14 @@ describe("supabaseComments", () => {
     expect(JSON.parse((f.mock.calls[0]![1] as RequestInit).body as string)).toEqual({ id: "cmt001", idea_id: "idea01", name: "A", message: "m", delete_key_hash: "hash:" + "ab".repeat(16) });
     expect(store.canRemove(c("cmt001", 1))).toBe(true);
     expect(store.canRemove(c("other1", 1))).toBe(false);
+  });
+  it("sends a reply's parent, and nothing extra for a top-level comment", async () => {
+    const f = vi.fn(async (_u: string, _i?: RequestInit) => res(null));
+    const store = supabaseComments(deps(f as unknown as typeof fetch));
+    await store.add(c("rep001", 1, { parentId: "cmt001" }));
+    expect(JSON.parse((f.mock.calls[0]![1] as RequestInit).body as string)).toMatchObject({ id: "rep001", parent_id: "cmt001" });
+    await store.add(c("top001", 1));
+    expect(JSON.parse((f.mock.calls[1]![1] as RequestInit).body as string)).not.toHaveProperty("parent_id");
   });
   it("removes through delete_comment with the saved key", async () => {
     const f = vi.fn(async (_u: string, _i?: RequestInit) => res(true));

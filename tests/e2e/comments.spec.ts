@@ -139,3 +139,101 @@ test.describe("comments on visitor ideas", () => {
     });
   });
 });
+
+test.describe("replies and likes on comments", () => {
+  const ana = (): Board => ({ ...withGio(),
+    comments: [{ id: "cmt0001", idea_id: "zzzzzz1", name: "Ana", message: "Yes please", created_at: "2026-09-30T11:00:00Z" }] });
+  async function openGio(page: Page) {
+    await expect(page.locator(".plane")).toHaveCount(1);
+    await page.locator(".plane").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#letter")).toBeVisible();
+    await settled(page);
+  }
+  const top = (page: Page) => page.locator("#thread-list > li");
+  const replies = (page: Page, i = 0) => top(page).nth(i).locator(".replies > li");
+
+  test("a reply shows under the comment it answers, and a reply to a reply joins the same group", async ({ page }) => {
+    const board = await fakeServices(page, ana());
+    await page.goto("/");
+    await openGio(page);
+    await top(page).first().locator(".c-reply").click();
+    await expect(page.locator("#thread-form")).toBeVisible();
+    await expect(page.locator("#reply-to")).toContainText("Replying to Ana");
+    await page.locator("#comment-msg").fill("Me too");
+    await page.locator(".thread-send").click();
+    await expect(replies(page)).toHaveCount(1);
+    await expect(replies(page).first()).toContainText("Me too");
+    await expect(page.locator("#reply-to")).toBeHidden(); // done replying
+    expect(board.comments!.at(-1)).toMatchObject({ message: "Me too", parent_id: "cmt0001" });
+    await expect(page.locator("#comment-count")).toHaveText("2"); // the icon counts replies too
+    // answering the reply files under Ana's comment, one level deep
+    await replies(page).first().locator(".c-reply").click();
+    await page.locator("#comment-msg").fill("And me");
+    await page.locator(".thread-send").click();
+    await expect(replies(page)).toHaveCount(2);
+    expect(board.comments!.at(-1)).toMatchObject({ message: "And me", parent_id: "cmt0001" });
+    await expect(top(page)).toHaveCount(1);
+  });
+
+  test("a reply can be cancelled: the comment then posts on its own", async ({ page }) => {
+    const board = await fakeServices(page, ana());
+    await page.goto("/");
+    await openGio(page);
+    await top(page).first().locator(".c-reply").click();
+    await page.locator("#reply-to .reply-cancel").click();
+    await expect(page.locator("#reply-to")).toBeHidden();
+    await page.locator("#comment-msg").fill("Separate thought");
+    await page.locator(".thread-send").click();
+    await expect(top(page)).toHaveCount(2);
+    expect(board.comments!.at(-1)!.parent_id).toBeNull();
+  });
+
+  test("replies stay under their comment after a reload", async ({ page }) => {
+    const board = ana(); board.comments!.push({ id: "rep0001", idea_id: "zzzzzz1", parent_id: "cmt0001", name: "Bo", message: "Agreed", created_at: "2026-09-30T12:00:00Z" });
+    await fakeServices(page, board);
+    await page.goto("/");
+    await openGio(page);
+    await expect(top(page)).toHaveCount(1);
+    await expect(replies(page)).toHaveCount(1);
+    await expect(replies(page).first()).toContainText("Bo");
+  });
+
+  test("a comment can be liked once from a browser and unliked; the count stays after a reload", async ({ page }) => {
+    const board = await fakeServices(page, ana());
+    await page.goto("/");
+    await openGio(page);
+    const heart = top(page).first().locator(".c-like");
+    await expect(heart).toHaveAttribute("aria-pressed", "false");
+    await heart.click();
+    await expect(heart).toHaveAttribute("aria-pressed", "true");
+    await expect(heart.locator(".c-like-count")).toHaveText("1");
+    await expect.poll(() => board.commentLikes?.length ?? 0).toBe(1);
+    await page.reload();
+    await openGio(page);
+    await expect(top(page).first().locator(".c-like")).toHaveAttribute("aria-pressed", "true");
+    await expect(top(page).first().locator(".c-like-count")).toHaveText("1");
+    await top(page).first().locator(".c-like").click();
+    await expect(top(page).first().locator(".c-like")).toHaveAttribute("aria-pressed", "false");
+    await expect(top(page).first().locator(".c-like-count")).toHaveText("");
+    await expect.poll(() => board.commentLikes?.length).toBe(0);
+  });
+
+  test("removing your comment takes its replies with it", async ({ page }) => {
+    const board = await fakeServices(page, ana());
+    await page.goto("/");
+    await openGio(page);
+    await page.locator("#comment-btn").click();
+    await page.locator("#comment-msg").fill("Mine");
+    await page.locator(".thread-send").click();
+    await expect(top(page)).toHaveCount(2);
+    await top(page).nth(1).locator(".c-reply").click();
+    await page.locator("#comment-msg").fill("A reply to mine");
+    await page.locator(".thread-send").click();
+    await expect(replies(page, 1)).toHaveCount(1);
+    await top(page).nth(1).locator(":scope > .c-actions .c-remove").click();
+    await expect(top(page)).toHaveCount(1);
+    await expect(page.locator("#comment-count")).toHaveText("1");
+    expect(board.comments!.map((x) => x.message)).toEqual(["Yes please"]);
+  });
+});

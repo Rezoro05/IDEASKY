@@ -267,7 +267,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .text-btn.quiet { color: var(--n-muted, color-mix(in srgb, var(--plane-edge) 55%, var(--plane))); }
 .text-btn:disabled { opacity: .6; cursor: progress; }
 .add-link[hidden], .text-btn[hidden] { display: none; }
-.c-remove { margin-top: 6px; padding: 0; border: 0; background: none; cursor: pointer; font: 500 10px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--n-muted); }
+.c-remove { padding: 0; border: 0; background: none; cursor: pointer; font: 500 10px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--n-muted); }
 .c-remove:hover, .c-remove:focus-visible { outline: none; color: var(--danger); text-decoration: underline; }
 
 /* Buttons on paper: solid cobalt for the main action, outlined for the rest */
@@ -418,6 +418,23 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .thread-list:empty { display: none; }
 .thread-list li { padding-left: 12px; border-left: 2px solid color-mix(in srgb, var(--tone-cobalt) 35%, var(--plane)); }
 .thread-list li.fresh { border-left-color: var(--tone-cobalt); }
+/* Under each comment: Reply, a small heart with its count, and Remove for your own */
+.c-actions { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.c-reply { padding: 0; border: 0; background: none; cursor: pointer; font: 500 10px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--n-muted); }
+.c-reply:hover, .c-reply:focus-visible { outline: none; color: var(--tone-cobalt); text-decoration: underline; }
+.c-like { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--n-muted); font: 500 11px/1 var(--font-mono); }
+.c-like svg { width: 15px; height: 15px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.c-like:hover, .c-like:focus-visible { outline: none; color: var(--like); }
+.c-like[aria-pressed="true"] { color: var(--like); }
+.c-like[aria-pressed="true"] svg { fill: currentColor; animation: like-pop .3s ease-out; }
+/* Replies sit under their comment, indented, one level deep */
+.thread-list .replies { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.thread-list .replies li { border-left-color: color-mix(in srgb, var(--tone-cobalt) 18%, var(--plane)); }
+/* Above the comment field while replying: who it answers, and a way out */
+.reply-to { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0; padding: 6px 10px; border-radius: 8px;
+  background: color-mix(in srgb, var(--tone-cobalt) 8%, var(--plane)); font: 500 12px/1.3 var(--font-mono); color: var(--tone-cobalt); }
+.reply-to[hidden] { display: none; }
+.reply-cancel { padding: 0 2px; border: 0; background: none; cursor: pointer; font: 400 16px/1 var(--font-body); color: inherit; }
 
 /* ============================================================
    Preferences: reduced motion, reduced transparency
@@ -432,7 +449,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   .cloud.c1 { transform: translateX(62vw); } .cloud.c2 { transform: translateX(18vw); } .cloud.c3 { transform: translateX(84vw); } .cloud.c4 { display: none; }
   .btn-idea, .btn-idea::after, .act svg, .stage-bar .fill, .stage-bar .knob { transition: none; }
   .btn-idea:hover { transform: none; }
-  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="idea"] .body, .holding-bird .cage svg { animation: none; }
+  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .c-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="idea"] .body, .holding-bird .cage svg { animation: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .letter, .toast, .plane .tag { -webkit-backdrop-filter: none; backdrop-filter: none; }

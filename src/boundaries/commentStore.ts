@@ -23,11 +23,11 @@ export function supabaseComments(d: SupabaseCommentDeps): CommentStore {
   return {
     async list(ideaId) {
       try {
-        const q = `/rest/v1/comments?select=id,idea_id,name,message,created_at&idea_id=eq.${encodeURIComponent(ideaId)}&order=created_at.asc&limit=${COMMENT_LIMITS.perIdea}`;
+        const q = `/rest/v1/comments?select=id,idea_id,parent_id,name,message,created_at&idea_id=eq.${encodeURIComponent(ideaId)}&order=created_at.asc&limit=${COMMENT_LIMITS.perIdea}`;
         const r = await d.fetch(d.url + q, { headers });
         if (!r.ok) return null;
-        const rows = (await r.json()) as { id: string; idea_id: string; name: string; message: string; created_at: string }[];
-        return rows.map((row) => cleanComment({ id: row.id, ideaId: row.idea_id, name: row.name, message: row.message, at: Date.parse(row.created_at) }))
+        const rows = (await r.json()) as { id: string; idea_id: string; parent_id: string | null; name: string; message: string; created_at: string }[];
+        return rows.map((row) => cleanComment({ id: row.id, ideaId: row.idea_id, parentId: row.parent_id, name: row.name, message: row.message, at: Date.parse(row.created_at) }))
           .filter((c): c is Comment => c !== null);
       } catch { return null; }
     },
@@ -36,7 +36,7 @@ export function supabaseComments(d: SupabaseCommentDeps): CommentStore {
         const deleteKey = toHex(d.randomBytes(16));
         const r = await d.fetch(d.url + "/rest/v1/comments", {
           method: "POST", headers: { ...headers, Prefer: "return=minimal" },
-          body: JSON.stringify({ id: c.id, idea_id: c.ideaId, name: c.name, message: c.message, delete_key_hash: await d.sha256Hex(deleteKey) }),
+          body: JSON.stringify({ id: c.id, idea_id: c.ideaId, ...(c.parentId ? { parent_id: c.parentId } : {}), name: c.name, message: c.message, delete_key_hash: await d.sha256Hex(deleteKey) }),
         });
         if (!r.ok) return false;
         d.keys.set(c.id, deleteKey);
