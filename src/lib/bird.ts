@@ -92,6 +92,9 @@ export function wingLook(plane: Plane): WingLook | null {
   }
 }
 
+/** A plane that has just become a bird gets its first state (gliding), even while it holds still, so it is drawn as a bird at once. */
+export const asBird = (plane: Plane, time: number, visitSeed: number): Plane => (plane.bird ? plane : { ...plane, bird: glide(plane, 0, time, visitSeed) });
+
 /** The bird was picked up: whatever it was doing, and any perch it had claimed, are over. */
 export const grabbed = (plane: Plane): Plane => ({ ...plane, bird: { mode: "held", n: plane.bird?.n ?? 0 } });
 

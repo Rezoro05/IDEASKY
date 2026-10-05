@@ -5,7 +5,7 @@ import type { FlightConfig } from "./motion";
 import type { Stage } from "./stages";
 import { FORM_FLIGHT, configFor } from "./flight-forms";
 import { bank } from "./banking";
-import { flyBird, grabbed, perchSpots } from "./bird";
+import { asBird, flyBird, grabbed, perchSpots } from "./bird";
 import type { Plane, PointerInfo } from "./plane";
 
 export type { Plane, PointerInfo };
@@ -96,7 +96,7 @@ export function step(world: World, input: StepInput, config: FlightConfig): Worl
       next.push(FORM_FLIGHT[plane.stage].kind === "bird" ? grabbed(carried) : carried);
       return;
     }
-    if (mode === "paused") { next.push(plane); return; }
+    if (mode === "paused") { next.push(FORM_FLIGHT[plane.stage].kind === "bird" ? asBird(plane, world.time, world.visitSeed) : plane); return; } // a paused plane holds still, but a new bird still gets its bird state
     const flight = FORM_FLIGHT[plane.stage], own = configFor(config, flight); // each form flies by its own settings
     const others = world.planes.filter((o) => o.slug !== plane.slug);
     const steer = add(add(wanderSteer(plane, world, own), separationSteer(plane, others, own)), boundsSteer(plane, input.bounds, own));

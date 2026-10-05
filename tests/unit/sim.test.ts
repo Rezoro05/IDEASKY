@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createWorld, step, modeOf, boundsSteer, separationSteer, containWithin, addPlane, removePlane, EDGE_INSET, MAX_DT, type Plane, type World, type StepInput } from "../../src/lib/sim";
+import { createWorld, setStage, step, modeOf, boundsSteer, separationSteer, containWithin, addPlane, removePlane, EDGE_INSET, MAX_DT, type Plane, type World, type StepInput } from "../../src/lib/sim";
 import { FLIGHT_CONFIGS } from "../../src/lib/motion";
 import { v, len, type Vec } from "../../src/lib/vec";
 import type { Stage } from "../../src/lib/stages";
@@ -66,6 +66,15 @@ describe("step", () => {
     const w1 = step(w0, input({ pausedSlugs: new Set(["a"]) }), config);
     expect(w1.planes[0]).toEqual(w0.planes[0]);
     expect(w1.planes[1]).not.toEqual(w0.planes[1]);
+  });
+  it("a paused plane that becomes a bird is a bird at once (with its bird state), still holding still", () => {
+    const w0 = setStage(createWorld(["a"], 3, bounds, config), "a", "live");
+    expect(w0.planes[0]!.bird).toBeUndefined();
+    const w1 = step(w0, input({ pausedSlugs: new Set(["a"]) }), config);
+    expect(w1.planes[0]!.bird).toBeDefined();
+    expect(w1.planes[0]!.position).toEqual(w0.planes[0]!.position);
+    const w2 = step(w1, input({ pausedSlugs: new Set(["a"]) }), config);
+    expect(w2.planes[0]).toEqual(w1.planes[0]); // and then stays exactly as it is while paused
   });
   it("a held plane follows the pointer", () => {
     const w0 = createWorld(["a"], 3, bounds, config);
