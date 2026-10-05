@@ -1,7 +1,8 @@
 # Publishes the site to GitHub Pages on every push to main.
-# One-time setup (repo Settings): Pages → Source = "GitHub Actions". For the real site also set Variables → PUBLIC_BOARD_URL, PUBLIC_BOARD_KEY, PUBLIC_FORMSPREE_ENDPOINT;
-# with none of them set it publishes a preview (in-memory board with example ideas); with only some set it fails.
-# These three values end up in the public site by design, so they are Variables, not Secrets.
+# One-time setup (repo Settings): Pages → Source = "GitHub Actions".
+# The real services are IDEA SKY's Supabase project and Formspree form (set below). Repository Variables of the same names override them;
+# with all three empty it would publish a preview (in-memory board with example ideas), and with only some set it fails.
+# These three values end up in the public site by design (a publishable key and a form address), so they live here, not in Secrets.
 name: Deploy
 
 on:
@@ -20,9 +21,9 @@ concurrency:
 
 env:
   PUBLIC_BASE_PATH: /IDEASKY/
-  PUBLIC_BOARD_URL: ${{ vars.PUBLIC_BOARD_URL }}
-  PUBLIC_BOARD_KEY: ${{ vars.PUBLIC_BOARD_KEY }}
-  PUBLIC_FORMSPREE_ENDPOINT: ${{ vars.PUBLIC_FORMSPREE_ENDPOINT }}
+  PUBLIC_BOARD_URL: ${{ vars.PUBLIC_BOARD_URL || 'https://ssqcfsbkmrhjfylxghfj.supabase.co' }}
+  PUBLIC_BOARD_KEY: ${{ vars.PUBLIC_BOARD_KEY || 'sb_publishable_iTflyj7RKulZ3DRoDFBmfg_ESbUKOWq' }}
+  PUBLIC_FORMSPREE_ENDPOINT: ${{ vars.PUBLIC_FORMSPREE_ENDPOINT || 'https://formspree.io/f/xeaowwln' }}
 
 jobs:
   build:
