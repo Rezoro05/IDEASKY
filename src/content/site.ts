@@ -16,6 +16,9 @@ export const HERO = {
 export const FORMSPREE_ENDPOINT: string = import.meta.env.PUBLIC_FORMSPREE_ENDPOINT ?? "";
 
 /** Public idea board. The publishable key is meant to be public; database rules decide what it can do. */
+/** Build flag: start an empty in-memory board with five example ideas, one or more per stage. */
+export const DEMO_IDEAS = import.meta.env.PUBLIC_DEMO_IDEAS === "1";
+
 export const PUBLIC_BOARD = {
   url: (import.meta.env.PUBLIC_BOARD_URL ?? "") as string,
   key: (import.meta.env.PUBLIC_BOARD_KEY ?? "") as string,

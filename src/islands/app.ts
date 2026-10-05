@@ -1,5 +1,6 @@
 /** Wires the pure parts to the page. Every feature lights up on its own; if one fails, the rest of the page still works. */
-import { FORMSPREE_ENDPOINT, PUBLIC_BOARD } from "../content/site";
+import { DEMO_IDEAS, FORMSPREE_ENDPOINT, PUBLIC_BOARD } from "../content/site";
+import { demoIdeas } from "../content/demo-ideas";
 import { FLIGHT_CONFIGS, motionProfileFor } from "../lib/motion";
 import { memoryStore, supabaseStore, toHex, type IdeaStore } from "../boundaries/ideaStore";
 import type { Idea } from "../lib/ideas";
@@ -38,7 +39,7 @@ type Stores = { ideas: IdeaStore; comments: CommentStore; likes: LikeStore; upda
 /** Supabase when a board is configured; otherwise everything lives in memory for this visit. */
 function chooseStores(): Stores {
   if (!PUBLIC_BOARD.url) {
-    const ideas = memoryStore();
+    const ideas = memoryStore(DEMO_IDEAS ? demoIdeas(Date.now()) : []);
     return { ideas, comments: memoryComments(), likes: memoryLikes(), updates: memoryUpdates((id) => ideas.ownsKey(id)) };
   }
   const base = { url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window), randomBytes, sha256Hex };

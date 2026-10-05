@@ -5,7 +5,7 @@ import { createWorld, setStage, step, type World, type StepInput } from "../../s
 import { FORM_FLIGHT, configFor } from "../../src/lib/flight-forms";
 import { FLIGHT_CONFIGS } from "../../src/lib/motion";
 import { GRID, perchLines } from "../../src/lib/perches";
-import { v, len, sub, type Vec } from "../../src/lib/vec";
+import { v, len, sub, add, scale, type Vec } from "../../src/lib/vec";
 
 const profile = FLIGHT_CONFIGS.full;
 const config = configFor(profile, FORM_FLIGHT.live);
@@ -147,7 +147,7 @@ describe("fleeing the pointer", () => {
     for (let f = 0; f < 300; f++) { p = flyBird(p, ctx({ time: 100 + f * dt, pointer: moving(sub(p.position, v(40, 0))) })); peak = Math.max(peak, len(p.velocity)); }
     expect(peak).toBeLessThanOrEqual(config.cruise * BIRD.fleeSpeedScale + 1e-6);
     expect(peak).toBeGreaterThan(config.cruise * 1.5);
-    expect(config.cruise * BIRD.fleeSpeedScale).toBeLessThan(BIRD.alarmSpeed * 2); // a mouse moving at 160 px/s already outruns it
+    expect(config.cruise * BIRD.fleeSpeedScale).toBeLessThan(250); // a quick mouse (250 px/s and up) outruns it; a creeping one cannot
   });
   it("knows who is scared", () => {
     expect(isScaredBy(v(0, 0), moving(v(100, 0)))).toBe(true);
@@ -243,4 +243,25 @@ describe("birds in the sky", () => {
     for (let f = 0; f < 30; f++) swept = step(swept, input({ pointer: moving(perchedNow!.position, 400) }), profile); // half a second of a mouse sweeping past
     expect(swept.planes.find((p) => p.slug === perchedNow!.slug)!.bird?.mode).not.toBe("perched");
   });
+});
+
+describe("how hard a bird is to catch", () => {
+  /** A pointer chases a lone bird from 300 px away at `speed` px/s for 8 s; true if it ever gets within 30 px. */
+  const chased = (speed: number, seed: number): boolean => {
+    const input = (pointer: PointerInfo): StepInput => ({ dt, bounds, held: null, pausedSlugs: new Set(), pointer });
+    let w = setStage(createWorld(["a"], seed, bounds, profile), "a", "live");
+    for (let f = 0; f < 120; f++) w = step(w, { dt, bounds, held: null, pausedSlugs: new Set() }, profile);
+    let p = add(w.planes[0]!.position, v(300, 0)), prev = p;
+    for (let f = 0; f < 480; f++) {
+      const d = sub(w.planes[0]!.position, p), l = len(d);
+      if (l < 30) return true;
+      p = add(p, scale(d, Math.min(l, speed * dt) / l));
+      w = step(w, input({ position: p, speed: len(sub(p, prev)) / dt }), profile);
+      prev = p;
+    }
+    return false;
+  };
+  const caughtOf = (speed: number): number => Array.from({ length: 20 }, (_, i) => chased(speed, i + 1)).filter(Boolean).length;
+  it("is almost never caught by a mouse creeping up on it", () => expect(caughtOf(60)).toBeLessThanOrEqual(3));
+  it("is still caught by a quick mouse", () => expect(caughtOf(400)).toBe(20));
 });

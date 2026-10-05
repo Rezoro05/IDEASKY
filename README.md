@@ -35,6 +35,7 @@ Endpoints come from build-time environment variables, so no build points at a re
 |---|---|
 | `PUBLIC_BOARD_URL`, `PUBLIC_BOARD_KEY` | Supabase project URL and publishable key |
 | `PUBLIC_FORMSPREE_ENDPOINT` | Formspree form that emails new ideas, comments and feedback |
+| `PUBLIC_DEMO_IDEAS` | `1` = a board with no service starts with five example ideas across the stages (previews, local runs). Ignored when a board is configured |
 | `PUBLIC_BASE_PATH` | Where the site lives. Unset = `/`; the deploy workflow sets `/IDEASKY/` |
 
 Unset (the default): everything lives in memory for the visit and nothing is emailed. Good for local testing.

@@ -20,13 +20,13 @@ export const BIRD = {
   takeOff: 1.2,
   /** How long the pointer must be close and moving before a perched bird takes off. */
   startle: 0.25,
-  alarmRadius: 140,
+  alarmRadius: 200,
   /** A pointer slower than this (px/s) frightens nothing. */
-  alarmSpeed: 80,
+  alarmSpeed: 30,
   /** How hard the pointer pushes a bird right next to it (px/s²), fading to nothing at the alarm radius. */
-  fleeAccel: 320,
-  /** A scared bird's top speed, in cruise speeds: a fast sweep of the mouse beats it. */
-  fleeSpeedScale: 2.2,
+  fleeAccel: 600,
+  /** A scared bird's top speed, in cruise speeds: a creeping mouse never reaches it, a quick one does. */
+  fleeSpeedScale: 4,
   approachScale: 1.2,
   /** Closest two perched (or perching) birds may be. */
   perchSpacing: 44,
