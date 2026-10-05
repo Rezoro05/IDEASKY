@@ -4,6 +4,7 @@
  *    approaching → perched   it arrives, or → gliding if the pointer scares it off
  *    perched → takingOff     its rest is over, or the pointer has been close and moving for a moment
  *    takingOff → gliding     the take-off is over
+ *    any → held              someone picked it up; when let go it takes off (flapping away, throw speed kept)
  *  No clock and no DOM: time, the random source (seeded per bird and decision) and the pointer all come in. */
 import { type Vec, v, add, sub, scale, len, clampLen } from "./vec";
 import { mulberry32, seedFor, type Rand } from "./random";
@@ -71,21 +72,19 @@ const awayFrom = (position: Vec, pointer: PointerInfo): Vec => {
   return l > 1e-6 ? scale(d, 1 / l) : v(1, 0);
 };
 
-/** How the wings should look: still while gliding, beating while flying to a perch or taking off, folded on a perch. Null for anything that isn't a bird yet. */
+/** How the wings should look: still while gliding, beating while flying to a perch, taking off or held in a hand, folded on a perch. Null for anything that isn't a bird yet. */
 export type WingLook = "glide" | "flap" | "perch";
 export function wingLook(plane: Plane): WingLook | null {
   switch (plane.bird?.mode) {
     case "gliding": return "glide";
-    case "approaching": case "takingOff": return "flap";
+    case "approaching": case "takingOff": case "held": return "flap";
     case "perched": return "perch";
     default: return null;
   }
 }
 
-/** The bird was picked up. When it is let go it glides. */
-export function grabbed(plane: Plane, time: number, visitSeed: number): Plane {
-  return { ...plane, bird: glide(plane, plane.bird?.n ?? 0, time, visitSeed) };
-}
+/** The bird was picked up: whatever it was doing, and any perch it had claimed, are over. */
+export const grabbed = (plane: Plane): Plane => ({ ...plane, bird: { mode: "held", n: plane.bird?.n ?? 0 } });
 
 export function flyBird(plane: Plane, ctx: BirdContext): Plane {
   const state = plane.bird ?? glide(plane, 0, ctx.time, ctx.visitSeed);
@@ -95,6 +94,7 @@ export function flyBird(plane: Plane, ctx: BirdContext): Plane {
     case "approaching": return scared ? gliding(plane, glide(plane, state.n, ctx.time, ctx.visitSeed), true, ctx) : approaching(plane, state, ctx);
     case "perched": return perched(plane, state, scared, ctx);
     case "takingOff": return takingOff(plane, state, scared, ctx);
+    case "held": return takingOff(plane, { mode: "takingOff", until: ctx.time + BIRD.takeOff, n: state.n + 1 }, scared, ctx); // let go: it flaps away
   }
 }
 

@@ -8,7 +8,9 @@ export type BirdState =
   | { readonly mode: "gliding"; readonly until: number; readonly n: number }
   | { readonly mode: "approaching"; readonly target: Vec; readonly n: number }
   | { readonly mode: "perched"; readonly until: number; /** Seconds the pointer has been close and moving. */ readonly alarm: number; readonly n: number }
-  | { readonly mode: "takingOff"; readonly until: number; readonly n: number };
+  | { readonly mode: "takingOff"; readonly until: number; readonly n: number }
+  /** In someone's hand. The first free frame after it takes off, with the speed the hand gave it. */
+  | { readonly mode: "held"; readonly n: number };
 
 export type Plane = {
   readonly slug: string;

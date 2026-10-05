@@ -130,6 +130,23 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 /* ============================================================
    Planes in the sky (paper plane, airplane, bird) and hand-flown fliers
    ============================================================ */
+/* The cage (top right): a drop target for caught birds; under the planes (z 2) so a plane flying past is never hidden by it */
+.cage { position: absolute; z-index: 1; top: calc(var(--bar-h) + 14px); right: var(--gutter); width: 52px; height: 59px; color: var(--sky-plane-edge); }
+@media (max-width: 560px) { .cage { top: 6px; width: 40px; height: 45px; } } /* on a phone it sits in the empty right end of the header bar, clear of the headline */
+.cage svg { display: block; width: 100%; height: 100%; overflow: visible; transform-origin: 50% 80%; transition: transform .2s; }
+.cage-body { fill: rgba(255,255,255,.3); stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; transition: fill .2s, stroke .2s; }
+.cage-bars, .cage-ring { fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; transition: stroke .2s; }
+.cage-base { fill: currentColor; fill-opacity: .8; }
+.cage-hint { position: absolute; right: 0; top: calc(100% + 8px); width: max-content; max-width: min(230px, calc(100vw - 2 * var(--gutter))); padding: 6px 9px; border-radius: 3px; pointer-events: none; opacity: 0; transition: opacity .2s;
+  background: color-mix(in srgb, var(--sky-bottom) 80%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  font: 500 11px/1.35 var(--font-mono); letter-spacing: .04em; color: var(--sky-text); }
+.cage:hover .cage-hint { opacity: 1; }
+.holding-bird .cage .cage-hint { opacity: 0; }
+.holding-bird .cage { color: var(--accent); }
+.holding-bird .cage svg { animation: cage-ready .8s ease-in-out infinite alternate; }
+.cage.over svg { animation: none; transform: scale(1.12); }
+.cage.over .cage-body { fill: var(--accent); fill-opacity: .3; }
+@keyframes cage-ready { from { transform: scale(1); } to { transform: scale(1.06); } }
 .sky-trails { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; } /* airplane trails, under the planes (z 2) */
 .plane { position: absolute; left: 0; top: 0; z-index: 2; display: block; width: 0; height: 0; outline: none;
   color: var(--ink); text-decoration: none; touch-action: none; user-select: none; -webkit-user-select: none; will-change: transform; }
@@ -152,6 +169,8 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 @keyframes wingbeat { from { transform: scaleY(1); } to { transform: scaleY(.45); } }
 .plane:focus-visible .body { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 50%; }
 .plane.held .body { cursor: grabbing; }
+.plane.held[data-stage="live"] .body { animation: tug .16s linear infinite alternate; } /* a bird in the hand pulls (the translate property composes with the facing transform set inline) */
+@keyframes tug { from { translate: -2px 1px; } to { translate: 2px -1.5px; } }
 /* A plane just posted from this browser pulses a ring for a few seconds */
 .plane.fresh .body::after { content: ""; position: absolute; inset: -14px; border-radius: 50%; border: 1.5px solid var(--accent); pointer-events: none;
   animation: fresh-ring 1.6s ease-out 4; }
@@ -416,7 +435,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   .cloud.c1 { transform: translateX(62vw); } .cloud.c2 { transform: translateX(18vw); } .cloud.c3 { transform: translateX(84vw); } .cloud.c4 { display: none; }
   .btn-idea, .btn-idea::after, .act svg, .stage-bar .fill, .stage-bar .knob { transition: none; }
   .btn-idea:hover { transform: none; }
-  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane[data-state="flap"] .body svg { animation: none; }
+  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane[data-state="flap"] .body svg, .plane.held[data-stage="live"] .body, .holding-bird .cage svg { animation: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .letter, .toast, .plane .tag { -webkit-backdrop-filter: none; backdrop-filter: none; }

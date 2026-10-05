@@ -156,14 +156,26 @@ describe("fleeing the pointer", () => {
   });
 });
 
-describe("being picked up", () => {
-  it("makes a bird glide afterwards, whatever it was doing", () => {
-    for (const state of [{ mode: "perched", until: 110, alarm: 0, n: 3 }, { mode: "approaching", target: v(1, 1), n: 3 }, { mode: "takingOff", until: 105, n: 3 }] as BirdState[]) {
-      const out = grabbed(bird(state), 100, 1);
-      expect(out.bird).toMatchObject({ mode: "gliding" });
+describe("being picked up and let go", () => {
+  const states = [{ mode: "perched", until: 110, alarm: 0, n: 3 }, { mode: "approaching", target: v(1, 1), n: 3 }, { mode: "takingOff", until: 105, n: 3 }, { mode: "gliding", until: 120, n: 3 }] as BirdState[];
+  it("makes a bird held, whatever it was doing, and gives up any perch it had claimed", () => {
+    for (const state of states) {
+      const out = grabbed(bird(state));
+      expect(out.bird).toMatchObject({ mode: "held" });
       expect(perchSpotOf(out)).toBeNull();
     }
   });
+  it("sends a let-go bird off flapping, still moving the way the hand threw it, and then it glides", () => {
+    const thrown = bird({ mode: "held", n: 4 }, v(600, 300), v(0, -120));
+    const out = flyBird(thrown, ctx());
+    expect(out.bird).toMatchObject({ mode: "takingOff" });
+    expect(wingLook(out)).toBe("flap");
+    expect(out.velocity.y).toBeLessThan(0); // still going up, as thrown
+    const later = fly(out, () => ({}), (p) => p.bird?.mode === "gliding", 5);
+    expect(later.time - 100).toBeGreaterThanOrEqual(BIRD.takeOff - 0.1);
+    expect(later.plane.bird?.mode).toBe("gliding");
+  });
+  it("keeps a bird in a hand flapping", () => expect(wingLook(bird({ mode: "held", n: 1 }))).toBe("flap"));
 });
 
 describe("how the wings look", () => {
@@ -230,13 +242,15 @@ describe("birds in the sky", () => {
   it("fly the same way for the same seed", () => {
     expect(record(7).log).toEqual(record(7).log);
   });
-  it("take off when a moving pointer comes through, and a held bird glides when let go", () => {
+  it("take off when a moving pointer comes through, and a held bird takes off when let go", () => {
     let w = flock(3);
     for (let f = 0; f < 1800; f++) w = step(w, input(), profile); // let some settle on perches
     const target = w.planes.find((p) => p.bird?.mode === "perched") ?? w.planes[0]!;
     let held = w;
     for (let f = 0; f < 10; f++) held = step(held, input({ held: { slug: target.slug, pointer: v(600, 300) } }), profile);
-    expect(held.planes.find((p) => p.slug === target.slug)!.bird?.mode).toBe("gliding");
+    expect(held.planes.find((p) => p.slug === target.slug)!.bird?.mode).toBe("held");
+    const letGo = step(held, input(), profile);
+    expect(letGo.planes.find((p) => p.slug === target.slug)!.bird?.mode).toBe("takingOff");
     const perchedNow = w.planes.find((p) => p.bird?.mode === "perched");
     expect(perchedNow, "some bird should have landed by now").toBeDefined();
     let swept = w;

@@ -63,6 +63,7 @@ export function startSite(): void {
   } else {
     sky = startSky({
       field: byId("field"),
+      cage: byId("cage"),
       config: FLIGHT_CONFIGS[profile],
       visitSeed: new Uint32Array(randomBytes(4).buffer)[0]!,
       onOpen: (id, origin) => openPlane(id, origin),

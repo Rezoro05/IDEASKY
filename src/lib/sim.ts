@@ -93,7 +93,7 @@ export function step(world: World, input: StepInput, config: FlightConfig): Worl
     if (mode === "held" && input.held) {
       const moved = scale(sub(input.held.pointer, plane.position), 1 / Math.max(dt, 1e-3));
       const carried = { ...plane, position: input.held.pointer, velocity: add(scale(plane.velocity, 0.6), scale(moved, 0.4)) };
-      next.push(FORM_FLIGHT[plane.stage].kind === "bird" ? grabbed(carried, world.time, world.visitSeed) : carried);
+      next.push(FORM_FLIGHT[plane.stage].kind === "bird" ? grabbed(carried) : carried);
       return;
     }
     if (mode === "paused") { next.push(plane); return; }

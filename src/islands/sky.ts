@@ -2,6 +2,8 @@
 import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
 import { wingLook } from "../lib/bird";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
+import { isOverCage, type Rect } from "../lib/cage";
+import { isCatchable, pressOutcome } from "../lib/catch";
 import type { FlightConfig } from "../lib/motion";
 import { formFor } from "../lib/forms";
 import type { Stage } from "../lib/stages";
@@ -37,6 +39,8 @@ export function startSky(opts: {
   config: FlightConfig;
   visitSeed: number;
   onOpen: (slug: string, origin: Vec) => void;
+  /** The cage: where a caught bird is dropped to open its idea. Measured on each drop. */
+  cage: HTMLElement;
   /** While something covers the sky (an open letter or the Idea Note), it holds still: nothing to see, nothing to pay for. */
   covered?: () => boolean;
 }): Sky {
@@ -66,6 +70,20 @@ export function startSky(opts: {
     return a;
   }
 
+  const cageRect = (): Rect => { const c = opts.cage.getBoundingClientRect(), f = field.getBoundingClientRect(); return { x: c.left - f.left, y: c.top - f.top, width: c.width, height: c.height }; };
+  const stageOf = (slug: string): Stage => els.get(slug)!.dataset.stage as Stage;
+  function hold(slug: string, pointer: Vec): void {
+    held = { slug, pointer };
+    els.get(slug)?.classList.add("held");
+    if (isCatchable(stageOf(slug))) field.classList.add("holding-bird"); // the cage lights up
+  }
+  function letGo(): void {
+    if (held) els.get(held.slug)?.classList.remove("held");
+    held = null;
+    field.classList.remove("holding-bird");
+    opts.cage.classList.remove("over");
+  }
+
   const local = (e: PointerEvent): Vec => { const r = field.getBoundingClientRect(); return v(e.clientX - r.left, e.clientY - r.top); };
   field.addEventListener("pointermove", (e) => {
     if (e.pointerType !== "mouse") return;
@@ -80,23 +98,26 @@ export function startSky(opts: {
     e.preventDefault();
     press = { slug: a.dataset.slug!, point: v(e.clientX, e.clientY), at: performance.now() };
     a.setPointerCapture(e.pointerId);
+    if (isCatchable(stageOf(press.slug))) hold(press.slug, local(e)); // a press on a bird catches it at once
   });
   field.addEventListener("pointermove", (e) => {
     if (!press) return;
-    if (!held && movedFarEnough(press.point, v(e.clientX, e.clientY))) {
-      held = { slug: press.slug, pointer: local(e) };
-      els.get(press.slug)?.classList.add("held");
+    if (!held && movedFarEnough(press.point, v(e.clientX, e.clientY))) hold(press.slug, local(e));
+    if (held) {
+      held = { ...held, pointer: local(e) };
+      if (isCatchable(stageOf(held.slug))) opts.cage.classList.toggle("over", isOverCage(held.pointer, cageRect()));
     }
-    if (held) held = { ...held, pointer: local(e) };
   });
   const endPress = (e: PointerEvent) => {
     if (!press) return;
     const gesture = classifyGesture(press, { point: v(e.clientX, e.clientY), at: performance.now() });
-    const slug = press.slug;
-    if (held) els.get(held.slug)?.classList.remove("held");
-    held = null; press = null;
+    const slug = press.slug, canceled = e.type !== "pointerup";
+    const outcome = pressOutcome({ stage: stageOf(slug), gesture, canceled, overCage: isOverCage(local(e), cageRect()) });
+    letGo();
+    press = null;
     suppressClick = true; // the click that follows a press is handled here, not by the click listener
-    if (gesture === "open" && e.type === "pointerup") opts.onOpen(slug, v(e.clientX, e.clientY));
+    if (outcome === "open") opts.onOpen(slug, v(e.clientX, e.clientY));
+    if (outcome === "caged") { const c = opts.cage.getBoundingClientRect(); opts.onOpen(slug, v(c.left + c.width / 2, c.top + c.height / 2)); } // the letter opens from the cage; the bird waits there, and flies off when the letter closes
     if (e.pointerType !== "mouse") pausedSlugs.delete(slug);
   };
   field.addEventListener("pointerup", endPress);
