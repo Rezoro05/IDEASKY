@@ -1,6 +1,6 @@
 /** The hero sky: renders the pure flight simulation, and turns pointer and keyboard input into held/paused planes. */
 import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
-import { wingEffort, wingLook } from "../lib/bird";
+import { landingFlare, wingEffort, wingLook } from "../lib/bird";
 import { blendedPose, nextEffort, type LookChange } from "../lib/bird-pose";
 import { birdOrientation, birdTransform } from "../lib/bird-orientation";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
@@ -166,7 +166,9 @@ export function startSky(opts: {
       else if (!look && was) changes.delete(p.slug);
       const change = changes.get(p.slug);
       if (change) efforts.set(p.slug, nextEffort(efforts.get(p.slug) ?? 1, wingEffort(p, birdCruise), dt)); // glides down, works to climb
-      const pose = change ? blendedPose(change, world.time, p.slug, efforts.get(p.slug)) : null;
+      const flare = landingFlare(p);
+      el.classList.toggle("landing", flare > 0.5); // legs down for the last of the approach
+      const pose = change ? blendedPose(change, world.time, p.slug, efforts.get(p.slug), flare) : null;
       if (pose) setWings(el, pose.wing);
       let o = facing.get(p.slug);
       if (o && look) o = birdOrientation(o, look === "perch" || look === "held"); // a bird tilts only part of the way, and sits upright

@@ -39,6 +39,8 @@ export const BIRD = {
   glideGain: 80,
   /** The fastest a dive takes it, in cruise speeds. */
   maxGlideScale: 1.8,
+  /** How far from its perch a landing bird starts to flare (px). */
+  flareRadius: 70,
 } as const;
 
 export type BirdContext = {
@@ -121,6 +123,13 @@ function glided(velocity: Vec, cruise: number, dt: number): Vec {
   if (sink > 0) next = Math.min(next, Math.max(speed, cruise * BIRD.maxGlideScale));
   next = Math.max(next, Math.min(speed, cruise * 0.3)); // climbing never stalls it below this, and a slow bird is not sped up
   return scale(velocity, next / speed);
+}
+
+/** How far into its landing flare a bird is: 0 until it is within BIRD.flareRadius of its perch, 1 on arrival. Only on the way to a perch. */
+export function landingFlare(plane: Plane): number {
+  if (plane.bird?.mode !== "approaching") return 0;
+  const distance = len(sub(plane.bird.target, plane.position));
+  return Math.max(0, Math.min(1, 1 - distance / BIRD.flareRadius));
 }
 
 /** How hard a bird has to work its wings, 0 (none: gliding down) to 1 (all out): a little to hold level, a lot to climb or when slow,

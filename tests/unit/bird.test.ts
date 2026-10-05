@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BIRD, flyBird, grabbed, isScaredBy, perchSpotOf, perchSpots, wingEffort, wingLook, type BirdContext } from "../../src/lib/bird";
+import { BIRD, flyBird, grabbed, isScaredBy, perchSpotOf, perchSpots, landingFlare, wingEffort, wingLook, type BirdContext } from "../../src/lib/bird";
 import type { BirdState, Plane, PointerInfo } from "../../src/lib/plane";
 import { createWorld, setStage, step, type World, type StepInput } from "../../src/lib/sim";
 import { FORM_FLIGHT, configFor } from "../../src/lib/flight-forms";
@@ -319,4 +319,18 @@ describe("how hard a bird has to work its wings", () => {
   it("needs more when it is slow, even going level", () => expect(free(down(0, cruise * 0.4))).toBeGreaterThan(0.6));
   it("works hard taking off, whatever the direction", () => expect(free(down(40), { mode: "takingOff", until: 1e9, n: 1 })).toBeGreaterThanOrEqual(0.9));
   it("stays between 0 and 1", () => { for (const deg of [-90, -45, 0, 45, 90, 180]) for (const k of [0, 0.3, 1, 3]) { const e = free(down(deg, cruise * k)); expect(e).toBeGreaterThanOrEqual(0); expect(e).toBeLessThanOrEqual(1); } });
+});
+
+describe("the landing flare", () => {
+  const approaching = (distance: number): Plane => bird({ mode: "approaching", target: v(600, 300), n: 1 }, v(600 - distance, 300), v(30, 0));
+  it("is nothing far from the perch, everything at it, and grows steadily on the way in", () => {
+    expect(landingFlare(approaching(BIRD.flareRadius + 50))).toBe(0);
+    expect(landingFlare(approaching(0))).toBe(1);
+    let last = -1;
+    for (let d = BIRD.flareRadius; d >= 0; d -= 5) { const f = landingFlare(approaching(d)); expect(f).toBeGreaterThanOrEqual(last); last = f; }
+  });
+  it("only happens on the way to a perch", () => {
+    expect(landingFlare(bird({ mode: "gliding", until: 1e9, n: 1 }))).toBe(0);
+    expect(landingFlare(bird({ mode: "perched", until: 1e9, alarm: 0, n: 1 }))).toBe(0);
+  });
 });

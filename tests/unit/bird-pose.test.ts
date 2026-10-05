@@ -75,6 +75,24 @@ describe("wings that work only as hard as they need to", () => {
   });
 });
 
+describe("flaring to land", () => {
+  it("noses up, brakes and back-pedals with high beats that never reach full down", () => {
+    for (let t = 0; t < 2; t += 0.005) {
+      const p = birdPose("flap", t, "abc", 1, 1);
+      expect(p.pitch).toBeGreaterThan(0.9);
+      expect(p.surge).toBeLessThan(0);
+      expect(p.wing).toBeGreaterThan(0.05);
+    }
+  });
+  it("changes nothing with no flare, and changes smoothly as the flare grows", () => {
+    expect(birdPose("flap", 1.1, "abc", 1, 0)).toEqual(birdPose("flap", 1.1, "abc", 1));
+    for (let f = 0; f < 1; f += 0.01) {
+      const a = birdPose("flap", 0.7, "abc", 1, f), b = birdPose("flap", 0.7, "abc", 1, f + 0.01);
+      for (const k of ["wing", "pitch", "surge", "lift"] as const) expect(Math.abs(a[k] - b[k])).toBeLessThan(0.05);
+    }
+  });
+});
+
 describe("effort changes gradually", () => {
   it("moves toward what is needed without overshooting or jumping, and gets there within a couple of time constants", () => {
     let e = 0; const dt = 1 / 60;

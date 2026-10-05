@@ -163,7 +163,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .plane .bw-far .pf { fill: color-mix(in srgb, var(--sky-plane) 72%, var(--sky-plane-edge)); }
 .plane .pf-beak { fill: #E0A030; stroke: var(--sky-plane-edge); stroke-width: .8; stroke-linejoin: round; }
 .plane .bird-legs { fill: none; stroke: var(--sky-plane-edge); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity .2s; }
-.plane[data-state="perch"] .bird-legs { opacity: 1; }
+.plane[data-state="perch"] .bird-legs, .plane.landing .bird-legs { opacity: 1; }
 .plane:focus-visible .body { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 50%; }
 .plane.held .body { cursor: grabbing; }
 .plane.held[data-stage="live"] .body { animation: tug .09s linear infinite alternate; } /* a bird in the hand struggles hard (the translate property composes with the facing transform set inline) */
