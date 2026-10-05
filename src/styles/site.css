@@ -141,6 +141,11 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   font: 500 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--graphite); transition: color .2s; }
 .plane:hover .tag, .plane:focus-visible .tag, .plane.held .tag { color: var(--accent); }
 .plane:hover .pf, .plane:focus-visible .pf, .plane.held .pf { fill: var(--accent); stroke: var(--paper); }
+/* A bird's wings (the drawing faces right, so the wings spread up and down): still while gliding, beating while it flies to a perch or takes off, folded when it sits */
+.plane[data-state] .body svg { transform-origin: 50% 50%; transition: transform .25s ease; }
+.plane[data-state="flap"] .body svg { animation: wingbeat .3s ease-in-out infinite alternate; }
+.plane[data-state="perch"] .body svg { transform: scale(.9, .42); }
+@keyframes wingbeat { from { transform: scaleY(1); } to { transform: scaleY(.45); } }
 .plane:focus-visible .body { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 50%; }
 .plane.held .body { cursor: grabbing; }
 /* A plane just posted from this browser pulses a ring for a few seconds */
@@ -407,7 +412,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   .cloud.c1 { transform: translateX(62vw); } .cloud.c2 { transform: translateX(18vw); } .cloud.c3 { transform: translateX(84vw); } .cloud.c4 { display: none; }
   .btn-idea, .btn-idea::after, .act svg, .stage-bar .fill, .stage-bar .knob { transition: none; }
   .btn-idea:hover { transform: none; }
-  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .plane.fresh .body::after { animation: none; }
+  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane[data-state="flap"] .body svg { animation: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .letter, .toast, .plane .tag { -webkit-backdrop-filter: none; backdrop-filter: none; }

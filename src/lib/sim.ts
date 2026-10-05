@@ -5,12 +5,15 @@ import type { FlightConfig } from "./motion";
 import type { Stage } from "./stages";
 import { FORM_FLIGHT, configFor } from "./flight-forms";
 import { bank } from "./banking";
+import { flyBird, grabbed, perchSpots } from "./bird";
+import type { Plane, PointerInfo } from "./plane";
 
-export type Plane = { readonly slug: string; readonly stage: Stage; readonly position: Vec; readonly velocity: Vec };
+export type { Plane, PointerInfo };
 export type World = { readonly planes: readonly Plane[]; readonly visitSeed: number; readonly time: number };
 export type Bounds = { readonly width: number; readonly height: number };
 export type Held = { readonly slug: string; readonly pointer: Vec };
-export type StepInput = { dt: number; bounds: Bounds; held: Held | null; pausedSlugs: ReadonlySet<string> };
+/** `pointer` is the mouse over the sky (birds flee it); leave it out or null on touch screens, which have no hover. */
+export type StepInput = { dt: number; bounds: Bounds; held: Held | null; pausedSlugs: ReadonlySet<string>; pointer?: PointerInfo | null };
 export type PlaneMode = "free" | "held" | "paused";
 
 /** Longest step the sim takes in one go, so a slow frame can't tunnel planes through walls. */
@@ -84,27 +87,35 @@ export function containWithin(plane: Plane, bounds: Bounds): Plane {
 
 export function step(world: World, input: StepInput, config: FlightConfig): World {
   const dt = Math.min(input.dt, MAX_DT);
-  const planes = world.planes.map((plane) => {
+  const next: Plane[] = []; // planes are stepped in order, so a bird choosing a perch sees the choices made before it this frame
+  world.planes.forEach((plane, i) => {
     const mode = modeOf(plane.slug, input);
     if (mode === "held" && input.held) {
       const moved = scale(sub(input.held.pointer, plane.position), 1 / Math.max(dt, 1e-3));
-      return { ...plane, position: input.held.pointer, velocity: add(scale(plane.velocity, 0.6), scale(moved, 0.4)) };
+      const carried = { ...plane, position: input.held.pointer, velocity: add(scale(plane.velocity, 0.6), scale(moved, 0.4)) };
+      next.push(FORM_FLIGHT[plane.stage].kind === "bird" ? grabbed(carried, world.time, world.visitSeed) : carried);
+      return;
     }
-    if (mode === "paused") return plane;
+    if (mode === "paused") { next.push(plane); return; }
     const flight = FORM_FLIGHT[plane.stage], own = configFor(config, flight); // each form flies by its own settings
     const others = world.planes.filter((o) => o.slug !== plane.slug);
     const steer = add(add(wanderSteer(plane, world, own), separationSteer(plane, others, own)), boundsSteer(plane, input.bounds, own));
+    if (flight.kind === "bird") {
+      const taken = perchSpots([...next, ...world.planes.slice(i + 1)], plane.slug);
+      next.push(containWithin(flyBird(plane, { dt, time: world.time, visitSeed: world.visitSeed, bounds: input.bounds, config: own, steer, pointer: input.pointer ?? null, taken }), input.bounds));
+      return;
+    }
     let velocity: Vec;
-    if (flight.maxTurnRate === null) {
+    if (flight.kind === "drift") {
       velocity = add(plane.velocity, scale(steer, dt));
       if (len(velocity) > own.cruise * 1.5) velocity = scale(velocity, Math.exp(-own.throwDamping * dt));
     } else {
-      velocity = bank(plane.velocity, steer, { cruise: own.cruise, settle: own.wanderStrength, maxTurnRate: flight.maxTurnRate }, dt);
+      velocity = bank(plane.velocity, steer, { cruise: own.cruise, settle: own.wanderStrength, maxTurnRate: flight.maxTurnRate ?? Infinity }, dt);
     }
     velocity = clampLen(velocity, own.maxSpeed);
-    return containWithin({ ...plane, position: add(plane.position, scale(velocity, dt)), velocity }, input.bounds);
+    next.push(containWithin({ ...plane, position: add(plane.position, scale(velocity, dt)), velocity }, input.bounds));
   });
-  return { ...world, planes, time: world.time + dt };
+  return { ...world, planes: next, time: world.time + dt };
 }
 
 export function addPlane(world: World, plane: Plane): World {
@@ -113,7 +124,8 @@ export function addPlane(world: World, plane: Plane): World {
 
 /** The idea moved stage: it flies by its new form's settings from here, from the same place at the same velocity. */
 export function setStage(world: World, slug: string, stage: Stage): World {
-  return { ...world, planes: world.planes.map((p) => (p.slug === slug ? { ...p, stage } : p)) };
+  const reformed = (p: Plane): Plane => { const { bird: _state, ...rest } = p; return { ...rest, stage }; }; // a new form starts with no bird state; a bird sets its own
+  return { ...world, planes: world.planes.map((p) => (p.slug !== slug || p.stage === stage ? p : reformed(p))) };
 }
 
 export function removePlane(world: World, slug: string): World {

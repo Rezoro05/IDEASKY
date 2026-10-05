@@ -52,3 +52,19 @@ test("planes face the way they fly: heading left they are mirrored, heading righ
   expect(seen.left, "samples of planes steadily heading left").toBeGreaterThanOrEqual(3);
   expect(seen.right, "samples of planes steadily heading right").toBeGreaterThanOrEqual(3);
 });
+
+test("a live idea flies as a bird with a wing look; an idea in the first stage stays a paper plane", async ({ page }) => {
+  const rows = [
+    { id: "aaaaaa1", name: "A", message: "A live idea", stage: "live", created_at: "2026-09-30T10:00:00Z" },
+    { id: "bbbbbb2", name: "B", message: "A fresh idea", stage: "idea", created_at: "2026-09-30T11:00:00Z" },
+  ];
+  await fakeServices(page, { rows, posts: [], deletes: [], mails: 0 });
+  await page.goto("/");
+  await expect(page.locator(".plane")).toHaveCount(2);
+  const bird = page.locator('.plane[data-stage="live"]');
+  const paper = page.locator('.plane[data-stage="idea"]');
+  await expect(bird).toHaveCount(1);
+  await expect(bird).toHaveAttribute("data-state", /^(glide|flap|perch)$/);
+  await expect(paper).toHaveCount(1);
+  expect(await paper.getAttribute("data-state")).toBeNull();
+});

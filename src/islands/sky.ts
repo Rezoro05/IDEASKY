@@ -1,5 +1,6 @@
 /** The hero sky: renders the pure flight simulation, and turns pointer and keyboard input into held/paused planes. */
-import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type World } from "../lib/sim";
+import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
+import { wingLook } from "../lib/bird";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
 import type { FlightConfig } from "../lib/motion";
 import { formFor } from "../lib/forms";
@@ -22,6 +23,8 @@ export type Sky = {
   remove(slug: string): void;
 };
 
+/** A mouse that hasn't moved for this long is counted as still (its last speed no longer scares birds). */
+const MOUSE_STILL_MS = 120;
 /** Planes keep their last heading when they slow below this speed, so they don't spin in place. */
 const MIN_SPEED_FOR_HEADING = 6;
 const FRESH_GLOW_MS = 7000;
@@ -39,6 +42,7 @@ export function startSky(opts: {
   let world: World = createWorld([], opts.visitSeed, bounds(), config);
   const els = new Map<string, HTMLAnchorElement>(), facing = new Map<string, Orientation>();
   const pausedSlugs = new Set<string>(); // keyboard focus only; hover just recolors
+  let mouse: (PointerInfo & { at: number }) | null = null; // the mouse over the sky: birds flee it; touch has no hover, so it never sets this
   let held: Held | null = null, press: (PointerMark & { slug: string }) | null = null, suppressClick = false;
 
   function makePlane(slug: string, spec: PlaneSpec): HTMLAnchorElement {
@@ -59,6 +63,13 @@ export function startSky(opts: {
   }
 
   const local = (e: PointerEvent): Vec => { const r = field.getBoundingClientRect(); return v(e.clientX - r.left, e.clientY - r.top); };
+  field.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const at = performance.now(), position = local(e);
+    const speed = mouse ? Math.hypot(position.x - mouse.position.x, position.y - mouse.position.y) / Math.max(8, at - mouse.at) * 1000 : 0;
+    mouse = { position, speed: mouse ? speed * 0.6 + mouse.speed * 0.4 : 0, at }; // smoothed, since pointer events come unevenly
+  });
+  field.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") mouse = null; });
   field.addEventListener("pointerdown", (e) => {
     const a = (e.target as Element).closest<HTMLElement>(".plane");
     if (!a) return;
@@ -100,12 +111,16 @@ export function startSky(opts: {
     const dt = (now - last) / 1000;
     last = now;
     if (opts.covered?.()) { requestAnimationFrame(frame); return; }
-    world = step(world, { dt, bounds: bounds(), held, pausedSlugs }, config);
+    const pointer: PointerInfo | null = mouse ? { position: mouse.position, speed: now - mouse.at < MOUSE_STILL_MS ? mouse.speed : 0 } : null;
+    world = step(world, { dt, bounds: bounds(), held, pausedSlugs, pointer }, config);
     for (const p of world.planes) {
       const el = els.get(p.slug);
       if (!el) continue;
       if (len(p.velocity) > MIN_SPEED_FOR_HEADING) facing.set(p.slug, orientationFor(headingDeg(p.velocity), facing.get(p.slug)?.mirrored ?? false));
       el.style.transform = `translate3d(${p.position.x}px, ${p.position.y}px, 0)`;
+      const look = wingLook(p); // a bird's wings: still, beating or folded (CSS reads this)
+      if (look && el.dataset.state !== look) el.dataset.state = look;
+      else if (!look && el.dataset.state) delete el.dataset.state;
       const o = facing.get(p.slug);
       if (o) (el.firstElementChild as HTMLElement).style.transform = orientationTransform(o);
     }
