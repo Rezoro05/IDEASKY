@@ -1,7 +1,7 @@
 /** The hero sky: renders the pure flight simulation, and turns pointer and keyboard input into held/paused planes. */
 import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
-import { wingLook } from "../lib/bird";
-import { blendedPose, type LookChange } from "../lib/bird-pose";
+import { wingEffort, wingLook } from "../lib/bird";
+import { blendedPose, nextEffort, type LookChange } from "../lib/bird-pose";
 import { birdOrientation, birdTransform } from "../lib/bird-orientation";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
 import { isOverCage, type Rect } from "../lib/cage";
@@ -11,7 +11,7 @@ import { formFor } from "../lib/forms";
 import type { Stage } from "../lib/stages";
 import { headingDeg, len, v, type Vec } from "../lib/vec";
 import { orientationFor, orientationTransform, type Orientation } from "../lib/orientation";
-import { FORM_FLIGHT } from "../lib/flight-forms";
+import { FORM_FLIGHT, configFor } from "../lib/flight-forms";
 import { TRAIL, extendTrail, tailPoint, trailSegments, type TrailPoint } from "../lib/trail";
 import { createTrailLayer } from "./trail-canvas";
 
@@ -51,6 +51,8 @@ export function startSky(opts: {
   let world: World = createWorld([], opts.visitSeed, bounds(), config);
   const els = new Map<string, HTMLAnchorElement>(), facing = new Map<string, Orientation>();
   const changes = new Map<string, LookChange>(); // per bird: what it is doing and since when, so changes blend in
+  const efforts = new Map<string, number>(); // per bird: how hard its wings are working now (eases toward what it needs)
+  const birdCruise = configFor(config, FORM_FLIGHT.live).cruise;
   const trails = new Map<string, TrailPoint[]>(), trailLayer = createTrailLayer(field); // airplanes leave a faint line
   const pausedSlugs = new Set<string>(); // keyboard focus only; hover just recolors
   let mouse: (PointerInfo & { at: number }) | null = null; // the mouse over the sky: birds flee it; touch has no hover, so it never sets this
@@ -163,7 +165,8 @@ export function startSky(opts: {
       if (look && was?.look !== look) changes.set(p.slug, { look, from: was?.look ?? null, since: world.time }); // blend into the new way of flying
       else if (!look && was) changes.delete(p.slug);
       const change = changes.get(p.slug);
-      const pose = change ? blendedPose(change, world.time, p.slug) : null;
+      if (change) efforts.set(p.slug, nextEffort(efforts.get(p.slug) ?? 1, wingEffort(p, birdCruise), dt)); // glides down, works to climb
+      const pose = change ? blendedPose(change, world.time, p.slug, efforts.get(p.slug)) : null;
       if (pose) setWings(el, pose.wing);
       let o = facing.get(p.slug);
       if (o && look) o = birdOrientation(o, look === "perch" || look === "held"); // a bird tilts only part of the way, and sits upright
@@ -214,6 +217,7 @@ export function startSky(opts: {
       facing.delete(slug);
       trails.delete(slug);
       changes.delete(slug);
+      efforts.delete(slug);
     },
   };
 }

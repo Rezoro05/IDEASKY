@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { birdPose, blendedPose, BLEND_SECONDS, CRUISE, FLAP_HZ, HELD_HZ, FOLDED, type Pose } from "../../src/lib/bird-pose";
+import { birdPose, blendedPose, nextEffort, BLEND_SECONDS, SPREAD, EFFORT_SECONDS, CRUISE, FLAP_HZ, HELD_HZ, FOLDED, type Pose } from "../../src/lib/bird-pose";
 import { birdOrientation, birdTransform, TILT, MOTION } from "../../src/lib/bird-orientation";
 
 type Moving = "glide" | "flap" | "held";
@@ -46,6 +46,41 @@ describe("the wing, moving smoothly", () => {
   });
   it("doesn't start every bird's wings at the same moment", () => {
     expect(new Set(["a", "b", "c", "d", "e", "f"].map((s) => birdPose("flap", 0.05, s).wing.toFixed(2))).size).toBeGreaterThan(2);
+  });
+});
+
+describe("wings that work only as hard as they need to", () => {
+  const range = (xs: number[]) => Math.max(...xs) - Math.min(...xs);
+  const wings = (look: "glide" | "flap", effort: number) => { const out: number[] = []; for (let t = 0; t < 4; t += 0.004) out.push(birdPose(look, t, "abc", effort).wing); return out; };
+  it("holds its wings open and nearly still when it needs no effort (gliding down)", () => {
+    for (const look of ["glide", "flap"] as const) {
+      const w = wings(look, 0);
+      expect(range(w), look).toBeLessThan(0.12);
+      expect(Math.abs(w.reduce((a, b) => a + b, 0) / w.length - SPREAD), look).toBeLessThan(0.05);
+    }
+  });
+  it("beats fully at full effort, exactly as before, and in between at half effort", () => {
+    for (const look of ["glide", "flap"] as const) {
+      expect(birdPose(look, 1.234, "abc", 1)).toEqual(birdPose(look, 1.234, "abc"));
+      const half = range(wings(look, 0.5)), full = range(wings(look, 1)), none = range(wings(look, 0));
+      expect(half).toBeGreaterThan(none); expect(half).toBeLessThan(full);
+    }
+  });
+  it("keeps the body steady while gliding: no lunge, little bob", () => {
+    for (let t = 0; t < 3; t += 0.01) { const p = birdPose("glide", t, "abc", 0); expect(p.surge).toBe(0); expect(Math.abs(p.lift)).toBeLessThan(0.2); }
+  });
+  it("leaves perched and held birds as they are", () => {
+    expect(birdPose("perch", 2, "abc", 0)).toEqual(birdPose("perch", 2, "abc", 1));
+    expect(birdPose("held", 2, "abc", 0)).toEqual(birdPose("held", 2, "abc", 1));
+  });
+});
+
+describe("effort changes gradually", () => {
+  it("moves toward what is needed without overshooting or jumping, and gets there within a couple of time constants", () => {
+    let e = 0; const dt = 1 / 60;
+    for (let t = 0; t < EFFORT_SECONDS * 4; t += dt) { const n = nextEffort(e, 1, dt); expect(n).toBeGreaterThanOrEqual(e); expect(n).toBeLessThanOrEqual(1); expect(n - e).toBeLessThan(0.05); e = n; }
+    expect(e).toBeGreaterThan(0.95);
+    expect(nextEffort(0.8, 0, dt)).toBeLessThan(0.8);
   });
 });
 

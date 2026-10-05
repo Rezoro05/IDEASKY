@@ -35,6 +35,10 @@ export const BIRD = {
   arrive: 3,
   /** A bird let go of bolts at least this fast, in cruise speeds (a harder throw keeps its own speed). */
   panicScale: 5,
+  /** Gliding physics: how much speed a bird gains per second diving straight down (px/s², less on a shallower slope; climbing costs the same). */
+  glideGain: 80,
+  /** The fastest a dive takes it, in cruise speeds. */
+  maxGlideScale: 1.8,
 } as const;
 
 export type BirdContext = {
@@ -108,6 +112,31 @@ function panicked(plane: Plane, state: Extract<BirdState, { mode: "held" }>, ctx
   return { ...plane, velocity: scale(heading, Math.max(speed, ctx.config.cruise * BIRD.panicScale)) };
 }
 
+/** Down is free, up costs: a bird gains speed on a downward slope and loses it climbing (screen y grows downward), up to a dive limit. */
+function glided(velocity: Vec, cruise: number, dt: number): Vec {
+  const speed = len(velocity);
+  if (speed < 1e-6) return velocity;
+  const sink = velocity.y / speed;
+  let next = speed + BIRD.glideGain * sink * dt;
+  if (sink > 0) next = Math.min(next, Math.max(speed, cruise * BIRD.maxGlideScale));
+  next = Math.max(next, Math.min(speed, cruise * 0.3)); // climbing never stalls it below this, and a slow bird is not sped up
+  return scale(velocity, next / speed);
+}
+
+/** How hard a bird has to work its wings, 0 (none: gliding down) to 1 (all out): a little to hold level, a lot to climb or when slow,
+ *  all out taking off. Perched or held, 0 (those poses don't use it). */
+export function wingEffort(plane: Plane, cruise: number): number {
+  const mode = plane.bird?.mode;
+  if (mode !== "gliding" && mode !== "approaching" && mode !== "takingOff") return 0;
+  const speed = len(plane.velocity), clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+  const sink = speed > 1e-6 ? plane.velocity.y / speed : 0;
+  const level = 0.3 * clamp01(1 - Math.max(0, sink) * 4); // holding level takes a little; any real descent takes none
+  const climb = clamp01(-sink * 1.6);
+  const slow = clamp01((cruise - speed) / (0.6 * cruise));
+  const effort = clamp01(level + climb + slow);
+  return mode === "takingOff" ? Math.max(effort, 0.9) : effort;
+}
+
 /** Free flight: the usual steering plus, when scared, a push away from the pointer and a higher top speed. */
 function drift(plane: Plane, scared: boolean, ctx: BirdContext): Vec {
   const { config, dt } = ctx;
@@ -116,7 +145,7 @@ function drift(plane: Plane, scared: boolean, ctx: BirdContext): Vec {
     const fade = 1 - len(sub(plane.position, ctx.pointer.position)) / BIRD.alarmRadius;
     push = scale(awayFrom(plane.position, ctx.pointer), BIRD.fleeAccel * fade);
   }
-  let velocity = add(plane.velocity, scale(add(ctx.steer, push), dt));
+  let velocity = glided(add(plane.velocity, scale(add(ctx.steer, push), dt)), config.cruise, dt);
   if (len(velocity) > config.cruise * 1.5) velocity = scale(velocity, Math.exp(-config.throwDamping * dt));
   if (scared) velocity = clampLen(velocity, config.cruise * BIRD.fleeSpeedScale);
   return clampLen(velocity, config.maxSpeed);

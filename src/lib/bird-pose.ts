@@ -23,7 +23,25 @@ const offsetOf = (slug: string): number => (hashString(slug) % 1000) / 1000; // 
 const stroke = (p: number): number => FOLDED + (1 - FOLDED) * Math.sin(2 * Math.PI * p) * (Math.sin(2 * Math.PI * p) > 0 ? 1 : (1 + FOLDED) / (1 - FOLDED));
 const frac = (x: number): number => x - Math.floor(x);
 
-export function birdPose(look: WingLook, time: number, slug: string): Pose {
+/** A gliding wing: held open (a little above level, as seen from the side). */
+export const SPREAD = 0.3;
+/** How quickly effort follows what the bird needs (seconds to cover about two thirds of a change). */
+export const EFFORT_SECONDS = 0.5;
+
+/** The pose for a way of flying, at an effort from 0 (gliding: wings held open, body steady) to 1 (beating fully, as `activePose`). */
+export function birdPose(look: WingLook, time: number, slug: string, effort = 1): Pose {
+  const active = activePose(look, time, slug);
+  if (look === "perch" || look === "held" || effort >= 1) return active;
+  const off = offsetOf(slug), e = Math.max(0, effort);
+  const soar: Pose = { wing: SPREAD + 0.03 * Math.sin(2 * Math.PI * (0.6 * time + off)), lift: 0.1 * Math.sin(2 * Math.PI * (0.25 * time + off)), pitch: 0, surge: 0, seat: 0 }; // tiny trims, no beats
+  const mix = (a: number, b: number) => a + (b - a) * e;
+  return { wing: mix(soar.wing, active.wing), lift: mix(soar.lift, active.lift), pitch: mix(soar.pitch, active.pitch), surge: mix(soar.surge, active.surge), seat: 0 };
+}
+
+/** Effort eases toward what the bird needs, so the wings never switch from gliding to beating at once. */
+export const nextEffort = (current: number, needed: number, dt: number): number => needed + (current - needed) * Math.exp(-dt / EFFORT_SECONDS);
+
+function activePose(look: WingLook, time: number, slug: string): Pose {
   const off = offsetOf(slug);
   switch (look) {
     case "perch": return { wing: FOLDED, lift: 0, pitch: 0, surge: 0, seat: 1 };
@@ -49,11 +67,11 @@ export type LookChange = { readonly look: WingLook; readonly from: WingLook | nu
 
 const ease = (k: number): number => k * k * (3 - 2 * k);
 /** The pose, eased from the old way of flying into the new one over BLEND_SECONDS, so a bird never snaps from one pose to another. */
-export function blendedPose(change: LookChange, time: number, slug: string): Pose {
-  const now = birdPose(change.look, time, slug);
+export function blendedPose(change: LookChange, time: number, slug: string, effort = 1): Pose {
+  const now = birdPose(change.look, time, slug, effort);
   const k = (time - change.since) / BLEND_SECONDS;
   if (!change.from || k >= 1) return now;
-  const was = birdPose(change.from, time, slug), e = ease(Math.max(0, k));
+  const was = birdPose(change.from, time, slug, effort), e = ease(Math.max(0, k));
   const mix = (a: number, b: number) => a + (b - a) * e;
   return { wing: mix(was.wing, now.wing), lift: mix(was.lift, now.lift), pitch: mix(was.pitch, now.pitch), surge: mix(was.surge, now.surge), seat: mix(was.seat, now.seat) };
 }

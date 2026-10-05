@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BIRD, flyBird, grabbed, isScaredBy, perchSpotOf, perchSpots, wingLook, type BirdContext } from "../../src/lib/bird";
+import { BIRD, flyBird, grabbed, isScaredBy, perchSpotOf, perchSpots, wingEffort, wingLook, type BirdContext } from "../../src/lib/bird";
 import type { BirdState, Plane, PointerInfo } from "../../src/lib/plane";
 import { createWorld, setStage, step, type World, type StepInput } from "../../src/lib/sim";
 import { FORM_FLIGHT, configFor } from "../../src/lib/flight-forms";
@@ -293,4 +293,30 @@ describe("how hard a bird is to catch", () => {
   const caughtOf = (speed: number): number => Array.from({ length: 20 }, (_, i) => chased(speed, i + 1)).filter(Boolean).length;
   it("is almost never caught by a mouse creeping up on it", () => expect(caughtOf(60)).toBeLessThanOrEqual(3));
   it("is still caught by a quick mouse", () => expect(caughtOf(400)).toBe(20));
+});
+
+describe("gliding physics: down is free, up costs effort", () => {
+  const cruise = config.cruise, gliding: BirdState = { mode: "gliding", until: 1e9, n: 1 };
+  const speedAfter = (velocity: Vec, seconds = 1) => len(fly(bird(gliding, v(600, 300), velocity), () => ({}), () => false, seconds).plane.velocity);
+  it("gains speed gliding down and loses it climbing, with no wingbeats to help", () => {
+    const start = cruise * 1.1, d = start / Math.SQRT2;
+    expect(speedAfter(v(d, d))).toBeGreaterThan(start * 1.05);
+    expect(speedAfter(v(d, -d))).toBeLessThan(start * 0.95);
+  });
+  it("never glides faster than its limit, however long the dive", () => {
+    expect(speedAfter(v(0, cruise), 20)).toBeLessThanOrEqual(cruise * BIRD.maxGlideScale + 1);
+  });
+});
+
+describe("how hard a bird has to work its wings", () => {
+  const cruise = config.cruise, free = (velocity: Vec, mode: BirdState = { mode: "gliding", until: 1e9, n: 1 }) => wingEffort(bird(mode, v(600, 300), velocity), cruise);
+  const down = (deg: number, speed = cruise) => v(Math.cos((deg * Math.PI) / 180) * speed, Math.sin((deg * Math.PI) / 180) * speed); // screen y grows downward
+  it("needs none gliding down", () => { expect(free(down(20))).toBeCloseTo(0, 9); expect(free(down(60))).toBeCloseTo(0, 9); });
+  it("needs a little to hold level, a lot to climb", () => {
+    expect(free(down(0))).toBeGreaterThan(0.1); expect(free(down(0))).toBeLessThan(0.45);
+    expect(free(down(-35))).toBeGreaterThan(0.8);
+  });
+  it("needs more when it is slow, even going level", () => expect(free(down(0, cruise * 0.4))).toBeGreaterThan(0.6));
+  it("works hard taking off, whatever the direction", () => expect(free(down(40), { mode: "takingOff", until: 1e9, n: 1 })).toBeGreaterThanOrEqual(0.9));
+  it("stays between 0 and 1", () => { for (const deg of [-90, -45, 0, 45, 90, 180]) for (const k of [0, 0.3, 1, 3]) { const e = free(down(deg, cruise * k)); expect(e).toBeGreaterThanOrEqual(0); expect(e).toBeLessThanOrEqual(1); } });
 });
