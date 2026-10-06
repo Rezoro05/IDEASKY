@@ -94,11 +94,11 @@ describe("the categorize function", () => {
   });
   it("says so when there is no such idea, or the database or Jev can't be reached, and saves nothing", async () => {
     expect(await run({ id: "abcdef1" }, fakes(null))).toEqual({ status: 404, categories: null });
-    expect(await run({ id: "abcdef1" }, fakes("error"))).toEqual({ status: 502, categories: null });
+    expect(await run({ id: "abcdef1" }, fakes("error"))).toEqual({ status: 502, categories: null, failed: "read" });
     const jevDown = fakes({ message: "m", categories: null }, null);
-    expect(await run({ id: "abcdef1" }, jevDown)).toEqual({ status: 502, categories: null });
+    expect(await run({ id: "abcdef1" }, jevDown)).toEqual({ status: 502, categories: null, failed: "jev" });
     expect(jevDown.calls.save).toEqual([]);
-    expect(await run({ id: "abcdef1" }, fakes({ message: "m", categories: null }, { tech: 0.9 }, false))).toEqual({ status: 502, categories: null });
+    expect(await run({ id: "abcdef1" }, fakes({ message: "m", categories: null }, { tech: 0.9 }, false))).toEqual({ status: 502, categories: null, failed: "save" });
   });
   it("reads Jev's noul answers and nothing else", () => {
     expect(noulAnswers({ answers: { tech: { type: "noul", noul: 0.8 }, odd: { type: "choice", choice: "x" }, bad: { noul: "high" } } })).toEqual({ tech: 0.8 });

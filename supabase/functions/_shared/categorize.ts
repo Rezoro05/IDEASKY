@@ -12,7 +12,8 @@ export type CategorizeDeps = {
   /** Saves the categories if the record has none yet. False if the database refused. */
   save(id: string, categories: string[]): Promise<boolean>;
 };
-export type Reply = { status: number; categories: string[] | null };
+/** `failed` names the step that went wrong (for the function's logs and the response), never any secret. */
+export type Reply = { status: number; categories: string[] | null; failed?: "read" | "jev" | "save" };
 
 const RECORD_ID = /^[a-z0-9]{6,20}$/;
 
@@ -20,13 +21,13 @@ export async function categorize(body: unknown, list: readonly Category[], deps:
   const id = body && typeof body === "object" ? (body as { id?: unknown }).id : undefined;
   if (typeof id !== "string" || !RECORD_ID.test(id)) return { status: 400, categories: null };
   const stored = await deps.load(id);
-  if (stored === "error") return { status: 502, categories: null };
+  if (stored === "error") return { status: 502, categories: null, failed: "read" };
   if (stored === null) return { status: 404, categories: null };
   if (Array.isArray(stored.categories)) return { status: 200, categories: stored.categories.filter((k): k is string => typeof k === "string") }; // sorted already: no second Jev call
   const answers = await deps.ask(stored.message, categoryQuestions(list));
-  if (!answers) return { status: 502, categories: null };
+  if (!answers) return { status: 502, categories: null, failed: "jev" };
   const categories = pickCategories(list, answers);
-  if (!(await deps.save(id, categories))) return { status: 502, categories: null };
+  if (!(await deps.save(id, categories))) return { status: 502, categories: null, failed: "save" };
   return { status: 200, categories };
 }
 

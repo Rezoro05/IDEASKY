@@ -11,5 +11,8 @@ alter table public.ideas add constraint ideas_categories_known check (
   )
 );
 grant select (categories) on public.ideas to anon;
+-- The categorize function runs as service_role; newer projects don't grant it new tables, so it gets exactly what it needs.
+grant select on public.ideas to service_role;
+grant update (categories) on public.ideas to service_role;
 
 notify pgrst, 'reload schema';
