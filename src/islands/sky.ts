@@ -1,18 +1,16 @@
 /** The hero sky: renders the pure flight simulation, and turns pointer and keyboard input into held/paused planes. */
 import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
-import { landingFlare, wingEffort, wingLook } from "../lib/bird";
-import { blendedPose, nextEffort, type LookChange } from "../lib/bird-pose";
-import { birdOrientation, birdTransform } from "../lib/bird-orientation";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
 import { isOverCage, type Rect } from "../lib/cage";
 import { isCatchable, pressOutcome } from "../lib/catch";
 import type { FlightConfig } from "../lib/motion";
 import { formFor } from "../lib/forms";
 import type { Stage } from "../lib/stages";
-import { headingDeg, len, v, type Vec } from "../lib/vec";
-import { orientationFor, orientationTransform, type Orientation } from "../lib/orientation";
+import { headingDeg, v, type Vec } from "../lib/vec";
+import { orientationFor } from "../lib/orientation";
 import { BIRD_STAGE, FORM_FLIGHT, configFor } from "../lib/flight-forms";
-import { TRAIL, extendTrail, tailPoint, trailSegments, type TrailPoint } from "../lib/trail";
+import { trailSegments } from "../lib/trail";
+import { planeView, type PlaneMemory } from "../lib/plane-view";
 import { createTrailLayer } from "./trail-canvas";
 
 export type PlaneSpec = { tag: string; label: string; stage: Stage; from?: Vec; velocity?: Vec; fresh?: boolean };
@@ -32,9 +30,9 @@ export type Sky = {
 
 /** A mouse that hasn't moved for this long is counted as still (its last speed no longer scares birds). */
 const MOUSE_STILL_MS = 120;
-/** Planes keep their last heading when they slow below this speed, so they don't spin in place. */
-const MIN_SPEED_FOR_HEADING = 6;
 const FRESH_GLOW_MS = 7000;
+
+const wingGroupsOf = (plane: HTMLElement): SVGGElement[] => [...plane.querySelectorAll<SVGGElement>(".bw")];
 
 export function startSky(opts: {
   field: HTMLElement;
@@ -47,13 +45,16 @@ export function startSky(opts: {
   covered?: () => boolean;
 }): Sky {
   const { field, config } = opts;
-  const bounds = (): Bounds => ({ width: field.clientWidth, height: field.clientHeight });
+  /** The field's size, measured once and again only when it changes: reading it every frame would force a layout each frame. */
+  let size: Bounds = { width: field.clientWidth, height: field.clientHeight };
+  new ResizeObserver(() => { size = { width: field.clientWidth, height: field.clientHeight }; }).observe(field);
+  const bounds = (): Bounds => size;
   let world: World = createWorld([], opts.visitSeed, bounds(), config);
-  const els = new Map<string, HTMLAnchorElement>(), facing = new Map<string, Orientation>();
-  const changes = new Map<string, LookChange>(); // per bird: what it is doing and since when, so changes blend in
-  const efforts = new Map<string, number>(); // per bird: how hard its wings are working now (eases toward what it needs)
+  const els = new Map<string, HTMLAnchorElement>();
+  const wings = new Map<string, SVGGElement[]>(); // per bird: its wing groups, found once per drawing
+  const memory = new Map<string, PlaneMemory>(); // per plane: what its look carries from frame to frame (lib/plane-view)
   const birdCruise = configFor(config, FORM_FLIGHT[BIRD_STAGE]).cruise;
-  const trails = new Map<string, TrailPoint[]>(), trailLayer = createTrailLayer(field); // airplanes leave a faint line
+  const trailLayer = createTrailLayer(field); // airplanes leave a faint line
   const pausedSlugs = new Set<string>(); // keyboard focus only; hover just recolors
   let mouse: (PointerInfo & { at: number }) | null = null; // the mouse over the sky: birds flee it; touch has no hover, so it never sets this
   let held: Held | null = null, press: (PointerMark & { slug: string }) | null = null, suppressClick = false;
@@ -68,6 +69,7 @@ export function startSky(opts: {
     a.innerHTML = `<span class="body">${formFor(spec.stage)}</span><span class="tag"></span>`;
     a.dataset.stage = spec.stage;
     a.querySelector(".tag")!.textContent = spec.tag;
+    wings.set(slug, wingGroupsOf(a));
     a.addEventListener("focus", () => pausedSlugs.add(slug));
     a.addEventListener("blur", () => pausedSlugs.delete(slug));
     field.appendChild(a);
@@ -137,11 +139,11 @@ export function startSky(opts: {
   });
 
   /** The wings hinge on the back: 1 fully up, -1 fully down (the far wing a little less, as seen from the side). */
-  function setWings(el: HTMLElement, wing: number): void {
-    el.querySelectorAll<SVGGElement>(".bw").forEach((g) => {
+  function setWings(groups: readonly SVGGElement[], wing: number): void {
+    for (const g of groups) {
       const k = g.classList.contains("bw-far") ? 0.8 * wing : wing;
       g.setAttribute("transform", `matrix(1 0 0 ${k.toFixed(3)} 0 0)`);
-    });
+    }
   }
 
   let last = performance.now();
@@ -151,30 +153,20 @@ export function startSky(opts: {
     if (opts.covered?.()) { requestAnimationFrame(frame); return; }
     const pointer: PointerInfo | null = mouse ? { position: mouse.position, speed: now - mouse.at < MOUSE_STILL_MS ? mouse.speed : 0 } : null;
     world = step(world, { dt, bounds: bounds(), held, pausedSlugs, pointer }, config);
+    const ctx = { time: world.time, dt, size: config.planeSize, birdCruise, trailSeconds: config.trailSeconds };
     for (const p of world.planes) {
       const el = els.get(p.slug);
       if (!el) continue;
-      if (len(p.velocity) > MIN_SPEED_FOR_HEADING) facing.set(p.slug, orientationFor(headingDeg(p.velocity), facing.get(p.slug)?.mirrored ?? false));
-      el.style.transform = `translate3d(${p.position.x}px, ${p.position.y}px, 0)`;
-      if (FORM_FLIGHT[p.stage].trails) trails.set(p.slug, extendTrail(trails.get(p.slug) ?? [], tailPoint(p.position, p.velocity, config.planeSize * TRAIL.tailOffset), world.time, config.trailSeconds));
-      else trails.delete(p.slug);
-      const look = wingLook(p); // what a bird is doing with its wings
-      if (look && el.dataset.state !== look) el.dataset.state = look;
-      else if (!look && el.dataset.state) delete el.dataset.state;
-      const was = changes.get(p.slug);
-      if (look && was?.look !== look) changes.set(p.slug, { look, from: was?.look ?? null, since: world.time }); // blend into the new way of flying
-      else if (!look && was) changes.delete(p.slug);
-      const change = changes.get(p.slug);
-      if (change) efforts.set(p.slug, nextEffort(efforts.get(p.slug) ?? 1, wingEffort(p, birdCruise), dt)); // glides down, works to climb
-      const flare = landingFlare(p);
-      el.classList.toggle("landing", flare > 0.5); // legs down for the last of the approach
-      const pose = change ? blendedPose(change, world.time, p.slug, efforts.get(p.slug), flare) : null;
-      if (pose) setWings(el, pose.wing);
-      let o = facing.get(p.slug);
-      if (o && look) o = birdOrientation(o, look === "perch" || look === "held"); // a bird tilts only part of the way, and sits upright
-      if (o) (el.firstElementChild as HTMLElement).style.transform = pose ? birdTransform(o, pose, config.planeSize) : orientationTransform(o);
+      const view = planeView(p, memory.get(p.slug) ?? {}, ctx);
+      memory.set(p.slug, view.memory);
+      el.style.transform = view.place;
+      if (view.look && el.dataset.state !== view.look) el.dataset.state = view.look;
+      else if (!view.look && el.dataset.state) delete el.dataset.state;
+      el.classList.toggle("landing", view.legsDown);
+      if (view.wing !== null) setWings(wings.get(p.slug) ?? [], view.wing);
+      if (view.body) (el.firstElementChild as HTMLElement).style.transform = view.body;
     }
-    trailLayer.draw([...trails.values()].flatMap((t) => trailSegments(t, world.time, config.trailSeconds)));
+    trailLayer.draw([...memory.values()].flatMap((m) => (m.trail ? trailSegments(m.trail, world.time, config.trailSeconds) : [])), size);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -193,7 +185,7 @@ export function startSky(opts: {
     add(slug, spec) {
       const a = makePlane(slug, spec);
       const velocity = spec.velocity ?? v(0, 0);
-      facing.set(slug, orientationFor(headingDeg(velocity), false));
+      memory.set(slug, { facing: orientationFor(headingDeg(velocity), false) });
       world = addPlane(world, { slug, stage: spec.stage, position: spec.from ?? v(0, 0), velocity });
       if (spec.fresh) setTimeout(() => a.classList.remove("fresh"), FRESH_GLOW_MS);
     },
@@ -209,6 +201,7 @@ export function startSky(opts: {
       if (!a || a.dataset.stage === stage) return;
       a.dataset.stage = stage;
       a.querySelector(".body")!.innerHTML = formFor(stage);
+      wings.set(slug, wingGroupsOf(a));
       world = setStage(world, slug, stage);
     },
     remove(slug) {
@@ -216,10 +209,8 @@ export function startSky(opts: {
       pausedSlugs.delete(slug);
       els.get(slug)?.remove();
       els.delete(slug);
-      facing.delete(slug);
-      trails.delete(slug);
-      changes.delete(slug);
-      efforts.delete(slug);
+      memory.delete(slug);
+      wings.delete(slug);
     },
   };
 }

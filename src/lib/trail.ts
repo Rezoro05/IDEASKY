@@ -46,3 +46,18 @@ export function trailSegments(trail: readonly TrailPoint[], now: number, seconds
   return out;
 }
 
+/** A box in CSS px: what a frame of trails covers, so the next frame wipes only that. */
+export type TrailBox = { x: number; y: number; w: number; h: number };
+
+/** The box around a set of segments, padded for line width and antialiasing. */
+export function trailBox(segments: readonly TrailSegment[]): TrailBox | null {
+  if (segments.length === 0) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, pad = 0;
+  for (const s of segments) {
+    x0 = Math.min(x0, s.from.x, s.to.x); y0 = Math.min(y0, s.from.y, s.to.y);
+    x1 = Math.max(x1, s.from.x, s.to.x); y1 = Math.max(y1, s.from.y, s.to.y);
+    pad = Math.max(pad, s.width);
+  }
+  pad += 2;
+  return { x: Math.floor(x0 - pad), y: Math.floor(y0 - pad), w: Math.ceil(x1 - x0 + 2 * pad) + 1, h: Math.ceil(y1 - y0 + 2 * pad) + 1 };
+}
