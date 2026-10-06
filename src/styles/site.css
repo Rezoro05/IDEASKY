@@ -346,6 +346,12 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .letter-links a:hover, .letter-links a:focus-visible { outline: none; text-decoration: underline; }
 .letter-links .site { font: 400 11px/1.3 var(--font-mono); color: color-mix(in srgb, var(--plane-edge) 50%, var(--plane)); }
 
+/* Category tags (set by Jev) under the name and date */
+.letter-cats { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.letter-cats[hidden] { display: none; }
+.letter-cats li { padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--tone-cobalt) 9%, var(--plane));
+  font: 500 11px/1.3 var(--font-mono); letter-spacing: .04em; color: var(--tone-cobalt); }
+
 /* Stage track 0 → – → 1 */
 .stage-track { --pos: 0; --knob: 10px; display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; min-width: 0;
   font: 500 11px/1.2 var(--font-mono); letter-spacing: .04em; color: color-mix(in srgb, var(--plane-edge) 45%, var(--plane)); }

@@ -28,6 +28,7 @@ import { byId, prefersReducedMotion, randomBytes } from "./dom";
 import { hideLoaderWhenReady } from "./loader";
 import { startDictation } from "./dictation";
 import { browserSpeech } from "../boundaries/speech";
+import { noCategorizer, supabaseCategorizer } from "../boundaries/categorizer";
 
 function safeStorage(): Storage | null { try { return window.localStorage; } catch { return null; } }
 
@@ -98,7 +99,8 @@ export function startSite(): void {
   const ideaStore = stores.then((s) => s.ideas);
   const removal = startRemoval({ store: ideaStore, removed: (idea) => { board.forget(idea.id); letter.dismiss(); }, opened: opened("remove") });
   const share = startShare({ linkTo: (id) => ideaLink(location.href, id), nav: navigator });
-  const board = startBoard({ sky, store: ideaStore, openIdea: (id, origin) => letter.open(id, origin) });
+  const categorizer = PUBLIC_BOARD.url ? supabaseCategorizer({ url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window) }) : noCategorizer;
+  const board = startBoard({ sky, store: ideaStore, openIdea: (id, origin) => letter.open(id, origin), categorizer, changed: (idea) => letter.refresh(idea) });
   const letter = startLetter({
     sky, ideaOf: board.get, nameOf: board.nameOf,
     hooks: {

@@ -3,14 +3,22 @@ import type { Page, Route } from "@playwright/test";
 import { createHash } from "node:crypto";
 
 /** Fake the outside world: the test build points at board.test and inbox.test (see build:test), and both are intercepted here. */
-export type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[] };
+export type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[]; categories?: string[] | null };
 export type CommentRow = Row & { idea_id: string; parent_id?: string | null };
-export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean };
+export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[] };
 export async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [], mails: 0 }) {
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.abort());
   await page.route("https://board.test/**", async (r: Route) => {
     if (board.down) return r.fulfill({ status: 500, body: "down" });
     const url = r.request().url(), method = r.request().method();
+    if (url.endsWith("/functions/v1/categorize")) { // the Edge Function that asks Jev
+      const { id } = r.request().postDataJSON();
+      (board.categorizeCalls ??= []).push(id);
+      if (board.categorizeDown) return r.fulfill({ status: 502, json: { categories: null } });
+      const categories = board.categorize ?? ["tech"], row = board.rows.find((x) => x.id === id);
+      if (row) row.categories ??= categories;
+      return r.fulfill({ json: { categories: row?.categories ?? categories } });
+    }
     if (url.includes("/rest/v1/comment_likes") || url.includes("unlike_comment")) {
       board.commentLikes ??= [];
       if (method === "GET") { const ids = new URL(url).searchParams.get("comment_id")!.replace(/^in\.\(|\)$/g, "").split(","); return r.fulfill({ json: board.commentLikes.filter((l) => ids.includes(l.comment_id)).map((l) => ({ comment_id: l.comment_id })) }); }

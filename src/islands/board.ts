@@ -1,6 +1,7 @@
 /** The public idea board on the page: keeps the ideas, flies the newest in the sky, and lists them when motion is reduced. */
 import { ideaName, ideaNumbers, newestIdeas, previewLine, IDEA_LIMITS, type Idea } from "../lib/ideas";
 import type { IdeaStore } from "../boundaries/ideaStore";
+import type { Categorizer } from "../boundaries/categorizer";
 import { v, type Vec } from "../lib/vec";
 import type { Sky } from "./sky";
 import { byId } from "./dom";
@@ -24,7 +25,11 @@ export type Board = {
 
 const NEW_IDEA_SPEED = 40;
 
-export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; random?: () => number; openIdea: (id: string, origin: Vec) => void }): Board {
+export function startBoard(opts: {
+  sky: Sky | null; store: Promise<IdeaStore>; random?: () => number; openIdea: (id: string, origin: Vec) => void;
+  /** Sorts a just-saved idea into categories; `changed` hears about the result. */
+  categorizer?: Categorizer; changed?: (idea: Idea) => void;
+}): Board {
   const { sky } = opts;
   const rand = opts.random ?? Math.random;
   let all = new Map<string, Idea>();
@@ -80,12 +85,22 @@ export function startBoard(opts: { sky: Sky | null; store: Promise<IdeaStore>; r
     opts.openIdea(a.dataset.idea!, v(r.left + 40, r.top + r.height / 2));
   });
 
+  function sortIntoCategories(id: string): void {
+    opts.categorizer?.categorize(id).then((categories) => {
+      const idea = all.get(id);
+      if (!categories || !idea) return;
+      const sorted = { ...idea, categories };
+      all.set(id, sorted);
+      opts.changed?.(sorted);
+    });
+  }
+
   return {
     async post(idea) {
       all.set(idea.id, idea); unsaved.add(idea.id);
       const s = await opts.store;
       const saved = await s.add(idea);
-      if (saved) unsaved.delete(idea.id);
+      if (saved) { unsaved.delete(idea.id); sortIntoCategories(idea.id); }
       return saved;
     },
     get: (id) => all.get(id),

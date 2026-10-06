@@ -1,8 +1,11 @@
 /** Pure rules for visitor ideas. */
 import { checkLinkRows, cleanLinks, type Link, type LinkRow } from "./links";
 import { stageOrIdea, type Stage } from "./stages";
+import { IDEA_CATEGORIES, cleanCategories } from "./categories";
 
-export type Idea = { id: string; name: string; message: string; at: number; stage: Stage; links: Link[] };
+export type Idea = { id: string; name: string; message: string; at: number; stage: Stage; links: Link[];
+  /** Set by Jev after posting: up to three category keys ([] = none fit). Absent until the idea is sorted. */
+  categories?: readonly string[] };
 export type Draft = { name: string; email: string; message: string; trap: string; linkRows: readonly LinkRow[] };
 export type DraftCheck =
   | { ok: true; idea: Pick<Idea, "name" | "message" | "links">; email: string }
@@ -25,7 +28,8 @@ export function cleanIdea(raw: unknown): Idea | null {
   const message = typeof r.message === "string" ? r.message.trim().slice(0, IDEA_LIMITS.message) : "";
   if (!message) return null;
   const name = typeof r.name === "string" ? r.name.trim().slice(0, IDEA_LIMITS.name) : "";
-  return { id: r.id, name: name || ANONYMOUS, message, at: Number(r.at) || 0, stage: stageOrIdea(r.stage), links: cleanLinks(r.links) };
+  const categories = cleanCategories(IDEA_CATEGORIES, r.categories);
+  return { id: r.id, name: name || ANONYMOUS, message, at: Number(r.at) || 0, stage: stageOrIdea(r.stage), links: cleanLinks(r.links), ...(categories ? { categories } : {}) };
 }
 
 export function newestIdeas(ideas: Iterable<Idea>, max: number): Idea[] {

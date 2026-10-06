@@ -2,6 +2,7 @@
  *  States: closed → open → folding → closed (flying home), or open → closed directly (removed, or no sky to fly home to).
  *  The board owns the ideas; the letter asks it for one. */
 import { letterDateLine, type Idea } from "../lib/ideas";
+import { IDEA_CATEGORIES, categoryLabel } from "../lib/categories";
 import { v, type Vec } from "../lib/vec";
 import type { Sky } from "./sky";
 import { byId, cancelPendingOpen, openWithTransition } from "./dom";
@@ -42,11 +43,19 @@ export function startLetter(opts: {
     byId("letter-body").textContent = idea.message;
     links.hidden = idea.links.length === 0;
     links.replaceChildren(...linkItems(idea.links));
+    showCategories(idea);
     card.style.setProperty("--dx", origin ? origin.x - innerWidth / 2 + "px" : "0px");
     card.style.setProperty("--dy", origin ? origin.y - innerHeight / 2 + "px" : "0px");
     openWithTransition(letter);
     opts.hooks?.opened(idea);
     byId("letter-close").focus({ preventScroll: true });
+  }
+
+  /** Category tags under the name and date: shown once Jev has sorted the idea. */
+  function showCategories(idea: Idea): void {
+    const tags = byId<HTMLUListElement>("letter-cats"), keys = idea.categories ?? [];
+    tags.hidden = keys.length === 0;
+    tags.replaceChildren(...keys.map((k) => { const li = document.createElement("li"); li.textContent = categoryLabel(IDEA_CATEGORIES, k); return li; }));
   }
 
   function close(): void {
@@ -87,7 +96,7 @@ export function startLetter(opts: {
       const sameOpening = opening;
       setTimeout(() => { if (shown?.id === ideaId && opening === sameOpening) fold(); }, PAUSE_AFTER_COMMENT_MS);
     },
-    refresh(idea) { if (shown?.id === idea.id) shown = idea; },
+    refresh(idea) { if (shown?.id === idea.id) { shown = idea; if (state === "open") showCategories(idea); } },
     dismiss() { if (state === "open") close(); },
   };
 }

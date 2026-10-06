@@ -39,12 +39,12 @@ export function supabaseStore(d: SupabaseDeps): IdeaStore {
   return {
     async subscribe(onIdeas) {
       try {
-        const r = await d.fetch(d.url + "/rest/v1/ideas?select=id,name,message,stage,links,created_at&order=created_at.desc&limit=60", { headers });
+        const r = await d.fetch(d.url + "/rest/v1/ideas?select=id,name,message,stage,links,categories,created_at&order=created_at.desc&limit=60", { headers });
         if (!r.ok) return false;
-        const rows = (await r.json()) as { id: string; name: string; message: string; stage: unknown; links: unknown; created_at: string }[];
+        const rows = (await r.json()) as { id: string; name: string; message: string; stage: unknown; links: unknown; categories?: unknown; created_at: string }[];
         const out = new Map<string, Idea>();
         for (const row of rows) {
-          const idea = cleanIdea({ id: row.id, name: row.name, message: row.message, stage: row.stage, links: row.links, at: Date.parse(row.created_at) });
+          const idea = cleanIdea({ id: row.id, name: row.name, message: row.message, stage: row.stage, links: row.links, categories: row.categories, at: Date.parse(row.created_at) });
           if (idea) out.set(idea.id, idea);
         }
         onIdeas(out);

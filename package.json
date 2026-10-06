@@ -7,7 +7,8 @@
     "test": "vitest run",
     "build:test": "PUBLIC_BOARD_URL=https://board.test PUBLIC_BOARD_KEY=sb_publishable_test PUBLIC_FORMSPREE_ENDPOINT=https://inbox.test/f/test astro build",
     "test:e2e": "npm run build:test && playwright test",
-    "check": "astro check"
+    "check": "astro check",
+    "build:functions": "node scripts/build-functions.mjs"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
