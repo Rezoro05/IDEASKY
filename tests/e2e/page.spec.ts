@@ -18,6 +18,24 @@ test("the home page opens with IDEA SKY content and no errors", async ({ page })
   expect(errors).toEqual([]);
 });
 
+test("the loader lifts once the skyline is drawn, not after a fixed 2 seconds", async ({ page }) => {
+  await fakeServices(page);
+  const started = Date.now();
+  await page.goto("/");
+  await expect(page.locator(".loader")).toHaveClass(/\bdone\b/, { timeout: 1500 }); // the cap is 1.5 s; a local picture is ready long before
+  await expect(page.locator(".loader")).toBeHidden();
+  expect(Date.now() - started).toBeLessThan(1950); // the old loader alone took 1.95 s
+});
+
+test("the page has an icon and the skyline offers AVIF", async ({ page }) => {
+  await fakeServices(page);
+  await page.goto("/");
+  const icon = await page.locator('link[rel="icon"]').getAttribute("href");
+  expect((await page.request.get(icon!)).status()).toBe(200);
+  await expect(page.locator('picture source[type="image/avif"]')).toHaveAttribute("srcset", "skyline.avif");
+  expect(await page.locator(".skyline").evaluate((img: HTMLImageElement) => img.currentSrc)).toMatch(/skyline\.avif$/);
+});
+
 test("unknown URLs get the 404 page, which still works as the site", async ({ page }) => {
   await fakeServices(page);
   const res = await page.goto("/nope/");

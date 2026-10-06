@@ -193,7 +193,8 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .toast[hidden] { display: none; }
 
 .loader { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: var(--paper); pointer-events: none;
-  animation: loader-out .45s ease 1.5s forwards; }
+  animation: loader-out .45s ease 3s forwards; } /* without script it still lifts, later */
+.loader.done { animation: loader-out .3s ease forwards; } /* the page is ready: lift now (islands/loader) */
 .loader svg { width: 120px; height: 120px; overflow: visible; }
 .loader polygon, .loader line, .loader polyline { fill: var(--paper); stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .ld-sheet { transform-origin: center; animation: ld-fold .7s cubic-bezier(.7,0,.3,1) .15s forwards; }

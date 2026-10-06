@@ -25,6 +25,7 @@ import { panelsToClose, type Panel } from "../lib/icon-menu";
 import { startShare } from "./share";
 import { ideaLink, linkedIdeaId } from "../lib/idea-link";
 import { byId, prefersReducedMotion, randomBytes } from "./dom";
+import { hideLoaderWhenReady } from "./loader";
 
 function safeStorage(): Storage | null { try { return window.localStorage; } catch { return null; } }
 
@@ -57,6 +58,7 @@ function chooseStores(): Stores {
 }
 
 export function startSite(): void {
+  hideLoaderWhenReady({ loader: document.querySelector(".loader"), picture: document.querySelector(".skyline") });
   const reducedMotion = prefersReducedMotion();
   const profile = motionProfileFor({ prefersReducedMotion: reducedMotion, viewportWidth: innerWidth });
 

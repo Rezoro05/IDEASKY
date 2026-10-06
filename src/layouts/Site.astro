@@ -1,6 +1,7 @@
 ---
 /* The one page: the sky and the overlays. It ships as real HTML before any script runs. */
-import css from "../styles/site.css?raw";
+import rawCss from "../styles/site.css?raw";
+import { transform } from "esbuild";
 import Loader from "../components/Loader.astro";
 import Header from "../components/Header.astro";
 import Hero from "../components/Hero.astro";
@@ -10,6 +11,8 @@ import { SITE, type PageMeta } from "../content/site";
 
 type Props = { meta: PageMeta; noindex?: boolean };
 const { meta, noindex = false } = Astro.props as Props;
+/** The stylesheet is inlined, so it ships minified; the source keeps its comments. URLs stay as written (they resolve against <base>). */
+const css = (await transform(rawCss, { loader: "css", minify: true })).code;
 const ld = { "@context": "https://schema.org", "@type": "WebSite", name: SITE.name, url: SITE.url, description: meta.description };
 ---
 <!doctype html>
@@ -26,6 +29,7 @@ const ld = { "@context": "https://schema.org", "@type": "WebSite", name: SITE.na
 <meta property="og:title" content={meta.title}>
 <meta property="og:description" content={meta.description}>
 <meta property="og:url" content={SITE.url}>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script type="application/ld+json" set:html={JSON.stringify(ld)} />
 <link rel="preload" href="fonts/poppins-latin-300-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>

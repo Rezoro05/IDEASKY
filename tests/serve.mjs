@@ -2,7 +2,7 @@
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { join, extname } from "node:path";
-const TYPES = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".jpg": "image/jpeg", ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".xml": "application/xml", ".webp": "image/webp", ".txt": "text/plain" };
+const TYPES = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".jpg": "image/jpeg", ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".xml": "application/xml", ".webp": "image/webp", ".avif": "image/avif", ".txt": "text/plain" };
 export function serve(dir, port = 0) {
   return createServer(async (req, res) => {
     let p = join(dir, decodeURIComponent(new URL(req.url, "http://x").pathname));
