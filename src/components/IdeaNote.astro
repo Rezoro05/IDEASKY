@@ -1,6 +1,6 @@
 ---
 /* The Idea Note: the paper form a visitor writes an idea on. It lives in the compose overlay opened by "Share Your Idea".
-   The idea comes first; who wrote it is optional and sits below. */
+   The idea comes first (typed, or spoken with the mic); who wrote it is optional and sits below. */
 import { IDEA_LIMITS } from "../lib/ideas";
 import LinkRows from "./LinkRows.astro";
 ---
@@ -10,6 +10,14 @@ import LinkRows from "./LinkRows.astro";
   <label class="note-field note-idea" for="note-msg"><span>The idea <span class="req" aria-hidden="true">*</span></span>
     <textarea id="note-msg" name="message" rows="4" maxlength={IDEA_LIMITS.message} required aria-required="true" placeholder="Share anything on your mind"></textarea>
   </label>
+  <div class="note-dictate">
+    <button class="mic" type="button" id="note-mic" aria-pressed="false" aria-controls="note-msg">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
+      <span class="mic-label">Speak your idea</span>
+    </button>
+    <p class="mic-hint">Your browser’s speech service turns what you say into text.</p>
+    <p class="mic-status" id="note-mic-status" role="status" hidden></p>
+  </div>
   <div id="note-link-rows"><LinkRows /></div>
   <div class="note-who">
     <label class="note-field" for="note-name"><span>Name</span>

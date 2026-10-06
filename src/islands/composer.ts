@@ -9,13 +9,15 @@ import { byId, cancelPendingOpen, hideOnEdit, openWithTransition, randomBytes } 
 import { flyAcrossPage } from "./flier";
 import { startToast } from "./toast";
 import { linkRowsIn } from "./link-rows";
+import type { Dictation } from "./dictation";
 
 const FOLD_MS = 700, FLIGHT_MS = 1300, SCROLL_WAIT_MS = 3000, THROW_SPEED = 180;
 const NOT_SAVED = "The public board couldn’t save your idea just now, so for now only you can see your plane.";
 const UP_NO_MOTION = "Your idea is up. Anyone can open it and read it.";
 
-export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbox; reducedMotion: boolean; now?: () => number }): void {
+export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbox; reducedMotion: boolean; dictation?: Dictation; now?: () => number }): void {
   const { board, sky, inbox } = opts;
+  const dictation = opts.dictation ?? { stop() {}, reset() {} };
   const now = opts.now ?? Date.now;
   const form = byId<HTMLFormElement>("note-form"), err = byId("note-error");
   const compose = byId("compose"), slot = byId("note-slot"), ideaBtn = byId("idea-btn"), say = startToast();
@@ -23,7 +25,7 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
   const links = linkRowsIn(byId("note-link-rows"));
 
   function openCompose(): void {
-    form.reset(); links.clear(); err.hidden = true; form.classList.remove("folding");
+    dictation.reset(); form.reset(); links.clear(); err.hidden = true; form.classList.remove("folding");
     const r = ideaBtn.getBoundingClientRect();
     slot.style.setProperty("--dx", r.left + r.width / 2 - innerWidth / 2 + "px");
     slot.style.setProperty("--dy", r.top + r.height / 2 - innerHeight / 2 + "px");
@@ -31,6 +33,7 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
     field("message").focus({ preventScroll: true });
   }
   function closeCompose(returnFocus: boolean): void {
+    dictation.reset();
     cancelPendingOpen(compose);
     compose.classList.remove("open"); compose.hidden = true;
     form.classList.remove("folding"); form.reset(); links.clear(); err.hidden = true;
@@ -49,6 +52,7 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
   hideOnEdit(form, err);
   form.addEventListener("submit", (e) => {
     e.preventDefault();
+    dictation.stop();
     const check = validateDraft({ name: field("name").value, email: field("email").value, message: field("message").value, trap: field("_gotcha").value, linkRows: links.typed() });
     if (!check.ok) {
       if (check.reason === "bot") { form.reset(); links.clear(); return; } // bots fill hidden fields: pretend nothing happened

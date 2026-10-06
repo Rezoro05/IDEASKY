@@ -249,6 +249,21 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .note-field input::placeholder, .note-field textarea::placeholder { color: #A7ABB5; }
 @media (max-width: 560px) { .note-field span { font-size: 12px; } }
 
+/* Dictation: the mic under the idea field; while it listens it turns cobalt and pulses */
+.note-dictate { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: -8px; }
+.note-dictate[hidden] { display: none; }
+.mic { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px 4px 4px; margin-left: -4px; border: 0; border-radius: 8px; background: none; cursor: pointer;
+  font: 500 12px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--tone-cobalt); }
+.mic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.mic:hover .mic-label, .mic:focus-visible .mic-label { text-decoration: underline; }
+.mic:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 2px; }
+.listening .mic { background: color-mix(in srgb, var(--tone-cobalt) 12%, transparent); }
+.listening .mic svg { animation: mic-pulse 1.1s ease-in-out infinite alternate; }
+@keyframes mic-pulse { from { transform: scale(1); } to { transform: scale(1.18); } }
+.mic-hint { flex-basis: 100%; margin: 0; font: 400 11px/1.4 var(--font-body); color: var(--n-muted); }
+.mic-status { flex-basis: 100%; margin: 0; font: 400 13px/1.4 var(--font-body); color: var(--danger); }
+.mic-status[hidden] { display: none; }
+
 /* "+ Add link" rows */
 .note-links { display: flex; flex-direction: column; gap: 8px; }
 .link-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -450,7 +465,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   .cloud.c1 { transform: translateX(62vw); } .cloud.c2 { transform: translateX(18vw); } .cloud.c3 { transform: translateX(84vw); } .cloud.c4 { display: none; }
   .btn-idea, .btn-idea::after, .act svg, .stage-bar .fill, .stage-bar .knob { transition: none; }
   .btn-idea:hover { transform: none; }
-  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .c-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="idea"] .body, .holding-bird .cage svg { animation: none; }
+  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .c-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="idea"] .body, .holding-bird .cage svg, .listening .mic svg { animation: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .letter, .toast, .plane .tag { -webkit-backdrop-filter: none; backdrop-filter: none; }

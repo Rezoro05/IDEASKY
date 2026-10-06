@@ -26,6 +26,8 @@ import { startShare } from "./share";
 import { ideaLink, linkedIdeaId } from "../lib/idea-link";
 import { byId, prefersReducedMotion, randomBytes } from "./dom";
 import { hideLoaderWhenReady } from "./loader";
+import { startDictation } from "./dictation";
+import { browserSpeech } from "../boundaries/speech";
 
 function safeStorage(): Storage | null { try { return window.localStorage; } catch { return null; } }
 
@@ -108,7 +110,8 @@ export function startSite(): void {
   nameOf = board.nameOf;
   commentPosted = letter.foldAfterComment;
   openPlane = letter.open;
-  startComposer({ board, sky, reducedMotion, inbox });
+  const dictation = startDictation({ speech: browserSpeech(), button: byId<HTMLButtonElement>("note-mic"), field: byId<HTMLTextAreaElement>("note-msg"), status: byId("note-mic-status"), lang: navigator.language || "en-US" });
+  startComposer({ board, sky, reducedMotion, inbox, dictation });
   const say = startToast();
   startFeedback({ inbox, say, reducedMotion });
   board.sync();
