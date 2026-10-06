@@ -39,7 +39,7 @@ export function birdPose(look: WingLook, time: number, slug: string, effort = 1,
   return { wing: mix(base.wing, 0.55 + 0.4 * Math.cos(2 * Math.PI * (FLARE_HZ * time + off))), lift: mix(base.lift, 0), pitch: mix(base.pitch, 1), surge: mix(base.surge, -0.4), seat: 0 };
 }
 /** Beats per second while flaring to land. */
-export const FLARE_HZ = 9;
+const FLARE_HZ = 9;
 
 function effortPose(look: WingLook, time: number, slug: string, effort: number): Pose {
   const active = activePose(look, time, slug);

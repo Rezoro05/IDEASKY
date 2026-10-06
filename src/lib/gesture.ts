@@ -4,8 +4,8 @@ import { type Vec, len, sub } from "./vec";
 export type PointerMark = { point: Vec; at: number };
 export type Gesture = "open" | "drag";
 
-export const DRAG_DISTANCE = 6;
-export const TAP_MAX_MS = 500;
+const DRAG_DISTANCE = 6;
+const TAP_MAX_MS = 500;
 
 export const movedFarEnough = (from: Vec, to: Vec): boolean => len(sub(to, from)) >= DRAG_DISTANCE;
 

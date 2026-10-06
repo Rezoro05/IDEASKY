@@ -44,7 +44,7 @@ export function modeOf(slug: string, input: Pick<StepInput, "held" | "pausedSlug
 }
 
 /** A gentle, plane-specific meander around the current heading. */
-export function wanderSteer(plane: Plane, world: World, config: FlightConfig): Vec {
+function wanderSteer(plane: Plane, world: World, config: FlightConfig): Vec {
   const r = mulberry32(seedFor(plane.slug, world.visitSeed));
   const p1 = r() * 6.28, p2 = r() * 6.28, f1 = 0.13 + r() * 0.1, f2 = 0.31 + r() * 0.15;
   const heading = Math.atan2(plane.velocity.y, plane.velocity.x);

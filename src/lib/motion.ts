@@ -19,7 +19,7 @@ export const FLIGHT_CONFIGS: Record<Exclude<MotionProfile, "none">, FlightConfig
   lite: { cruise: 26, maxSpeed: 1000, wanderStrength: 1.2, shieldRadius: 80, boundsMargin: 36, throwDamping: 1.8, planeSize: 42, trailSeconds: 1 },
 };
 
-export const PHONE_BREAKPOINT = 640;
+const PHONE_BREAKPOINT = 640;
 
 export function motionProfileFor(caps: Capabilities): MotionProfile {
   if (caps.prefersReducedMotion) return "none";
