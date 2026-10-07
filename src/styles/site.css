@@ -180,6 +180,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .fish.netted svg { animation: wriggle .16s ease-in-out infinite alternate; }
 @keyframes wriggle { from { transform: rotate(-6deg) translateX(-1px); } to { transform: rotate(6deg) translateX(1px); } }
 .fish.netted .tag { color: var(--sea-text); }
+.fish.arriving { visibility: hidden; } /* a fish is flying down to it from the folded note */
 /* A dream's letter: no stages and no owner updates */
 .letter-card.is-dream .stage-track, .letter-card.is-dream #stage-error, .letter-card.is-dream #updates, .letter-card.is-dream #add-update { display: none !important; }
 .fish-flier .pf { fill: var(--fish, #FFFDF4); stroke: var(--accent); }

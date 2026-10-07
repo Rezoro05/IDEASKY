@@ -6,6 +6,7 @@ import { mulberry32 } from "../lib/random";
 import { FISH_SVG } from "../lib/fish-art";
 import type { Bounds } from "../lib/sim";
 import type { IdeaStore } from "../boundaries/ideaStore";
+import type { Categorizer } from "../boundaries/categorizer";
 import { fishRelease, netsNow, waterTapReleases, NET } from "../lib/net";
 import { v, type Vec } from "../lib/vec";
 
@@ -15,6 +16,10 @@ export const DREAMS_IN_SEA = 16;
 export type SeaBoard = {
   get(id: string): Idea | undefined;
   nameOf(id: string): string;
+  /** A dream this visitor just wrote: shown at once, saved and sorted into a theme in the background. Resolves to whether it was saved.
+   *  `arriving`: its fish stays hidden until `landed`, while a fish flies down to it from the folded note. */
+  post(dream: Idea, opts?: { arriving?: boolean }): Promise<boolean>;
+  landed(id: string): void;
   /** Its author removed it. */
   forget(id: string): void;
   /** Where a fish is on screen now (its centre), or null. */
@@ -32,12 +37,15 @@ export function startSea(opts: {
   list?: HTMLUListElement | null;
   /** Open a dream's letter, unfolding from `origin` (screen point). */
   onOpen: (id: string, origin: Vec) => void;
+  /** Sorts a just-saved dream into themes; `changed` hears about the result. */
+  categorizer?: Categorizer; changed?: (dream: Idea) => void;
 }): SeaBoard {
   const { field } = opts;
   let size: Bounds = { width: field.clientWidth, height: field.clientHeight };
   new ResizeObserver(() => { size = { width: field.clientWidth, height: field.clientHeight }; }).observe(field);
   const rand = mulberry32(opts.visitSeed ^ 0x5ea);
   let dreams = new Map<string, Idea>(), fish: Fish[] = [];
+  const unsaved = new Set<string>(), arriving = new Set<string>();
   const els = new Map<string, HTMLAnchorElement>(), facing = new Map<string, boolean>();
   let markLoaded = () => {};
   const loaded = new Promise<void>((resolve) => { markLoaded = resolve; });
@@ -46,7 +54,7 @@ export function startSea(opts: {
 
   function makeFish(dream: Idea, name: string): HTMLAnchorElement {
     const a = document.createElement("a");
-    a.className = "fish"; a.href = "#"; a.dataset.slug = dream.id; a.dataset.school = schoolOf(dream);
+    a.className = arriving.has(dream.id) ? "fish arriving" : "fish"; a.href = "#"; a.dataset.slug = dream.id; a.dataset.school = schoolOf(dream);
     a.style.setProperty("--s", opts.size + "px");
     a.setAttribute("aria-label", `${name}: open the dream`);
     a.innerHTML = `<span class="body">${FISH_SVG}</span><span class="tag"></span>`;
@@ -82,7 +90,18 @@ export function startSea(opts: {
     }
   }
 
-  opts.store.then((s) => s.subscribe((all) => { dreams = all; sync(); markLoaded(); }));
+  opts.store.then((s) => s.subscribe((all) => {
+    for (const id of unsaved) { const d = dreams.get(id); if (d) all.set(id, d); } // keep this visit's unsaved dreams
+    dreams = all; sync(); markLoaded();
+  }));
+  function sortIntoThemes(id: string): void {
+    opts.categorizer?.categorize(id).then((categories) => {
+      const d = dreams.get(id);
+      if (!categories || !d) return;
+      const sorted = { ...d, categories };
+      dreams.set(id, sorted); sync(); opts.changed?.(sorted);
+    });
+  }
   opts.list?.addEventListener("click", (e) => {
     const a = (e.target as Element).closest<HTMLElement>("a[data-dream]");
     if (!a) return;
@@ -153,7 +172,16 @@ export function startSea(opts: {
 
   return {
     get: (id) => dreams.get(id), nameOf, loaded,
-    forget(id) { dreams.delete(id); netted.delete(id); sync(); },
+    async post(dream, how = {}) {
+      dreams.set(dream.id, dream); unsaved.add(dream.id);
+      if (how.arriving) arriving.add(dream.id);
+      sync();
+      const saved = await (await opts.store).add(dream);
+      if (saved) { unsaved.delete(dream.id); sortIntoThemes(dream.id); }
+      return saved;
+    },
+    landed(id) { arriving.delete(id); els.get(id)?.classList.remove("arriving"); },
+    forget(id) { dreams.delete(id); unsaved.delete(id); netted.delete(id); sync(); },
     screenPointOf(id) { const body = els.get(id)?.querySelector(".body"); return body ? centreOf(body) : null; },
   };
 }

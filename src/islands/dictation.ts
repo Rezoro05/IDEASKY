@@ -19,7 +19,7 @@ export function startDictation(opts: { speech: Speech; button: HTMLButtonElement
 
   const show = (listening: boolean) => {
     button.setAttribute("aria-pressed", String(listening));
-    button.querySelector(".mic-label")!.textContent = listening ? "Listening… tap to stop" : "Speak your idea";
+    button.querySelector(".mic-label")!.textContent = listening ? "Listening… tap to stop" : (button.dataset.idle ?? "Speak your idea"); // the Dream Note says "Speak your dream"
     button.closest(".note-dictate")!.classList.toggle("listening", listening);
   };
   function stop(): void { session?.stop(); }

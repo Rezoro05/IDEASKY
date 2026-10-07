@@ -18,7 +18,7 @@ export function inboxFields(idea: Idea, email: string, page: string): [string, s
     ["message", idea.message],
     ["idea_id", idea.id],
     ["page", page],
-    ["_subject", `New idea on IDEA SKY from ${idea.name}`],
+    ["_subject", idea.kind === "dream" ? `New dream in the Sea of Dreams from ${idea.name}` : `New idea on IDEA SKY from ${idea.name}`],
   ];
 }
 

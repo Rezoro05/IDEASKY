@@ -1,5 +1,6 @@
 ---
 /* The Idea Note: the paper form a visitor writes an idea on. It lives in the compose overlay opened by "Share Your Idea".
+   "Share a Dream" (in the sea) opens the same paper as the Dream Note: the words change (islands/composer), the form is the same.
    The idea comes first (typed, or spoken with the mic); who wrote it is optional and sits below. */
 import { IDEA_LIMITS } from "../lib/ideas";
 import LinkRows from "./LinkRows.astro";
@@ -7,11 +8,11 @@ import LinkRows from "./LinkRows.astro";
 <form class="note" id="note-form" aria-label="Share your idea" novalidate>
   <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp">
   <button class="note-close" type="button" id="note-close" aria-label="Close">✕</button>
-  <label class="note-field note-idea" for="note-msg"><span>The idea <span class="req" aria-hidden="true">*</span></span>
+  <label class="note-field note-idea" for="note-msg"><span><span id="note-msg-label">The idea</span> <span class="req" aria-hidden="true">*</span></span>
     <textarea id="note-msg" name="message" rows="4" maxlength={IDEA_LIMITS.message} required aria-required="true" placeholder="Share anything on your mind"></textarea>
   </label>
   <div class="note-dictate">
-    <button class="mic" type="button" id="note-mic" aria-pressed="false" aria-controls="note-msg">
+    <button class="mic" type="button" id="note-mic" aria-pressed="false" aria-controls="note-msg" data-idle="Speak your idea">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
       <span class="mic-label">Speak your idea</span>
     </button>

@@ -10,12 +10,23 @@ import { flyAcrossPage } from "./flier";
 import { startToast } from "./toast";
 import { linkRowsIn } from "./link-rows";
 import type { Dictation } from "./dictation";
+import type { SeaBoard } from "./sea";
+import { FISH_SVG } from "../lib/fish-art";
 
 const FOLD_MS = 700, FLIGHT_MS = 1300, SCROLL_WAIT_MS = 3000, THROW_SPEED = 180;
 const NOT_SAVED = "The public board couldn’t save your idea just now, so for now only you can see your plane.";
 const UP_NO_MOTION = "Your idea is up. Anyone can open it and read it.";
+const DREAM_NO_MOTION = "Your dream is in the sea. Anyone can open it and read it.";
+const DREAM_NOT_SAVED = "The sea couldn’t keep your dream just now, so for now only you can see your fish.";
 
-export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbox; reducedMotion: boolean; dictation?: Dictation; now?: () => number }): void {
+/** The same paper for both: the Idea Note (sky) and the Dream Note (sea). Only the words differ. */
+type Mode = "idea" | "dream";
+const WORDS: Record<Mode, { title: string; field: string; placeholder: string; mic: string; empty: string }> = {
+  idea: { title: "Share your idea", field: "The idea", placeholder: "Share anything on your mind", mic: "Speak your idea", empty: "Write your idea first." },
+  dream: { title: "Share your dream", field: "The dream", placeholder: "Tell a dream you had", mic: "Speak your dream", empty: "Write your dream first." },
+};
+
+export function startComposer(opts: { board: Board; sky: Sky | null; sea?: SeaBoard; inbox: Inbox; reducedMotion: boolean; dictation?: Dictation; now?: () => number }): void {
   const { board, sky, inbox } = opts;
   const dictation = opts.dictation ?? { stop() {}, reset() {} };
   const now = opts.now ?? Date.now;
@@ -24,9 +35,20 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement;
   const links = linkRowsIn(byId("note-link-rows"));
 
-  function openCompose(): void {
+  const dreamBtn = document.getElementById("dream-btn");
+  let mode: Mode = "idea", opener: HTMLElement = ideaBtn;
+  function useWords(m: Mode): void {
+    const w = WORDS[m], mic = document.getElementById("note-mic");
+    form.setAttribute("aria-label", w.title); compose.setAttribute("aria-label", w.title);
+    byId("note-msg-label").textContent = w.field;
+    (field("message") as HTMLTextAreaElement).placeholder = w.placeholder;
+    if (mic) { mic.dataset.idle = w.mic; mic.querySelector(".mic-label")!.textContent = w.mic; }
+  }
+  function openCompose(m: Mode = "idea"): void {
+    mode = m; opener = m === "dream" && dreamBtn ? dreamBtn : ideaBtn;
     dictation.reset(); form.reset(); links.clear(); err.hidden = true; form.classList.remove("folding");
-    const r = ideaBtn.getBoundingClientRect();
+    useWords(m);
+    const r = opener.getBoundingClientRect();
     slot.style.setProperty("--dx", r.left + r.width / 2 - innerWidth / 2 + "px");
     slot.style.setProperty("--dy", r.top + r.height / 2 - innerHeight / 2 + "px");
     openWithTransition(compose);
@@ -37,16 +59,17 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
     cancelPendingOpen(compose);
     compose.classList.remove("open"); compose.hidden = true;
     form.classList.remove("folding"); form.reset(); links.clear(); err.hidden = true;
-    if (returnFocus) ideaBtn.focus({ preventScroll: true });
+    if (returnFocus) opener.focus({ preventScroll: true });
   }
-  ideaBtn.addEventListener("click", openCompose);
+  ideaBtn.addEventListener("click", () => openCompose("idea"));
+  dreamBtn?.addEventListener("click", () => openCompose("dream"));
   byId("note-close").addEventListener("click", () => closeCompose(true));
   compose.addEventListener("click", (e) => { if (e.target === compose) closeCompose(true); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !compose.hidden) closeCompose(true); });
 
-  function sent(saving: Promise<boolean>): void {
+  function sent(saving: Promise<boolean>, notSaved = NOT_SAVED): void {
     closeCompose(false);
-    saving.then((saved) => { if (!saved) say(NOT_SAVED); });
+    saving.then((saved) => { if (!saved) say(notSaved); });
   }
 
   hideOnEdit(form, err);
@@ -56,12 +79,13 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
     const check = validateDraft({ name: field("name").value, email: field("email").value, message: field("message").value, trap: field("_gotcha").value, linkRows: links.typed() });
     if (!check.ok) {
       if (check.reason === "bot") { form.reset(); links.clear(); return; } // bots fill hidden fields: pretend nothing happened
-      err.textContent = check.text; err.hidden = false;
+      err.textContent = check.reason === "empty-message" ? WORDS[mode].empty : check.text; err.hidden = false;
       if (check.reason === "bad-link") links.focusRow(check.row);
       else field("message").focus();
       return;
     }
     err.hidden = true;
+    if (mode === "dream" && opts.sea) { sendDream(opts.sea, { id: newRecordId(randomBytes(8)), ...check.idea, stage: "idea", at: now(), kind: "dream" }, check.email); return; }
     const idea: Idea = { id: newRecordId(randomBytes(8)), ...check.idea, stage: "idea", at: now() };
     inbox.send(idea, check.email, location.href);
     if (opts.reducedMotion || !sky) {
@@ -76,6 +100,24 @@ export function startComposer(opts: { board: Board; sky: Sky | null; inbox: Inbo
     form.classList.add("folding");
     setTimeout(() => { flyToSky(sky, idea, v(r.left + r.width / 2, r.top + r.height / 2)); sent(saving); }, FOLD_MS);
   });
+
+  /** A dream folds into a fish that swims down to its place in the sea; with reduced motion it simply joins the list. */
+  function sendDream(sea: SeaBoard, dream: Idea, email: string): void {
+    inbox.send(dream, email, location.href);
+    if (opts.reducedMotion) { sent(sea.post(dream), DREAM_NOT_SAVED); say(DREAM_NO_MOTION); return; }
+    const r = form.getBoundingClientRect(), start = v(r.left + r.width / 2, r.top + r.height / 2);
+    const saving = sea.post(dream, { arriving: true });
+    form.classList.add("folding");
+    setTimeout(() => {
+      sent(saving, DREAM_NOT_SAVED);
+      let last = start;
+      flyAcrossPage({
+        from: start, durationMs: FLIGHT_MS, stage: "idea", fish: FISH_SVG,
+        scaleAt: (u) => 0.6 + 0.4 * Math.min(1, u * 3),
+        target: () => (last = sea.screenPointOf(dream.id) ?? last),
+      }).then(() => sea.landed(dream.id));
+    }, FOLD_MS);
+  }
 
   /** A plane climbs from the folded note while the page scrolls up under it, then joins the sky's flight simulation. */
   function flyToSky(sky: Sky, idea: Idea, start: Vec): void {

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { dreamRow, fakeServices, gioRow } from "./fixtures";
+import { dreamRow, fakeServices, gioRow, settled } from "./fixtures";
 
 const depth = (page: Page) => page.evaluate(() => document.documentElement.dataset.depth);
 const planeAt = (page: Page) => page.locator(".plane").first().evaluate((el) => (el as HTMLElement).style.transform);
@@ -197,6 +197,60 @@ test.describe("catching and opening dreams", () => {
       await expect(page.locator("#dreams-list a")).toHaveCount(2);
       await page.locator("#dreams-list a", { hasText: "Stairs" }).click();
       await expect(page.locator("#letter-from")).toHaveText("Dream2");
+    });
+  });
+});
+
+test.describe("the Dream Note", () => {
+  test("Share a Dream opens the note with dream words; a dream is posted as a dream, swims in, and is sorted into themes", async ({ page }) => {
+    const board = await fakeServices(page);
+    board.categorize = ["water", "strange"];
+    await page.goto("/#sea");
+    await page.locator("#dream-btn").click(); await settled(page);
+    await expect(page.locator("#note-form")).toHaveAttribute("aria-label", "Share your dream");
+    await expect(page.locator("#note-msg-label")).toHaveText("The dream");
+    await expect(page.locator("#note-msg")).toHaveAttribute("placeholder", "Tell a dream you had");
+    await page.locator(".note-send").click();
+    await expect(page.locator("#note-error")).toHaveText("Write your dream first.");
+    await page.locator("#note-msg").fill("I rode a bicycle across the bottom of the sea");
+    await page.locator(".note-send").click();
+    await expect(page.locator("#compose")).toBeHidden();
+    const fish = page.locator(".fish");
+    await expect(fish).toHaveCount(1);
+    await expect(page.locator(".fish.arriving")).toHaveCount(0, { timeout: 6000 }); // the fish from the note has landed
+    expect(board.posts[0]).toMatchObject({ message: "I rode a bicycle across the bottom of the sea", kind: "dream" });
+    await expect.poll(() => board.categorizeCalls?.length ?? 0).toBe(1);
+    expect(board.mailBodies?.[0]).toContain("New dream in the Sea of Dreams");
+    await expect(page.locator(".plane")).toHaveCount(0); // a dream never flies in the sky
+    await expect(fish).toHaveAttribute("data-school", "water");
+    await fish.focus(); await page.keyboard.press("Enter");
+    await expect(page.locator("#letter-cats li")).toHaveText(["Water", "Strange"]);
+  });
+
+  test("the same note says idea again when opened from the sky", async ({ page }) => {
+    await fakeServices(page);
+    await page.goto("/#sea");
+    await page.locator("#dream-btn").click(); await settled(page);
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#dream-btn")).toBeFocused();
+    await page.locator("#surface-btn").click();
+    await page.waitForTimeout(1000);
+    await page.locator("#idea-btn").click(); await settled(page);
+    await expect(page.locator("#note-msg-label")).toHaveText("The idea");
+    await expect(page.locator("#note-mic .mic-label")).toHaveText(/Speak your idea/);
+  });
+
+  test.describe("with reduced motion", () => {
+    test.use({ reducedMotion: "reduce" });
+    test("a dream joins the list in the sea, and the visitor is told", async ({ page }) => {
+      await fakeServices(page);
+      await page.goto("/");
+      await page.locator("#dive-btn").click();
+      await page.locator("#dream-btn").click();
+      await page.locator("#note-msg").fill("Every door opened onto a different city");
+      await page.locator(".note-send").click();
+      await expect(page.locator("#toast")).toContainText("Your dream is in the sea");
+      await expect(page.locator("#dreams-list a")).toHaveCount(1);
     });
   });
 });

@@ -141,6 +141,7 @@ describe("memoryStore", () => {
 describe("inbox", () => {
   it("sends the fields Formspree expects; email only when given", () => {
     expect(inboxFields(idea, "", "https://x/")).toEqual([["name", "Nino"], ["message", "An idea"], ["idea_id", "abc123"], ["page", "https://x/"], ["_subject", "New idea on IDEA SKY from Nino"]]);
+    expect(inboxFields({ ...idea, kind: "dream" }, "", "https://x/").at(-1)).toEqual(["_subject", "New dream in the Sea of Dreams from Nino"]);
     expect(inboxFields(idea, "a@b.c", "p").map(([k]) => k)).toContain("email");
   });
   it("posts as JSON-accepting form data; failures become false", async () => {

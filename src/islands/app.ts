@@ -95,12 +95,14 @@ export function startSite(): void {
   });
 
   const stores = Promise.resolve(chooseStores());
+  const categorizer = PUBLIC_BOARD.url ? supabaseCategorizer({ url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window) }) : noCategorizer;
   const sea = startSea({
     field: byId("sea-field"), list: profile === "none" ? byId<HTMLUListElement>("dreams-list") : null,
     store: stores.then((s) => s.dreams), visitSeed: new Uint32Array(randomBytes(4).buffer)[0]!,
     size: FLIGHT_CONFIGS[profile === "none" ? "lite" : profile].planeSize,
     active: () => document.documentElement.dataset.depth === "sea" && !document.documentElement.classList.contains("sky-covered"),
     onOpen: (id, origin) => letter.open(id, origin),
+    categorizer, changed: (dream) => letter.refresh(dream),
   });
   const inbox = inboxFor(FORMSPREE_ENDPOINT, window.fetch.bind(window));
   let nameOf = (id: string) => id;
@@ -119,7 +121,6 @@ export function startSite(): void {
     removed: (idea) => { if (idea.kind === "dream") sea.forget(idea.id); else board.forget(idea.id); letter.dismiss(); }, opened: opened("remove"),
   });
   const share = startShare({ linkTo: (id) => ideaLink(location.href, id), nav: navigator });
-  const categorizer = PUBLIC_BOARD.url ? supabaseCategorizer({ url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window) }) : noCategorizer;
   const board = startBoard({ sky, store: ideaStore, openIdea: (id, origin) => letter.open(id, origin), categorizer, changed: (idea) => letter.refresh(idea) });
   /** A letter shows an idea from the sky or a dream from the sea; dreams have no stages and no updates. */
   const recordOf = (id: string) => board.get(id) ?? sea.get(id);
@@ -139,7 +140,7 @@ export function startSite(): void {
   commentPosted = letter.foldAfterComment;
   openPlane = letter.open;
   const dictation = startDictation({ speech: browserSpeech(), button: byId<HTMLButtonElement>("note-mic"), field: byId<HTMLTextAreaElement>("note-msg"), status: byId("note-mic-status"), lang: navigator.language || "en-US" });
-  startComposer({ board, sky, reducedMotion, inbox, dictation });
+  startComposer({ board, sky, sea, reducedMotion, inbox, dictation });
   const say = startToast();
   startFeedback({ inbox, say, reducedMotion });
   board.sync();
