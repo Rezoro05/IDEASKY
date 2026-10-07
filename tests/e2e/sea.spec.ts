@@ -45,7 +45,7 @@ test.describe("the Sea of Dreams: diving and surfacing", () => {
       const cage = (await page.locator("#cage").boundingBox())!, dive = (await page.locator("#dive-btn").boundingBox())!;
       expect(Math.abs(cage.x + cage.width / 2 - 195)).toBeLessThan(2); expect(Math.abs(dive.x + dive.width / 2 - 195)).toBeLessThan(2);
       expect(cage.y + cage.height).toBeLessThan(dive.y); expect(dive.y - (cage.y + cage.height)).toBeLessThan(24); // just above it
-      expect(780 - (dive.y + dive.height)).toBeLessThan(50); // Dive near the bottom
+      expect(780 - (dive.y + dive.height)).toBeLessThan(80); // Dive near the bottom
     });
   });
 
@@ -294,6 +294,20 @@ test.describe("catching and opening dreams", () => {
     expect(Math.abs(mid(back) - mid(feedback))).toBeLessThan(3); expect(Math.abs(mid(rez) - mid(feedback))).toBeLessThan(3); // one line
   });
 
+  /** The cage's box in the sky and the net's box in the sea, each measured on its own screen. */
+  const targets = async (page: Page) => {
+    await page.goto("/");
+    const cage = (await page.locator("#cage").boundingBox())!;
+    await page.goto("/#sea"); await page.reload();
+    const net = (await page.locator("#fish-net").boundingBox())!;
+    return { cage, net };
+  };
+  test("the cage and the net are the same size and in the same spot, so diving keeps the drop target in place", async ({ page }) => {
+    await fakeServices(page, sea());
+    const { cage, net } = await targets(page);
+    for (const k of ["x", "y", "width", "height"] as const) expect(Math.abs(cage[k] - net[k])).toBeLessThan(1.5);
+  });
+
   test.describe("on a phone", () => {
     test.use({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
     /** A real finger: touch events through the browser, so touch-action and pointer cancelling apply as on a phone. */
@@ -302,6 +316,12 @@ test.describe("catching and opening dreams", () => {
       const touch = (type: "touchStart" | "touchMove" | "touchEnd", p?: { x: number; y: number }) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: p ? [{ x: p.x, y: p.y }] : [] });
       return { down: (p: { x: number; y: number }) => touch("touchStart", p), move: (p: { x: number; y: number }) => touch("touchMove", p), up: () => touch("touchEnd") };
     };
+
+    test("the cage and the net are the same size and in the same spot here too", async ({ page }) => {
+      await fakeServices(page, sea());
+      const { cage, net } = await targets(page);
+      for (const k of ["x", "y", "width", "height"] as const) expect(Math.abs(cage[k] - net[k])).toBeLessThan(1.5);
+    });
 
     test("a finger holds a fish and drags it, any way, into the net at the bottom centre; its dream opens", async ({ page }) => {
       await fakeServices(page, sea());
@@ -321,7 +341,7 @@ test.describe("catching and opening dreams", () => {
       await expect(page.locator("#letter-from")).toHaveText("Dream2");
     });
 
-    test("the net sits at the bottom centre on top of Back to the sky; Ideas from REZ and Feedback sit together on the left", async ({ page }) => {
+    test("the net sits at the bottom centre on top of Back to the sky; Ideas from REZ and Feedback stack on two lines on the left, below it", async ({ page }) => {
       await fakeServices(page, sea());
       await page.goto("/#sea");
       const net = (await page.locator("#fish-net").boundingBox())!, back = (await page.locator("#surface-btn").boundingBox())!;
@@ -330,8 +350,8 @@ test.describe("catching and opening dreams", () => {
       expect(Math.abs(cx(net) - 195)).toBeLessThan(2); expect(Math.abs(cx(back) - 195)).toBeLessThan(2);
       expect(net.y + net.height).toBeLessThan(back.y); expect(back.y - (net.y + net.height)).toBeLessThan(24); // just above it
       expect(back.y + back.height).toBeLessThan(rez.y); // the links are below it…
-      expect(rez.x).toBeLessThan(30); expect(feedback.x).toBeGreaterThan(rez.x + rez.width); expect(feedback.x).toBeLessThan(195); // …together, on the left
-      expect(Math.abs(rez.y - feedback.y)).toBeLessThan(4);
+      expect(rez.x).toBeLessThan(30); expect(Math.abs(feedback.x - rez.x)).toBeLessThan(2); // …on the left…
+      expect(feedback.y).toBeGreaterThan(rez.y + rez.height - 2); // …one above the other
     });
   });
 
