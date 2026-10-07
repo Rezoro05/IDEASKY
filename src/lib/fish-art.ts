@@ -10,11 +10,18 @@ export const FISH_SVG =
   `<circle class="pf-eye" cx="15.5" cy="-2" r="1.9"/>` +
   `</svg>`;
 
-/** The hand net that swoops down where the sea is clicked: a hoop with a mesh bag and a short handle. */
+/** The hand net, in the planes' paper style, seen a little from above: an oval hoop with a cream rim, a diamond-mesh bag hanging
+ *  beneath it, and a wooden handle with a wrapped grip running off to the lower right. The hoop is centred on (0, 0) with a
+ *  horizontal reach of 30 units, so the drawing scales to the net's reach in px (1 unit = reach / 30). */
+export const HAND_NET_REACH_UNITS = 30;
 export const HAND_NET_SVG =
-  `<svg viewBox="-40 -40 80 80" aria-hidden="true">` +
-  `<path class="hn-handle" d="M19.8 -19.8 L40 -40"/>` +
-  `<circle class="hn-bag" cx="0" cy="0" r="28"/>` +
-  `<path class="hn-mesh" d="M-20 -20 L20 20 M-28 -6 L6 28 M-6 -28 L28 6 M20 -20 L-20 20 M28 -6 L-6 28 M6 -28 L-28 6"/>` +
-  `<circle class="hn-hoop" cx="0" cy="0" r="28"/>` +
-  `</svg>`;
+  `<svg viewBox="-60 -60 120 120" aria-hidden="true"><defs>` +
+  `<pattern id="hn-diamonds" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path class="hn-thread" d="M0 0H7M0 0V7"/></pattern>` +
+  `</defs><g transform="rotate(-10)">` +
+  `<path class="hn-handle-edge" d="M23 15 L56 47"/><path class="hn-handle" d="M23 15 L56 47"/>` +
+  `<path class="hn-grip" d="M44 35.5 l-3.2 3.2 M48 39.5 l-3.2 3.2 M52 43.5 l-3.2 3.2"/>` +
+  `<path class="hn-bag" d="M-30 0 C-29 22 -12 40 2 42 C15 40 29 22 30 0 Z"/>` +
+  `<path class="hn-bag-mesh" d="M-30 0 C-29 22 -12 40 2 42 C15 40 29 22 30 0 Z"/>` +
+  `<ellipse class="hn-mouth" rx="30" ry="24"/><ellipse class="hn-mouth-mesh" rx="30" ry="24"/>` +
+  `<ellipse class="hn-rim-edge" rx="30" ry="24"/><ellipse class="hn-rim" rx="30" ry="24"/>` +
+  `</g></svg>`;

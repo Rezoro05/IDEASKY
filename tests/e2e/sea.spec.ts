@@ -177,35 +177,69 @@ test.describe("catching and opening dreams", () => {
     await expect(page.locator("#like-btn")).toBeVisible(); // likes and comments work as for ideas
   });
 
-  test("a click on a fish swoops the net onto it: the fish wriggles in the net, then its dream opens", async ({ page }) => {
+  test("pressing on a fish dips the net onto it; on release the fish wriggles in the net, then its dream opens", async ({ page }) => {
     await fakeServices(page, sea());
     await page.goto("/#sea");
     const { x, y } = await centre(page, "dreambb2");
-    await page.mouse.click(x, y);
+    await page.mouse.move(x, y); await page.mouse.down();
+    await expect(page.locator(".hand-net")).toHaveCount(1); // in the water while pressed
+    await page.mouse.up();
     await expect(page.locator(".hand-net.hit")).toHaveCount(1);
     await expect(page.locator('.fish[data-slug="dreambb2"]')).toHaveClass(/\bcaught\b/);
     await expect(page.locator("#letter-from")).toHaveText("Dream2");
     await expect(page.locator('.fish[data-slug="dreambb2"]')).not.toHaveClass(/\bcaught\b/);
+    await expect(page.locator(".hand-net")).toHaveCount(0, { timeout: 2000 });
   });
 
-  test("a click on empty water swoops an empty net: nothing opens, and the net goes", async ({ page }) => {
-    await fakeServices(page, sea());
-    await page.goto("/#sea");
+  /** The spot in the lower water farthest from every fish. */
+  const emptyWater = async (page: Page) => {
     await centre(page, "dreambb1");
     const fishAt = await page.locator(".fish .body").evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }));
     const water = (await page.locator("#sea").boundingBox())!;
-    // the spot in the lower water farthest from every fish
     let spot = { x: 0, y: 0 }, far = -1;
     for (let gx = 0.1; gx < 0.95; gx += 0.1) for (let gy = 0.55; gy < 0.95; gy += 0.1) {
       const p = { x: water.x + water.width * gx, y: water.y + water.height * gy };
       const d = Math.min(...fishAt.map(([fx, fy]) => Math.hypot(fx! - p.x, fy! - p.y)));
       if (d > far) { far = d; spot = p; }
     }
-    await page.mouse.click(spot.x, spot.y);
-    await expect(page.locator(".hand-net")).toHaveCount(1);
-    await expect(page.locator(".hand-net.hit")).toHaveCount(0);
+    return spot;
+  };
+
+  test("held, the net follows the pointer and stretches open a little; released on empty water it lifts away and nothing opens", async ({ page }) => {
+    await fakeServices(page, sea());
+    await page.goto("/#sea");
+    const spot = await emptyWater(page);
+    await page.mouse.move(spot.x, spot.y); await page.mouse.down();
+    const net = page.locator(".hand-net");
+    const k = () => net.evaluate((el) => Number((el as HTMLElement).style.getPropertyValue("--k")));
+    expect(await k()).toBeLessThan(1.05);
+    await page.waitForTimeout(1300);
+    expect(await k()).toBeGreaterThan(1.4); // stretched open
+    expect(await k()).toBeLessThan(1.6); // a little, no more
+    await page.mouse.move(spot.x - 30, spot.y - 20);
+    await expect.poll(async () => (await net.boundingBox())!.x + (await net.boundingBox())!.width / 2).toBeLessThan(spot.x - 20); // it follows
+    await page.mouse.up();
+    await expect(page.locator(".hand-net.miss")).toHaveCount(1);
     await expect(page.locator(".hand-net")).toHaveCount(0, { timeout: 2000 });
     await expect(page.locator("#letter")).toBeHidden();
+  });
+
+  test("a net held in the water and brought onto a fish catches it on release", async ({ page }) => {
+    await fakeServices(page, sea());
+    await page.goto("/#sea");
+    const spot = await emptyWater(page);
+    await page.mouse.move(spot.x, spot.y); await page.mouse.down();
+    await page.waitForTimeout(400);
+    const fish = await centre(page, "dreambb1");
+    await page.mouse.move(fish.x, fish.y); // bring the net over it…
+    await page.mouse.up(); // …and lift
+    await expect(page.locator("#letter-from")).toHaveText("Dream1");
+  });
+
+  test("the normal pointer shows over the water", async ({ page }) => {
+    await fakeServices(page, sea());
+    await page.goto("/#sea");
+    expect(await page.locator("#sea").evaluate((el) => getComputedStyle(el).cursor)).toBe("auto");
   });
 
   test("the corner net is gone", async ({ page }) => {
