@@ -9,6 +9,10 @@ test.describe("categories (set by Jev)", () => {
     await expect(plane).toHaveCount(1);
     await plane.focus(); await page.keyboard.press("Enter");
     await expect(page.locator("#letter-cats li")).toHaveText(["Food & Drink", "City & Places"]);
+    await settled(page);
+    const who = (await page.locator("#letter-date").boundingBox())!, tags = (await page.locator("#letter-cats").boundingBox())!;
+    expect(Math.abs((who.y + who.height / 2) - (tags.y + tags.height / 2))).toBeLessThan(8); // on the author and date's line…
+    expect(tags.x).toBeGreaterThan(who.x + who.width); // …on the right
   });
 
   test("an idea not sorted yet, or that fits nothing, shows no tags", async ({ page }) => {

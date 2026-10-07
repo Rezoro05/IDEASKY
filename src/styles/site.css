@@ -490,8 +490,9 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .letter-links a:hover, .letter-links a:focus-visible { outline: none; text-decoration: underline; }
 .letter-links .site { font: 400 11px/1.3 var(--font-mono); color: color-mix(in srgb, var(--plane-edge) 50%, var(--plane)); }
 
-/* Category tags (set by Jev) under the name and date */
-.letter-cats { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+/* Who and when, with the category tags (set by Jev) on the same line, on the right; they wrap below on a narrow card */
+.letter-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.letter-cats { list-style: none; margin: 0 0 0 auto; padding: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .letter-cats[hidden] { display: none; }
 .letter-cats li { padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--tone-cobalt) 9%, var(--plane));
   font: 500 11px/1.3 var(--font-mono); letter-spacing: .04em; color: var(--tone-cobalt); }

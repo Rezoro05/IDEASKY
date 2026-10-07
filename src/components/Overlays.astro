@@ -31,8 +31,10 @@ import { STAGES, stageLabel } from "../lib/stages";
     <div class="letter-content">
       <p class="letter-body" id="letter-body"></p>
       <ul class="letter-links" id="letter-links" hidden></ul>
-      <p class="letter-date" id="letter-date"></p>
-      <ul class="letter-cats" id="letter-cats" aria-label="Categories" hidden></ul>
+      <div class="letter-meta"><!-- who and when on the left, its categories on the right -->
+        <p class="letter-date" id="letter-date"></p>
+        <ul class="letter-cats" id="letter-cats" aria-label="Categories" hidden></ul>
+      </div>
     </div>
 
     <div class="letter-bar">
