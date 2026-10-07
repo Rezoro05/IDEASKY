@@ -29,8 +29,8 @@ export const SWIM = {
   wander: 16,
   /** Soft walls: from this far (px) from an edge, a push back in grows to `wallPush`. */
   wall: 80, wallPush: 120,
-  /** The top part of the sea (a share of its height) holds the headline: fish stay below it. */
-  surfaceShare: 0.3,
+  /** The top part of the sea (a share of its height) holds the headline and its buttons: fish stay below it, so they can always be caught. */
+  surfaceShare: 0.38,
   /** A frightened fish's top speed, in cruise speeds (like a bird's: a creeping mouse never reaches it, a quick one does). */
   fleeSpeedScale: BIRD.fleeSpeedScale,
   /** How hard a mouse right next to a fish pushes it (px/s²), fading to nothing at the alarm radius. Stronger than a bird's:
@@ -86,7 +86,10 @@ export function stepSwim(fish: readonly Fish[], input: SwimInput): Fish[] {
     const eased = frightened ? speed : speed + (SWIM.cruise - speed) * Math.min(1, SWIM.settle * dt); // a frightened fish keeps its burst; it calms down after
     velocity = clampLen(scale(velocity, Math.max(SWIM.slowest, eased) / speed), frightened ? SWIM.cruise * SWIM.fleeSpeedScale : Math.max(SWIM.fastest, Math.min(len(f.velocity), SWIM.cruise * SWIM.fleeSpeedScale))); // after a fright it only slows down
     const p = add(f.position, scale(velocity, dt));
-    const position = v(Math.min(area.right, Math.max(area.left, p.x)), Math.min(area.bottom, Math.max(area.top, p.y)));
+    // A fish in the water stays in it. One outside it (let go from the net, up by the headline) isn't snapped back: the walls steer it in.
+    const inside = f.position.y >= area.top && f.position.y <= area.bottom && f.position.x >= area.left && f.position.x <= area.right;
+    const box = inside ? area : { top: 0, bottom: input.bounds.height, left: 0, right: input.bounds.width };
+    const position = v(Math.min(box.right, Math.max(box.left, p.x)), Math.min(box.bottom, Math.max(box.top, p.y)));
     return { ...f, position, velocity };
   });
 }

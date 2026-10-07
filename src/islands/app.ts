@@ -97,7 +97,7 @@ export function startSite(): void {
   const stores = Promise.resolve(chooseStores());
   const categorizer = PUBLIC_BOARD.url ? supabaseCategorizer({ url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window) }) : noCategorizer;
   const sea = startSea({
-    field: byId("sea-field"), list: profile === "none" ? byId<HTMLUListElement>("dreams-list") : null,
+    field: byId("sea-field"), surface: byId("sea"), net: byId("net"), list: profile === "none" ? byId<HTMLUListElement>("dreams-list") : null,
     store: stores.then((s) => s.dreams), visitSeed: new Uint32Array(randomBytes(4).buffer)[0]!,
     size: FLIGHT_CONFIGS[profile === "none" ? "lite" : profile].planeSize,
     active: () => document.documentElement.dataset.depth === "sea" && !document.documentElement.classList.contains("sky-covered"),

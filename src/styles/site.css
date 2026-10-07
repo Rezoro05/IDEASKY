@@ -145,7 +145,8 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 @keyframes bubble-rise { from { transform: translate(0, 0); opacity: .9; } 50% { transform: translate(10px, -55svh); } to { transform: translate(-6px, -108svh); opacity: 0; } }
 :root:not([data-depth="sea"]) .bubbles span, .sky-covered .bubbles span { animation-play-state: paused; } /* nothing moves where nobody looks */
 [data-depth="sea"] .cloud { animation-play-state: paused; }
-.sea-field { position: absolute; inset: 0; z-index: 2; }
+.sea-field { position: absolute; inset: 0; z-index: 2; pointer-events: none; } /* taps go through to the water (the sea listens) and to the net */
+.sea-field .fish { pointer-events: auto; }
 .dreams-fallback { position: relative; z-index: 3; padding: 0 var(--gutter) 32px; }
 .dreams-fallback .list-head { margin-top: 8px; } .dreams-fallback .list-head h3 { margin: 0; font: 500 22px/1.2 var(--font-display); }
 .dreams-fallback .list-head span, .dreams-fallback .ideas .line { color: var(--sea-soft); }
@@ -171,15 +172,31 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .fish:hover .pf, .fish:focus-visible .pf { fill: var(--accent-sea); }
 .fish:hover .tag, .fish:focus-visible .tag { color: var(--sea-text); }
 .fish:focus-visible .body { outline: 2px solid var(--sea-text); outline-offset: 6px; border-radius: 50%; }
-/* Netted: a net closes around the fish; it holds still and wriggles until tapped (open) or let go (tap the water) */
-.fish .body::after { content: ""; position: absolute; inset: -12px; border-radius: 50%; pointer-events: none; opacity: 0; transform: scale(1.4); transition: opacity .25s, transform .3s cubic-bezier(.2,.8,.2,1);
-  border: 1.5px solid var(--sea-text);
-  background: repeating-linear-gradient(45deg, transparent 0 7px, color-mix(in srgb, var(--sea-text) 55%, transparent) 7px 8px),
-    repeating-linear-gradient(-45deg, transparent 0 7px, color-mix(in srgb, var(--sea-text) 55%, transparent) 7px 8px); }
-.fish.netted .body::after { opacity: 1; transform: scale(1); }
+/* Netted: it rests in the net in the corner, wriggling, until tapped (open) or let go (a tap on the water) */
 .fish.netted svg { animation: wriggle .16s ease-in-out infinite alternate; }
 @keyframes wriggle { from { transform: rotate(-6deg) translateX(-1px); } to { transform: rotate(6deg) translateX(1px); } }
 .fish.netted .tag { color: var(--sea-text); }
+.fish.netted .body { scale: .72; } /* tucked into the net in the corner */
+.fish.netted .tag { opacity: 0; } /* the net is small: names would cover each other */
+.fish.netted:hover .tag, .fish.netted:focus-visible .tag { opacity: 1; }
+.fish.held svg { animation: wriggle .09s linear infinite alternate; } /* in the hand it fights hard */
+.fish.held .body { cursor: grabbing; }
+
+/* The net (top right of the sea, like the cage in the sky): under the fish, like the cage under the planes */
+.net { position: absolute; z-index: 1; top: calc(var(--bar-h) + 14px); right: var(--gutter); width: 52px; height: 59px; color: var(--sea-text); pointer-events: auto; }
+@media (max-width: 560px) { .net { top: 14px; width: 44px; height: 50px; } }
+.net svg { display: block; width: 100%; height: 100%; overflow: visible; transform-origin: 50% 30%; transition: transform .2s; pointer-events: none; }
+.net-handle { stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+.net-hoop { fill: none; stroke: currentColor; stroke-width: 2; }
+.net-bag { fill: color-mix(in srgb, var(--sea-text) 10%, transparent); stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; }
+.net-mesh { fill: none; stroke: currentColor; stroke-opacity: .55; stroke-width: .9; }
+.net:hover .net-hint { opacity: 1; }
+.net .net-hint { background: color-mix(in srgb, var(--sea-deep) 70%, transparent); color: var(--sea-text); }
+.holding-fish .net { color: var(--accent-sea); }
+.holding-fish .net svg { animation: cage-ready .8s ease-in-out infinite alternate; }
+.holding-fish .net .net-hint { opacity: 0; }
+.net.over svg { animation: none; transform: scale(1.14); }
+.net.over .net-bag { fill: color-mix(in srgb, var(--accent-sea) 30%, transparent); }
 .fish.arriving { visibility: hidden; } /* a fish is flying down to it from the folded note */
 /* A dream's letter: no stages and no owner updates */
 .letter-card.is-dream .stage-track, .letter-card.is-dream #stage-error, .letter-card.is-dream #updates, .letter-card.is-dream #add-update { display: none !important; }
@@ -194,6 +211,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .sea-thesis h2 { margin: 0; font: 300 clamp(34px, 6.4vw, 84px)/1.02 var(--font-display); letter-spacing: -.02em; text-wrap: balance; outline: none; }
 .sea-thesis p { margin: 14px 0 0; max-width: 56ch; color: var(--sea-soft); }
 @media (max-width: 560px) { .sea-thesis p { font-size: 17px; } }
+.sea-thesis .actions { pointer-events: none; } .sea-thesis .actions > * { pointer-events: auto; } /* only the buttons, not the row, stand in front of the fish */
 
 /* Plain list of ideas, shown instead of the sky when motion is reduced */
 .list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 16px; margin: 56px 0 8px; }
@@ -220,7 +238,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .cage-body { fill: rgba(255,255,255,.3); stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; transition: fill .2s, stroke .2s; }
 .cage-bars, .cage-ring { fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; transition: stroke .2s; }
 .cage-base { fill: currentColor; fill-opacity: .8; }
-.cage-hint { position: absolute; right: 0; top: calc(100% + 8px); width: max-content; max-width: min(230px, calc(100vw - 2 * var(--gutter))); padding: 6px 9px; border-radius: 3px; pointer-events: none; opacity: 0; transition: opacity .2s;
+.cage-hint, .net-hint { position: absolute; right: 0; top: calc(100% + 8px); width: max-content; max-width: min(230px, calc(100vw - 2 * var(--gutter))); padding: 6px 9px; border-radius: 3px; pointer-events: none; opacity: 0; transition: opacity .2s;
   background: color-mix(in srgb, var(--sky-bottom) 80%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   font: 500 11px/1.35 var(--font-mono); letter-spacing: .04em; color: var(--sky-text); }
 .cage:hover .cage-hint { opacity: 1; }
@@ -562,7 +580,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   .cloud.c1 { transform: translateX(62vw); } .cloud.c2 { transform: translateX(18vw); } .cloud.c3 { transform: translateX(84vw); } .cloud.c4 { display: none; }
   .btn-idea, .btn-idea::after, .act svg, .stage-bar .fill, .stage-bar .knob { transition: none; }
   .btn-idea:hover { transform: none; }
-  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .c-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="idea"] .body, .holding-bird .cage svg, .listening .mic svg, .fish.netted svg { animation: none; }
+  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .c-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="idea"] .body, .holding-bird .cage svg, .listening .mic svg, .fish.netted svg, .fish.held svg, .holding-fish .net svg { animation: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .letter, .toast, .plane .tag { -webkit-backdrop-filter: none; backdrop-filter: none; }

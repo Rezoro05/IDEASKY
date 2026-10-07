@@ -3,6 +3,7 @@
    Underwater: the skyline's water deepening to navy, light falling from the surface, slow bubbles, the same faint grid.
    Fish (dreams) are added to #sea-field by the sea island. */
 import { SEA } from "../content/site";
+import Net from "./Net.astro";
 const BUBBLES = [8, 19, 31, 44, 58, 67, 79, 91];
 ---
 <section class="sea" id="sea" aria-labelledby="sea-title" inert>
@@ -11,6 +12,7 @@ const BUBBLES = [8, 19, 31, 44, 58, 67, 79, 91];
   </svg>
   <div class="sea-light" aria-hidden="true"></div>
   <div class="bubbles" aria-hidden="true">{BUBBLES.map((left, i) => <span style={`--x:${left}%;--i:${i};--d:${5 + (i % 3) * 3}px`}></span>)}</div>
+  <Net />
   <div class="sea-field" id="sea-field"></div>
   <div class="sea-thesis">
     <h2 id="sea-title" tabindex="-1">{SEA.headline}</h2>

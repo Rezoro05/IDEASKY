@@ -51,6 +51,17 @@ describe("swimming", () => {
     const end = swimFor(sea(["a", "a", "a", "a", "a", "a"], 5), 30);
     for (const f of end) for (const o of end) if (f !== o) expect(len(sub(f.position, o.position))).toBeGreaterThan(SWIM.personalSpace * 0.4);
   });
+  it("a fish let go above the water swims down into it without jumping (functional, 8 s)", () => {
+    const area = swimArea(bounds);
+    let fish: Fish[] = [{ slug: "n", school: "", position: v(1150, 90), velocity: v(-40, 0) }], time = 0, biggestStep = 0;
+    for (let f = 0; f < 8 * 60; f++) {
+      const next = stepSwim(fish, { dt, time, bounds, still: NONE });
+      biggestStep = Math.max(biggestStep, len(sub(next[0]!.position, fish[0]!.position)));
+      fish = next; time += dt;
+    }
+    expect(fish[0]!.position.y).toBeGreaterThanOrEqual(area.top);
+    expect(biggestStep).toBeLessThan(SWIM.cruise * SWIM.fleeSpeedScale * dt + 1e-6);
+  });
   it("a netted fish holds still while the others swim", () => {
     const start = sea(["", "", ""]);
     const end = swimFor(start, 5, new Set(["dream1"]));
