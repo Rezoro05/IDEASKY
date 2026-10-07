@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { STAGES, isOneStep, isStage, stageChoices, stageLabel, stageOrIdea } from "../../src/lib/stages";
+import { STAGES, isOneStep, isStage, shownStage, stageChoices, stageLabel, stageOrIdea } from "../../src/lib/stages";
 import { fractionAt, knobFraction, settledStage, stageFraction } from "../../src/lib/stage-bar";
 import { checkLinkRows, cleanLink, cleanLinks, siteName, webAddress, LINK_LIMITS } from "../../src/lib/links";
 
@@ -94,5 +94,13 @@ describe("the stage progress bar", () => {
     expect(settledStage("implementation", 0.9)).toBe("live");
     expect(settledStage("implementation", 0.6)).toBe("implementation");
     expect(settledStage("live", 0)).toBe("implementation");
+  });
+});
+
+describe("stages hidden on the public board", () => {
+  it("every idea is a bird when stages are hidden; its own form when shown", () => {
+    expect(shownStage("live", false)).toBe("idea");
+    expect(shownStage("implementation", false)).toBe("idea");
+    expect(shownStage("live", true)).toBe("live");
   });
 });

@@ -25,6 +25,10 @@ export const FORMSPREE_ENDPOINT: string = import.meta.env.PUBLIC_FORMSPREE_ENDPO
 /** Build flag: start an empty in-memory board with five example ideas, one or more per stage. */
 export const DEMO_IDEAS = import.meta.env.PUBLIC_DEMO_IDEAS === "1";
 
+/** Build flag: show idea stages (Idea → In Progress → Live) as forms in the sky and as the stage bar on an open idea.
+ *  Off for the public board (owner, 2026-10-07): every idea is a bird, and there is no stage bar. */
+export const SHOW_STAGES = import.meta.env.PUBLIC_SHOW_STAGES === "1";
+
 export const PUBLIC_BOARD = {
   url: (import.meta.env.PUBLIC_BOARD_URL ?? "") as string,
   key: (import.meta.env.PUBLIC_BOARD_KEY ?? "") as string,

@@ -12,6 +12,10 @@ export const stageOrIdea = (s: unknown): Stage => (isStage(s) ? s : "idea");
 
 export const stageLabel = (s: Stage): string => LABEL[s];
 
+/** The form an idea takes in the sky. With stages hidden (the public board, owner's choice 2026-10-07) every idea is a bird,
+ *  whatever stage is stored; the stages stay in the data for when they come back. */
+export const shownStage = (s: Stage, stagesShown: boolean): Stage => (stagesShown ? s : "idea");
+
 /** Ideas move one step at a time, forward or back. */
 export const isOneStep = (from: Stage, to: Stage): boolean => Math.abs(STAGES.indexOf(from) - STAGES.indexOf(to)) === 1;
 

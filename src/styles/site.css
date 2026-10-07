@@ -125,7 +125,9 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .dive-btn span { display: inline-block; animation: dive-hint 1.6s ease-in-out infinite alternate; }
 @keyframes dive-hint { from { transform: translateY(-2px); } to { transform: translateY(3px); } }
 @media (max-width: 560px) { .dive-btn { bottom: 88px; } }
-.surface-link { color: var(--sea-text); }
+.surface-link { color: var(--sea-text); z-index: 4; } /* in the sea, where Dive is in the sky: bottom centre, above the fish */
+.surface-link span { animation-name: surface-hint; }
+@keyframes surface-hint { from { transform: translateY(2px); } to { transform: translateY(-3px); } }
 
 /* The Sea of Dreams */
 .sea { position: absolute; left: 0; right: 0; top: 100%; height: 100%; overflow: hidden; color: var(--sea-text);
@@ -202,6 +204,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .fish.caught .tag { color: var(--sea-text); }
 .fish.arriving { visibility: hidden; } /* a fish is flying down to it from the folded note */
 /* A dream's letter: no stages and no owner updates */
+.letter-card.no-stages .stage-track, .letter-card.no-stages #stage-error,
 .letter-card.is-dream .stage-track, .letter-card.is-dream #stage-error, .letter-card.is-dream #updates, .letter-card.is-dream #add-update { display: none !important; }
 .fish-flier .pf { fill: var(--fish, #FFFDF4); stroke: var(--accent); }
 /* One tint per dream theme */
@@ -215,6 +218,31 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .sea-thesis p { margin: 14px 0 0; max-width: 56ch; color: var(--sea-soft); }
 @media (max-width: 560px) { .sea-thesis p { font-size: 17px; } }
 .sea-thesis .actions { pointer-events: none; } .sea-thesis .actions > * { pointer-events: auto; } /* only the buttons, not the row, stand in front of the fish */
+
+/* The first-visit hint (islands/hint): a blueprint drawing over the sky. Thin white lines, a dashed track, mono labels;
+   a ghost hand presses a ghost bird, drags it to the cage and lets go, twice, then the drawing fades. */
+.cage-hint-tour { position: absolute; inset: 0; z-index: 4; pointer-events: none; animation: ht-in .6s ease both; transition: opacity .45s; }
+.cage-hint-tour.leaving { opacity: 0; }
+@keyframes ht-in { from { opacity: 0; } }
+.ht-plan { position: absolute; left: 0; top: 0; overflow: visible; }
+.ht-track { fill: none; stroke: rgba(255,255,255,.8); stroke-width: 1.4; stroke-dasharray: 6 6; animation: ht-march 1.2s linear infinite; }
+@keyframes ht-march { to { stroke-dashoffset: -24; } }
+.ht-mark { fill: none; stroke: rgba(255,255,255,.6); stroke-width: 1; stroke-dasharray: 3 4; }
+.ht-target { transform-box: fill-box; transform-origin: center; animation: ht-target var(--loop) ease-out var(--loops); }
+@keyframes ht-target { 0%, 74% { transform: scale(1); stroke: rgba(255,255,255,.6); } 82% { transform: scale(1.18); stroke: #fff; stroke-dasharray: none; } 100% { transform: scale(1); } }
+.ht-label { fill: #fff; font: 500 10.5px/1 var(--font-mono); letter-spacing: .1em; paint-order: stroke; stroke: color-mix(in srgb, var(--sky-top) 70%, transparent); stroke-width: 3px; }
+.ht-end { text-anchor: end; }
+.ht-ghost { position: absolute; left: 0; top: 0; width: 0; height: 0; offset-rotate: 0deg; animation: ht-move var(--loop) ease-in-out var(--loops) both; }
+@keyframes ht-move { 0% { offset-distance: 0%; opacity: 0; } 10% { opacity: 1; } 28% { offset-distance: 0%; } 74% { offset-distance: 100%; opacity: 1; } 92%, 100% { offset-distance: 100%; opacity: 0; } }
+.ht-bird { position: absolute; left: -32px; top: -32px; width: 64px; height: 64px; animation: ht-bird var(--loop) ease-in-out var(--loops) both; }
+.ht-bird svg { width: 100%; height: 100%; overflow: visible; }
+.ht-bird .pf { fill: rgba(255,255,255,.22); stroke: #fff; stroke-width: 1.6; stroke-linejoin: round; }
+.ht-bird .pf-eye { fill: #fff; } .ht-bird .pf-beak { fill: none; stroke: #fff; } .ht-bird .bird-legs { display: none; }
+@keyframes ht-bird { 0%, 16% { transform: none; } 20% { transform: rotate(-8deg); } 24% { transform: rotate(8deg); } 28% { transform: rotate(-4deg); } 74% { transform: rotate(0); } 84%, 100% { transform: scale(.4); opacity: 0; } }
+.ht-hand { position: absolute; left: -9px; top: -4px; width: 30px; height: 30px; transform-origin: 30% 15%; animation: ht-hand var(--loop) ease-in-out var(--loops) both; }
+.ht-hand svg { width: 100%; height: 100%; overflow: visible; }
+.ht-line { fill: rgba(255,255,255,.18); stroke: #fff; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes ht-hand { 0% { transform: translate(18px, 26px); } 14% { transform: none; } 18%, 74% { transform: scale(.86); } 80%, 100% { transform: translate(6px, 12px); } }
 
 /* Plain list of ideas, shown instead of the sky when motion is reduced */
 .list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 16px; margin: 56px 0 8px; }
@@ -575,6 +603,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   .sea-thesis { position: relative; top: auto; left: auto; padding: calc(var(--bar-h) + 3vh) var(--gutter) 24px; max-width: none; }
   .bubbles { display: none; }
   .dive-btn span { animation: none; }
+  .surface-link { position: relative; display: block; left: auto; bottom: auto; transform: none; margin: 8px auto 32px; } /* after the list, in the flow */
   .field { position: relative; height: 100svh; }
   #fallback { padding: 0 var(--gutter) 24px; }
   .foot { position: static; margin-inline: var(--gutter); }

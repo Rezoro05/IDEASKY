@@ -29,6 +29,7 @@ import { ideaLink, linkedIdeaId } from "../lib/idea-link";
 import { byId, prefersReducedMotion, randomBytes } from "./dom";
 import { hideLoaderWhenReady } from "./loader";
 import { startDepth } from "./depth";
+import { startCageHint } from "./hint";
 import { startDictation } from "./dictation";
 import { browserSpeech } from "../boundaries/speech";
 import { noCategorizer, supabaseCategorizer } from "../boundaries/categorizer";
@@ -84,6 +85,7 @@ export function startSite(): void {
     });
     const overlays = [byId("compose"), byId("letter"), byId("feedback")];
     const markCovered = () => document.documentElement.classList.toggle("sky-covered", overlays.some((o) => o.classList.contains("open")));
+    startCageHint({ field: byId("field"), cage: byId("cage"), reducedMotion, store: safeStorage(), inSky: () => document.documentElement.dataset.depth !== "sea" });
     const watcher = new MutationObserver(markCovered);
     for (const o of overlays) watcher.observe(o, { attributes: true, attributeFilter: ["class"] });
   }

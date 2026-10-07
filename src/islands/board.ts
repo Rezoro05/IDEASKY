@@ -3,6 +3,8 @@ import { ideaName, ideaNumbers, newestIdeas, previewLine, IDEA_LIMITS, type Idea
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { Categorizer } from "../boundaries/categorizer";
 import { v, type Vec } from "../lib/vec";
+import { shownStage } from "../lib/stages";
+import { SHOW_STAGES } from "../content/site";
 import type { Sky } from "./sky";
 import { byId } from "./dom";
 
@@ -54,11 +56,11 @@ export function startBoard(opts: {
     const b = sky.bounds(), nums = ideaNumbers(all.values());
     for (const n of shown) {
       const name = ideaName(nums.get(n.id));
-      if (sky.has(n.id)) { sky.retag(n.id, name, `${name}: open the idea`); sky.reform(n.id, n.stage); continue; }
+      if (sky.has(n.id)) { sky.retag(n.id, name, `${name}: open the idea`); sky.reform(n.id, shownStage(n.stage, SHOW_STAGES)); continue; }
       if (inFlight.has(n.id)) continue;
       const angle = rand() * Math.PI * 2;
       sky.add(n.id, {
-        tag: name, label: `${name}: open the idea`, stage: n.stage,
+        tag: name, label: `${name}: open the idea`, stage: shownStage(n.stage, SHOW_STAGES),
         from: v(80 + rand() * Math.max(1, b.width - 160), b.height * 0.45 + rand() * Math.max(1, b.height * 0.5 - 60)),
         velocity: v(Math.cos(angle) * NEW_IDEA_SPEED, Math.sin(angle) * NEW_IDEA_SPEED),
       });

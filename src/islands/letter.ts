@@ -4,6 +4,8 @@
 import { letterDateLine, type Idea } from "../lib/ideas";
 import { LISTS, categoryLabel } from "../lib/categories";
 import { FISH_SVG } from "../lib/fish-art";
+import { shownStage } from "../lib/stages";
+import { SHOW_STAGES } from "../content/site";
 import type { SeaBoard } from "./sea";
 import { v, type Vec } from "../lib/vec";
 import type { Sky } from "./sky";
@@ -43,6 +45,7 @@ export function startLetter(opts: {
     shown = idea; returnFocus = document.activeElement; state = "open"; opening++;
     card.classList.remove("folding");
     card.classList.toggle("is-dream", idea.kind === "dream"); // no stages, no updates
+    card.classList.toggle("no-stages", !SHOW_STAGES); // the public board hides stages: no stage bar
     byId("letter-from").textContent = opts.nameOf(idea.id);
     byId("letter-date").textContent = letterDateLine(idea, dateOf);
     byId("letter-body").textContent = idea.message;
@@ -88,7 +91,7 @@ export function startLetter(opts: {
       let lastHome = home;
       close();
       flyAcrossPage({
-        from, durationMs: RETURN_FLIGHT_MS, scaleAt: (u) => 1 - 0.45 * u, stage: (opts.ideaOf(idea.id) ?? idea).stage,
+        from, durationMs: RETURN_FLIGHT_MS, scaleAt: (u) => 1 - 0.45 * u, stage: shownStage((opts.ideaOf(idea.id) ?? idea).stage, SHOW_STAGES),
         ...(dream ? { fish: FISH_SVG } : {}),
         target: () => (lastHome = homeOf(idea.id) ?? lastHome),
       });

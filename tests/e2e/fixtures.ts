@@ -5,8 +5,10 @@ import { createHash } from "node:crypto";
 /** Fake the outside world: the test build points at board.test and inbox.test (see build:test), and both are intercepted here. */
 export type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[]; categories?: string[] | null; kind?: "idea" | "dream" };
 export type CommentRow = Row & { idea_id: string; parent_id?: string | null };
-export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[] };
+export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean };
 export async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [], mails: 0 }) {
+  // The first-visit hint plays over the sky for ~10 s; most tests are not first visits (tests/e2e/hint.spec.ts shows it).
+  if (!board.firstVisit) await page.addInitScript(() => { try { localStorage.setItem("skyofideas.hint.cage", "1"); } catch { /* none */ } });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.abort());
   await page.route("https://board.test/**", async (r: Route) => {
     if (board.down) return r.fulfill({ status: 500, body: "down" });
