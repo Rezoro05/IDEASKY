@@ -2,9 +2,9 @@ import { test, expect } from "@playwright/test";
 import { fakeServices, settled } from "./fixtures";
 
 test.describe("feedback", () => {
-  test("the footer's Feedback opens a private note; sending emails it, folds the note away and says thanks", async ({ page }) => {
+  test("the footer's Feedback (at the bottom of the sea) opens a private note; sending emails it, folds the note away and says thanks", async ({ page }) => {
     const board = await fakeServices(page);
-    await page.goto("/");
+    await page.goto("/#sea"); // the footer is at the end of the site, at the bottom of the sea
     await page.locator("#feedback-btn").click(); await settled(page);
     await expect(page.locator("#feedback")).toBeVisible();
     await expect(page.locator("#feedback .note-to")).toHaveText("Private");
@@ -25,7 +25,7 @@ test.describe("feedback", () => {
 
   test("an empty note asks for the feedback and sends nothing; closing it, with Escape or outside, throws nothing away silently", async ({ page }) => {
     const board = await fakeServices(page);
-    await page.goto("/");
+    await page.goto("/#sea"); // the footer is at the end of the site, at the bottom of the sea
     await page.locator("#feedback-btn").click(); await settled(page);
     await page.locator(".feedback-send").click();
     await expect(page.locator("#feedback-error")).toHaveText("Write your feedback first.");
@@ -43,7 +43,7 @@ test.describe("feedback", () => {
   test("if the email can't be sent, the note stays open with the text and says so", async ({ page }) => {
     await fakeServices(page);
     await page.route("https://inbox.test/**", (r) => r.fulfill({ status: 500, body: "down" }));
-    await page.goto("/");
+    await page.goto("/#sea"); // the footer is at the end of the site, at the bottom of the sea
     await page.locator("#feedback-btn").click(); await settled(page);
     await page.locator("#feedback-msg").fill("Please keep this text");
     await page.locator(".feedback-send").click();
@@ -55,7 +55,7 @@ test.describe("feedback", () => {
 
   test("the bot trap sends nothing and looks like nothing happened", async ({ page }) => {
     const board = await fakeServices(page);
-    await page.goto("/");
+    await page.goto("/#sea"); // the footer is at the end of the site, at the bottom of the sea
     await page.locator("#feedback-btn").click(); await settled(page);
     await page.locator("#feedback-msg").fill("buy cheap pills");
     await page.locator("#feedback-form input[name=_gotcha]").evaluate((el: HTMLInputElement) => { el.value = "x"; });
@@ -69,7 +69,7 @@ test.describe("feedback", () => {
     test.use({ viewport: { width: 390, height: 844 } });
     test("the Feedback link sits in the footer and the note fits the screen", async ({ page }) => {
       await fakeServices(page);
-      await page.goto("/");
+      await page.goto("/#sea"); // the footer is at the end of the site, at the bottom of the sea
       const link = (await page.locator("#feedback-btn").boundingBox())!;
       expect(link.y + link.height).toBeLessThanOrEqual(844);
       expect(link.x).toBeGreaterThanOrEqual(0);

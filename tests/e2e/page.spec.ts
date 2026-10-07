@@ -15,6 +15,8 @@ test("the home page opens with Sky of Ideas content and no errors", async ({ pag
   await expect(page.locator(".foot")).not.toContainText("Sky of Ideas");
   await expect(rez).toHaveAttribute("href", "https://revazkuparadze.com");
   await expect(rez).toHaveAttribute("target", "_blank");
+  await expect(page.locator("#sea .foot")).toHaveCount(1); // the footer is at the end of the site, not the end of the sky
+  await expect(page.locator("#sky-part .foot")).toHaveCount(0);
   await page.waitForTimeout(500);
   expect(errors).toEqual([]);
 });

@@ -5,7 +5,6 @@ import { transform } from "esbuild";
 import Loader from "../components/Loader.astro";
 import Header from "../components/Header.astro";
 import Hero from "../components/Hero.astro";
-import Footer from "../components/Footer.astro";
 import Overlays from "../components/Overlays.astro";
 import Sea from "../components/Sea.astro";
 import { SITE, type PageMeta } from "../content/site";
@@ -47,7 +46,6 @@ const ld = { "@context": "https://schema.org", "@type": "WebSite", name: SITE.na
       <main id="view-home">
         <Hero />
       </main>
-      <Footer />
     </div>
     <Sea />
   </div>
