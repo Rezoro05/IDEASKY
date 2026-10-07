@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { fakeServices, gioRow } from "./fixtures";
+import { dreamRow, fakeServices, gioRow } from "./fixtures";
 
 const depth = (page: Page) => page.evaluate(() => document.documentElement.dataset.depth);
 const planeAt = (page: Page) => page.locator(".plane").first().evaluate((el) => (el as HTMLElement).style.transform);
@@ -70,6 +70,56 @@ test.describe("the Sea of Dreams: diving and surfacing", () => {
       await expect(page.locator("#sea-title")).toBeInViewport();
       await expect(page.locator("#sea-title")).toBeFocused();
       expect(await page.locator("#sea").evaluate((el) => (el as HTMLElement).inert)).toBe(false);
+    });
+  });
+});
+
+test.describe("fish (dreams)", () => {
+  const dreams = () => ({
+    rows: [
+      { ...gioRow }, // an idea: it flies in the sky, never swims
+      dreamRow("dreamaa1", "I could fly over the river", ["flying", "water"], 5),
+      dreamRow("dreamaa2", "Floating above the clouds", ["flying"], 4),
+      dreamRow("dreamaa3", "The subway filled with sea water", ["water"], 3),
+      dreamRow("dreamaa4", "A dream not sorted yet", null, 2),
+    ],
+    posts: [], deletes: [], mails: 0,
+  });
+
+  test("dreams swim in the sea as fish, named Dream1…, in schools by their main theme; ideas stay in the sky", async ({ page }) => {
+    await fakeServices(page, dreams());
+    await page.goto("/#sea");
+    const fish = page.locator(".fish");
+    await expect(fish).toHaveCount(4);
+    await expect(page.locator(".plane")).toHaveCount(1);
+    await expect(page.locator('.fish[data-slug="dreamaa1"]')).toHaveAttribute("aria-label", "Dream1: open the dream");
+    await expect(page.locator('.fish[data-slug="dreamaa1"]')).toHaveAttribute("data-school", "flying");
+    await expect(page.locator('.fish[data-slug="dreamaa3"]')).toHaveAttribute("data-school", "water");
+    await expect(page.locator('.fish[data-slug="dreamaa4"]')).toHaveAttribute("data-school", "");
+    await expect(page.locator('.fish[data-slug="dreamaa4"] .tag')).toHaveText("Dream4");
+  });
+
+  test("fish swim while the sea is in view and hold still from the sky", async ({ page }) => {
+    await fakeServices(page, dreams());
+    await page.goto("/#sea");
+    const where = () => page.locator(".fish").first().evaluate((el) => (el as HTMLElement).style.transform);
+    await page.waitForFunction(() => (document.querySelector(".fish") as HTMLElement | null)?.style.transform);
+    const a = await where();
+    await expect.poll(where).not.toBe(a);
+    await page.locator("#surface-btn").click();
+    await page.waitForTimeout(1100);
+    const b = await where();
+    await page.waitForTimeout(600);
+    expect(await where()).toBe(b);
+  });
+
+  test.describe("with reduced motion", () => {
+    test.use({ reducedMotion: "reduce" });
+    test("no fish are drawn", async ({ page }) => {
+      await fakeServices(page, dreams());
+      await page.goto("/");
+      await page.waitForTimeout(500);
+      await expect(page.locator(".fish")).toHaveCount(0);
     });
   });
 });

@@ -3,7 +3,7 @@ import type { Page, Route } from "@playwright/test";
 import { createHash } from "node:crypto";
 
 /** Fake the outside world: the test build points at board.test and inbox.test (see build:test), and both are intercepted here. */
-export type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[]; categories?: string[] | null };
+export type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[]; categories?: string[] | null; kind?: "idea" | "dream" };
 export type CommentRow = Row & { idea_id: string; parent_id?: string | null };
 export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[] };
 export async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [], mails: 0 }) {
@@ -72,11 +72,14 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
       board.updates = board.updates.filter((x) => x.id !== b.p_id);
       return r.fulfill({ json: true });
     }
-    if (method === "GET") return r.fulfill({ json: board.rows });
+    if (method === "GET") { // ideas for the sky, dreams for the sea
+      const kind = new URL(url).searchParams.get("kind");
+      return r.fulfill({ json: board.rows.filter((x) => kind === "eq.dream" ? x.kind === "dream" : x.kind !== "dream") });
+    }
     if (url.endsWith("/rest/v1/ideas")) {
       const body = r.request().postDataJSON();
       board.posts.push(body);
-      board.rows.unshift({ id: body.id, name: body.name, message: body.message, links: body.links ?? [], stage: "idea", created_at: new Date().toISOString() });
+      board.rows.unshift({ id: body.id, name: body.name, message: body.message, links: body.links ?? [], stage: "idea", created_at: new Date().toISOString(), ...(body.kind ? { kind: body.kind } : {}) });
       return r.fulfill({ status: 201, body: "" });
     }
     if (url.endsWith("/rpc/set_idea_stage")) {
@@ -105,4 +108,6 @@ export function watchErrors(page: Page) {
 }
 
 export const gioRow = { id: "zzzzzz1", name: "Gio", message: "Night markets", created_at: "2026-09-30T10:00:00Z" };
+export const dreamRow = (id: string, message: string, categories: string[] | null, hoursAgo = 1): Row =>
+  ({ id, name: "Anonymous", message, created_at: new Date(Date.now() - hoursAgo * 3_600_000).toISOString(), kind: "dream", categories });
 export const withGio = (): Board => ({ rows: [{ ...gioRow }], posts: [], deletes: [], mails: 0 });

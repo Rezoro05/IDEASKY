@@ -37,6 +37,17 @@ describe("supabaseStore", () => {
     expect(supabaseHeaders("sb_publishable_k")).not.toHaveProperty("Authorization");
     expect(supabaseHeaders("eyJabc")).toHaveProperty("Authorization", "Bearer eyJabc");
   });
+  it("a dream store reads and posts dreams (kind), with dream themes kept", async () => {
+    const f = vi.fn(async (_url: string, _init?: RequestInit) => res([{ id: "dream01", name: "", message: "I was flying", stage: "idea", links: [], categories: ["flying", "tech"], created_at: "2026-10-01T00:00:00Z" }]));
+    const store = supabaseStore({ ...deps(f as unknown as typeof fetch), kind: "dream" });
+    const got = vi.fn();
+    await store.subscribe(got);
+    expect(f.mock.calls[0]![0]).toContain("&kind=eq.dream");
+    expect((got.mock.calls[0]![0] as Map<string, { categories: string[] }>).get("dream01")!.categories).toEqual(["flying"]); // an idea category on a dream is dropped
+    f.mockImplementation(async () => new Response(null, { status: 201 }));
+    await store.add({ id: "dream02", name: "A", message: "m", at: 0, stage: "idea", links: [] });
+    expect(JSON.parse(String(f.mock.calls[1]![1]!.body))).toMatchObject({ id: "dream02", kind: "dream" });
+  });
   it("lists ideas, cleaning rows", async () => {
     const f = vi.fn(async () => res([{ id: "abc123", name: "", message: "hi", stage: "live", links: [{ url: "javascript:x" }, { title: "", url: "https://demo.app" }], created_at: "2026-10-01T00:00:00Z" }, { id: "x", message: "" }]));
     const got = vi.fn();

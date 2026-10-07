@@ -1,0 +1,104 @@
+/** How dreams swim in the Sea of Dreams: slow wandering fish that keep apart, stay in the water,
+ *  and swim together with fish of the same theme (a school). Pure: the clock and the sea's size come in. */
+import { add, clampLen, len, scale, sub, v, type Vec } from "./vec";
+import { hashString } from "./random";
+import type { Bounds } from "./sim";
+
+export type Fish = {
+  readonly slug: string;
+  /** The dream's main theme; fish with the same school swim together. "" = a loner. */
+  readonly school: string;
+  readonly position: Vec;
+  readonly velocity: Vec;
+};
+
+export const SWIM = {
+  /** px/s: the pace a fish settles into, and the limits. */
+  cruise: 36, slowest: 14, fastest: 78,
+  /** How quickly a fish's speed eases back to cruise (per second). */
+  settle: 0.6,
+  /** School mates this close (px) match heading; farther ones still draw the school together, more gently. */
+  sight: 170,
+  /** Closer than this (px), any two fish push apart. */
+  personalSpace: 62, apart: 100,
+  /** School pull: match the school's heading, and drift toward its middle. */
+  align: 0.9, cohere: 0.45,
+  /** A slow, seeded meander so a lone fish isn't a straight line. */
+  wander: 16,
+  /** Soft walls: from this far (px) from an edge, a push back in grows to `wallPush`. */
+  wall: 80, wallPush: 120,
+  /** The top part of the sea (a share of its height) holds the headline: fish stay below it. */
+  surfaceShare: 0.3,
+} as const;
+
+export type SwimInput = {
+  readonly dt: number; readonly time: number; readonly bounds: Bounds;
+  /** Fish that hold still (netted, or focused for the keyboard). */
+  readonly still: ReadonlySet<string>;
+};
+
+/** The water a fish may swim in: below the headline band, inside the walls. */
+export function swimArea(b: Bounds): { top: number; bottom: number; left: number; right: number } {
+  return { top: b.height * SWIM.surfaceShare, bottom: b.height - 24, left: 16, right: b.width - 16 };
+}
+
+export function stepSwim(fish: readonly Fish[], input: SwimInput): Fish[] {
+  const { dt, time } = input, area = swimArea(input.bounds);
+  return fish.map((f) => {
+    if (input.still.has(f.slug)) return { ...f, velocity: scale(f.velocity, Math.max(0, 1 - 4 * dt)) };
+    let steer = v(0, 0), near = 0, heading = v(0, 0), mates = 0, middle = v(0, 0);
+    for (const o of fish) {
+      if (o.slug === f.slug) continue;
+      const away = sub(f.position, o.position), d = len(away);
+      if (d > 0 && d < SWIM.personalSpace) steer = add(steer, scale(away, (SWIM.apart * (1 - d / SWIM.personalSpace)) / d));
+      if (!f.school || o.school !== f.school) continue;
+      mates++; middle = add(middle, o.position); // a school finds itself across the whole sea
+      if (d <= SWIM.sight) { near++; heading = add(heading, o.velocity); } // and swims in step with the mates it can see
+    }
+    if (near > 0) steer = add(steer, scale(sub(scale(heading, 1 / near), f.velocity), SWIM.align));
+    if (mates > 0) steer = add(steer, scale(sub(scale(middle, 1 / mates), f.position), SWIM.cohere * (near > 0 ? 1 : 0.35)));
+    steer = add(steer, wander(f, time));
+    steer = add(steer, walls(f.position, area));
+    let velocity = add(f.velocity, scale(steer, dt));
+    const speed = len(velocity) || 1e-6;
+    const eased = speed + (SWIM.cruise - speed) * Math.min(1, SWIM.settle * dt);
+    velocity = clampLen(scale(velocity, Math.max(SWIM.slowest, eased) / speed), SWIM.fastest);
+    const p = add(f.position, scale(velocity, dt));
+    const position = v(Math.min(area.right, Math.max(area.left, p.x)), Math.min(area.bottom, Math.max(area.top, p.y)));
+    return { ...f, position, velocity };
+  });
+}
+
+/** A gentle sideways push that slowly changes direction, different for every fish (seeded by its id). */
+function wander(f: Fish, time: number): Vec {
+  const phase = (hashString(f.slug) % 1000) / 159;
+  const speed = len(f.velocity) || 1;
+  const side = v(-f.velocity.y / speed, f.velocity.x / speed); // perpendicular to where it swims
+  return scale(side, SWIM.wander * Math.sin(time * 0.37 + phase) + SWIM.wander * 0.5 * Math.sin(time * 0.11 + phase * 2));
+}
+
+function walls(p: Vec, area: ReturnType<typeof swimArea>): Vec {
+  const push = (gap: number) => (gap >= SWIM.wall ? 0 : SWIM.wallPush * (1 - Math.max(0, gap) / SWIM.wall));
+  return v(push(p.x - area.left) - push(area.right - p.x), push(p.y - area.top) - push(area.bottom - p.y));
+}
+
+/** Where a new fish starts: spread over the water, heading left or right. Pure: the random numbers come in. */
+export function spawnFish(slug: string, school: string, bounds: Bounds, r: () => number): Fish {
+  const area = swimArea(bounds), dir = r() < 0.5 ? -1 : 1;
+  return {
+    slug, school,
+    position: v(area.left + r() * (area.right - area.left), area.top + r() * (area.bottom - area.top)),
+    velocity: v(dir * SWIM.cruise, (r() - 0.5) * 10),
+  };
+}
+
+/** How a fish is drawn (art faces right): mirrored when it swims left, tilted a little with its climb or dive, never on its back. */
+export const FISH_TILT_MAX_DEG = 22;
+export function fishFacing(velocity: Vec, wasMirrored: boolean): { mirrored: boolean; tiltDeg: number } {
+  const mirrored = velocity.x < -2 ? true : velocity.x > 2 ? false : wasMirrored; // nearly still: keep facing
+  const climb = (Math.atan2(velocity.y, Math.abs(velocity.x) || 1e-6) * 180) / Math.PI;
+  const tilt = Math.max(-FISH_TILT_MAX_DEG, Math.min(FISH_TILT_MAX_DEG, climb));
+  return { mirrored, tiltDeg: mirrored ? -tilt : tilt };
+}
+export const fishTransform = (f: { mirrored: boolean; tiltDeg: number }): string =>
+  `rotate(${f.tiltDeg.toFixed(1)}deg)${f.mirrored ? " scaleX(-1)" : ""}`;

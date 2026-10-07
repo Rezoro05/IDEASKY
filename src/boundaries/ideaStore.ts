@@ -4,6 +4,7 @@
  *  Every adapter turns failures into `false`, so the page never breaks because a board is down. */
 import { cleanIdea, type Idea } from "../lib/ideas";
 import { isOneStep, type Stage } from "../lib/stages";
+import type { Kind } from "../lib/categories";
 import type { KeyStore } from "./keyStore";
 
 export interface IdeaStore {
@@ -25,6 +26,8 @@ export type SupabaseDeps = {
   keys: KeyStore;
   randomBytes: (n: number) => Uint8Array;
   sha256Hex: (text: string) => Promise<string>;
+  /** Ideas (the sky, the default) or dreams (the sea): the same table, told apart by `kind`. */
+  kind?: Kind;
 };
 
 export const toHex = (bytes: Uint8Array): string => [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -35,16 +38,16 @@ export function supabaseHeaders(key: string): Record<string, string> {
 }
 
 export function supabaseStore(d: SupabaseDeps): IdeaStore {
-  const headers = supabaseHeaders(d.key);
+  const headers = supabaseHeaders(d.key), kind: Kind = d.kind ?? "idea";
   return {
     async subscribe(onIdeas) {
       try {
-        const r = await d.fetch(d.url + "/rest/v1/ideas?select=id,name,message,stage,links,categories,created_at&kind=eq.idea&order=created_at.desc&limit=60", { headers });
+        const r = await d.fetch(d.url + `/rest/v1/ideas?select=id,name,message,stage,links,categories,created_at&kind=eq.${kind}&order=created_at.desc&limit=60`, { headers });
         if (!r.ok) return false;
         const rows = (await r.json()) as { id: string; name: string; message: string; stage: unknown; links: unknown; categories?: unknown; created_at: string }[];
         const out = new Map<string, Idea>();
         for (const row of rows) {
-          const idea = cleanIdea({ id: row.id, name: row.name, message: row.message, stage: row.stage, links: row.links, categories: row.categories, at: Date.parse(row.created_at) });
+          const idea = cleanIdea({ id: row.id, name: row.name, message: row.message, stage: row.stage, links: row.links, categories: row.categories, at: Date.parse(row.created_at) }, kind);
           if (idea) out.set(idea.id, idea);
         }
         onIdeas(out);
@@ -56,7 +59,7 @@ export function supabaseStore(d: SupabaseDeps): IdeaStore {
         const deleteKey = toHex(d.randomBytes(16));
         const r = await d.fetch(d.url + "/rest/v1/ideas", {
           method: "POST", headers: { ...headers, Prefer: "return=minimal" },
-          body: JSON.stringify({ id: idea.id, name: idea.name, message: idea.message, links: idea.links, delete_key_hash: await d.sha256Hex(deleteKey) }),
+          body: JSON.stringify({ id: idea.id, name: idea.name, message: idea.message, links: idea.links, delete_key_hash: await d.sha256Hex(deleteKey), ...(kind === "dream" ? { kind } : {}) }),
         });
         if (!r.ok) return false;
         d.keys.set(idea.id, deleteKey);

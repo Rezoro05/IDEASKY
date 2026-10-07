@@ -1,7 +1,7 @@
 /** Pure rules for visitor ideas. */
 import { checkLinkRows, cleanLinks, type Link, type LinkRow } from "./links";
 import { stageOrIdea, type Stage } from "./stages";
-import { IDEA_CATEGORIES, cleanCategories } from "./categories";
+import { LISTS, cleanCategories, type Kind } from "./categories";
 
 export type Idea = { id: string; name: string; message: string; at: number; stage: Stage; links: Link[];
   /** Set by Jev after posting: up to three category keys ([] = none fit). Absent until the idea is sorted. */
@@ -19,16 +19,17 @@ const RECORD_ID = /^[a-z0-9]{6,20}$/;
 
 export const isRecordId = (id: unknown): id is string => typeof id === "string" && RECORD_ID.test(id);
 export const ideaName = (num: number | undefined): string => "Idea" + (num ?? "");
+export const dreamName = (num: number | undefined): string => "Dream" + (num ?? "");
 
-/** Untrusted data in, a safe idea (or null) out. */
-export function cleanIdea(raw: unknown): Idea | null {
+/** Untrusted data in, a safe idea (or null) out. A dream is the same record in the sea; its categories are dream themes. */
+export function cleanIdea(raw: unknown, kind: Kind = "idea"): Idea | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   if (!isRecordId(r.id)) return null;
   const message = typeof r.message === "string" ? r.message.trim().slice(0, IDEA_LIMITS.message) : "";
   if (!message) return null;
   const name = typeof r.name === "string" ? r.name.trim().slice(0, IDEA_LIMITS.name) : "";
-  const categories = cleanCategories(IDEA_CATEGORIES, r.categories);
+  const categories = cleanCategories(LISTS[kind], r.categories);
   return { id: r.id, name: name || ANONYMOUS, message, at: Number(r.at) || 0, stage: stageOrIdea(r.stage), links: cleanLinks(r.links), ...(categories ? { categories } : {}) };
 }
 

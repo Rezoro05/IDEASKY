@@ -1,6 +1,8 @@
 /** Wires the pure parts to the page. Every feature lights up on its own; if one fails, the rest of the page still works. */
 import { DEMO_IDEAS, FORMSPREE_ENDPOINT, PUBLIC_BOARD } from "../content/site";
 import { demoIdeas } from "../content/demo-ideas";
+import { demoDreams } from "../content/demo-dreams";
+import { startSea } from "./sea";
 import { FLIGHT_CONFIGS, motionProfileFor } from "../lib/motion";
 import { memoryStore, supabaseStore, toHex, type IdeaStore } from "../boundaries/ideaStore";
 import type { Idea } from "../lib/ideas";
@@ -41,19 +43,20 @@ async function sha256Hex(text: string): Promise<string> {
   return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))));
 }
 
-type Stores = { ideas: IdeaStore; comments: CommentStore; commentLikes: CommentLikeStore; likes: LikeStore; updates: UpdateStore };
+type Stores = { ideas: IdeaStore; dreams: IdeaStore; comments: CommentStore; commentLikes: CommentLikeStore; likes: LikeStore; updates: UpdateStore };
 
 /** Supabase when a board is configured; otherwise everything lives in memory for this visit. */
 function chooseStores(): Stores {
   if (!PUBLIC_BOARD.url) {
     const ideas = memoryStore(DEMO_IDEAS ? demoIdeas(Date.now()) : []);
-    return { ideas, comments: memoryComments(), commentLikes: memoryCommentLikes(), likes: memoryLikes(), updates: memoryUpdates((id) => ideas.ownsKey(id)) };
+    return { ideas, dreams: memoryStore(DEMO_IDEAS ? demoDreams(Date.now()) : []), comments: memoryComments(), commentLikes: memoryCommentLikes(), likes: memoryLikes(), updates: memoryUpdates((id) => ideas.ownsKey(id)) };
   }
   const base = { url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window), randomBytes, sha256Hex };
   const likeKeys = browserKeyStore(safeStorage(), LIKES_ITEM), ideaKeys = browserKeyStore(safeStorage());
   const likerId = likerIdFrom(likeKeys, randomBytes); // one liker id for ideas and comments alike
   return {
     ideas: supabaseStore({ ...base, keys: ideaKeys }),
+    dreams: supabaseStore({ ...base, keys: ideaKeys, kind: "dream" }),
     updates: supabaseUpdates({ ...base, ideaKeys }),
     comments: supabaseComments({ ...base, keys: browserKeyStore(safeStorage(), COMMENT_KEYS_ITEM) }),
     likes: supabaseLikes({ ...base, keys: likeKeys, likerId, pageIsLeaving: () => leaving }),
@@ -92,6 +95,13 @@ export function startSite(): void {
   });
 
   const stores = Promise.resolve(chooseStores());
+  if (profile !== "none") {
+    startSea({
+      field: byId("sea-field"), store: stores.then((s) => s.dreams), visitSeed: new Uint32Array(randomBytes(4).buffer)[0]!,
+      size: FLIGHT_CONFIGS[profile].planeSize,
+      active: () => document.documentElement.dataset.depth === "sea" && !document.documentElement.classList.contains("sky-covered"),
+    });
+  }
   const inbox = inboxFor(FORMSPREE_ENDPOINT, window.fetch.bind(window));
   let nameOf = (id: string) => id;
   let commentPosted = (_ideaId: string) => {};
