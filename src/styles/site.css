@@ -17,6 +17,7 @@
   --paper: #FBF6E2; --ink: #14171B; --graphite: #6A6450; --rule: #E6DDBA; --accent: #2438D6; --tone-cobalt: #2438D6;
   --plane: #FFFDF4; --plane-edge: #14171B;
   --sky-top: #65B0EA; --sky-bottom: #8DC4EF; --sky-text: #12263F; --sky-grid: rgba(255,255,255,.22); --sky-plane: #FFFDF4; --sky-plane-edge: #14171B;
+  --sea-top: #73B3E7; --sea-mid: #2F6FAE; --sea-deep: #10294D; --sea-text: #EAF4FF; --sea-soft: rgba(234,244,255,.8); --sea-grid: rgba(255,255,255,.07); --sea-foam: rgba(255,255,255,.35);
   --cloud: #FFF6E6; --cloud-shade: #C9DDF3;
   --danger: #B3261E; --like: #D7263D;
   --font-display: "Poppins", "Avenir Next", "Segoe UI", system-ui, sans-serif;
@@ -30,6 +31,8 @@
     --paper: #14130E; --ink: #F1EEE2; --graphite: #A39D86; --rule: #2E2B20; --accent: #7C8CFF; --tone-cobalt: #2E41D9;
     --plane: #1E1C15; --plane-edge: #F1EEE2;
     --sky-top: #28465E; --sky-bottom: #1C3347; --sky-text: #C9D6EA; --sky-grid: rgba(255,255,255,.06); --sky-plane: #E4EBF7; --sky-plane-edge: #0B1430;
+  --sea-top: #2E475D; --sea-mid: #13304B; --sea-deep: #050E1C; --sea-text: #C9D6EA; --sea-soft: rgba(201,214,234,.78); --sea-grid: rgba(255,255,255,.04); --sea-foam: rgba(255,255,255,.12);
+    --sea-top: #2E475D; --sea-mid: #13304B; --sea-deep: #050E1C; --sea-text: #C9D6EA; --sea-soft: rgba(201,214,234,.78); --sea-grid: rgba(255,255,255,.04); --sea-foam: rgba(255,255,255,.12);
     --cloud: rgba(200,214,236,.16); --cloud-shade: rgba(120,150,200,.10); --picture-dim: brightness(.4); --sky-veil: linear-gradient(180deg, #060B1C, rgba(6,11,28,.7) 28%, transparent 62%);
     color-scheme: dark;
   }
@@ -55,6 +58,11 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
    Page: header, sky, footer
    ============================================================ */
 .wrap { position: relative; height: 100svh; overflow: hidden; }
+/* The world: the sky and, one screen below it, the Sea of Dreams. Diving slides it up by a screen (islands/depth). */
+.world { position: absolute; inset: 0; transition: transform .9s cubic-bezier(.65,0,.35,1); }
+.sky-part { position: absolute; inset: 0; }
+[data-depth="sea"] .world { transform: translateY(-100%); }
+.world.no-glide { transition: none; } /* the first placement (a #sea link) doesn't animate */
 
 .bar { position: absolute; top: 0; left: 0; right: 0; z-index: 3; min-height: var(--bar-h); padding: 18px var(--gutter);
   display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; align-items: center; pointer-events: none;
@@ -108,6 +116,40 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .cloud.c4 { top: 33%; width: clamp(170px, 20vw, 310px); animation-duration: 210s; animation-delay: -90s; }
 .sky-covered .cloud { animation-play-state: paused; } /* a letter or the Idea Note is open: the sky holds still */
 @keyframes cloud-drift { from { transform: translateX(-35vw); } to { transform: translateX(110vw); } }
+
+/* Dive and Surface: plain text links on the water and in the sea */
+.dive-link { padding: 6px 0; border: 0; background: none; cursor: pointer; font: 500 11px/1.3 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--sky-text); }
+.dive-link:hover, .dive-link:focus-visible { outline: none; text-decoration: underline; text-underline-offset: 3px; }
+.dive-link:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; text-decoration: none; }
+.dive-btn { position: absolute; z-index: 1; left: 50%; bottom: 56px; transform: translateX(-50%); white-space: nowrap; }
+.dive-btn span { display: inline-block; animation: dive-hint 1.6s ease-in-out infinite alternate; }
+@keyframes dive-hint { from { transform: translateY(-2px); } to { transform: translateY(3px); } }
+@media (max-width: 560px) { .dive-btn { bottom: 88px; } }
+.surface-link { color: var(--sea-text); }
+
+/* The Sea of Dreams */
+.sea { position: absolute; left: 0; right: 0; top: 100%; height: 100%; overflow: hidden; color: var(--sea-text);
+  background: linear-gradient(180deg, var(--sea-top), var(--sea-mid) 42%, var(--sea-deep)); }
+.sea::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: linear-gradient(var(--sea-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sea-grid) 1px, transparent 1px);
+  background-size: 32px 32px; background-position: -1px -1px; }
+.sea-surface { position: absolute; top: 0; left: 0; z-index: 1; width: 100%; height: 26px; pointer-events: none; }
+.sea-surface path { fill: var(--sea-foam); }
+.sea-light { position: absolute; inset: 0; z-index: 0; pointer-events: none; /* light falling from the surface, fading with depth */
+  background: linear-gradient(104deg, transparent 18%, rgba(255,255,255,.09) 23%, transparent 29%, transparent 47%, rgba(255,255,255,.06) 51%, transparent 57%, transparent 72%, rgba(255,255,255,.07) 76%, transparent 82%);
+  -webkit-mask-image: linear-gradient(#000, transparent 72%); mask-image: linear-gradient(#000, transparent 72%); }
+.bubbles { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.bubbles span { position: absolute; bottom: -16px; left: var(--x); width: var(--d); aspect-ratio: 1; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.45); background: rgba(255,255,255,.08);
+  animation: bubble-rise calc(13s + var(--i) * 1.7s) linear calc(var(--i) * -2.3s) infinite; }
+@keyframes bubble-rise { from { transform: translate(0, 0); opacity: .9; } 50% { transform: translate(10px, -55svh); } to { transform: translate(-6px, -108svh); opacity: 0; } }
+:root:not([data-depth="sea"]) .bubbles span, .sky-covered .bubbles span { animation-play-state: paused; } /* nothing moves where nobody looks */
+[data-depth="sea"] .cloud { animation-play-state: paused; }
+.sea-field { position: absolute; inset: 0; z-index: 2; }
+.sea-thesis { position: absolute; left: var(--gutter); top: calc(var(--bar-h) + 3vh); z-index: 3; max-width: min(760px, calc(100% - 2 * var(--gutter))); pointer-events: none; }
+.sea-thesis h2 { margin: 0; font: 300 clamp(34px, 6.4vw, 84px)/1.02 var(--font-display); letter-spacing: -.02em; text-wrap: balance; outline: none; }
+.sea-thesis p { margin: 14px 0 0; max-width: 56ch; color: var(--sea-soft); }
+@media (max-width: 560px) { .sea-thesis p { font-size: 17px; } }
 
 /* Plain list of ideas, shown instead of the sky when motion is reduced */
 .list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 16px; margin: 56px 0 8px; }
@@ -463,6 +505,11 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   .wrap { height: auto; min-height: 100svh; overflow: visible; }
+  .world, .sky-part { position: relative; inset: auto; transform: none !important; transition: none; }
+  .sea { position: relative; top: auto; height: auto; min-height: 100svh; }
+  .sea-thesis { position: relative; top: auto; left: auto; padding: calc(var(--bar-h) + 3vh) var(--gutter) 24px; max-width: none; }
+  .bubbles { display: none; }
+  .dive-btn span { animation: none; }
   .field { position: relative; height: 100svh; }
   #fallback { padding: 0 var(--gutter) 24px; }
   .foot { position: static; margin-inline: var(--gutter); }

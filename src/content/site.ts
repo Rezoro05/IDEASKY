@@ -4,6 +4,12 @@ export const SITE = {
   url: "https://rezoro05.github.io/IDEASKY/",
 } as const;
 
+/** The Sea of Dreams, below the sky. Copy written by Claude, for the owner to review. */
+export const SEA = {
+  headline: "Sea of Dreams",
+  lede: "Dreams people had, set free to swim. Share yours and watch it find its school.",
+} as const;
+
 export const HERO = {
   headline: "IDEA SKY",
   lede: "Idea without execution is just a thought exercise. Let yours fly into this sky as a bird, where anyone can catch it, read it, and maybe bring it to life.",

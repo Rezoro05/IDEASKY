@@ -26,6 +26,7 @@ import { startShare } from "./share";
 import { ideaLink, linkedIdeaId } from "../lib/idea-link";
 import { byId, prefersReducedMotion, randomBytes } from "./dom";
 import { hideLoaderWhenReady } from "./loader";
+import { startDepth } from "./depth";
 import { startDictation } from "./dictation";
 import { browserSpeech } from "../boundaries/speech";
 import { noCategorizer, supabaseCategorizer } from "../boundaries/categorizer";
@@ -76,13 +77,19 @@ export function startSite(): void {
       config: FLIGHT_CONFIGS[profile],
       visitSeed: new Uint32Array(randomBytes(4).buffer)[0]!,
       onOpen: (id, origin) => openPlane(id, origin),
-      covered: () => document.documentElement.classList.contains("sky-covered"),
+      covered: () => document.documentElement.classList.contains("sky-covered") || document.documentElement.dataset.depth === "sea", // under an overlay, or out of view in the sea
     });
     const overlays = [byId("compose"), byId("letter"), byId("feedback")];
     const markCovered = () => document.documentElement.classList.toggle("sky-covered", overlays.some((o) => o.classList.contains("open")));
     const watcher = new MutationObserver(markCovered);
     for (const o of overlays) watcher.observe(o, { attributes: true, attributeFilter: ["class"] });
   }
+
+  startDepth({
+    root: document.documentElement, world: byId("world"), sky: byId("sky-part"), sea: byId("sea"),
+    dive: byId("dive-btn"), surface: byId("surface-btn"), seaTitle: byId("sea-title"), reducedMotion,
+    blocked: () => document.documentElement.classList.contains("sky-covered"),
+  });
 
   const stores = Promise.resolve(chooseStores());
   const inbox = inboxFor(FORMSPREE_ENDPOINT, window.fetch.bind(window));

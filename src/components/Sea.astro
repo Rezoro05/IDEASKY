@@ -1,0 +1,22 @@
+---
+/* The Sea of Dreams: a second screen below the sky. Dive and Surface (islands/depth) glide between them.
+   Underwater: the skyline's water deepening to navy, light falling from the surface, slow bubbles, the same faint grid.
+   Fish (dreams) are added to #sea-field by the sea island. */
+import { SEA } from "../content/site";
+const BUBBLES = [8, 19, 31, 44, 58, 67, 79, 91];
+---
+<section class="sea" id="sea" aria-labelledby="sea-title" inert>
+  <svg class="sea-surface" viewBox="0 0 1200 40" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 18 Q75 6 150 18 T300 18 T450 18 T600 18 T750 18 T900 18 T1050 18 T1200 18 V0 H0 Z" />
+  </svg>
+  <div class="sea-light" aria-hidden="true"></div>
+  <div class="bubbles" aria-hidden="true">{BUBBLES.map((left, i) => <span style={`--x:${left}%;--i:${i};--d:${5 + (i % 3) * 3}px`}></span>)}</div>
+  <div class="sea-field" id="sea-field"></div>
+  <div class="sea-thesis">
+    <h2 id="sea-title" tabindex="-1">{SEA.headline}</h2>
+    <p>{SEA.lede}</p>
+    <div class="actions">
+      <button class="dive-link surface-link" type="button" id="surface-btn"><span aria-hidden="true">↑</span> Back to the sky</button>
+    </div>
+  </div>
+</section>
