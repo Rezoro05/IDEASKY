@@ -1,29 +1,27 @@
 import { describe, it, expect } from "vitest";
-import { fishPressOutcome, netSpot, waterTapReleases } from "../../src/lib/net";
+import { DART_SPEED, NET, caughtBy, dartAway, startledBy } from "../../src/lib/net";
+import { len, v } from "../../src/lib/vec";
 
-describe("catching a dream", () => {
-  it("a quick tap on a fish opens it, netted or not", () => {
-    expect(fishPressOutcome({ gesture: "open", overNet: false, canceled: false })).toBe("open");
-    expect(fishPressOutcome({ gesture: "open", overNet: true, canceled: false })).toBe("open");
+const fish = [{ slug: "a", position: v(100, 100) }, { slug: "b", position: v(130, 100) }, { slug: "c", position: v(400, 400) }];
+
+describe("the hand net", () => {
+  it("catches the fish nearest the click, if it is inside the net", () => {
+    expect(caughtBy(v(125, 100), fish)).toBe("b");
+    expect(caughtBy(v(102, 98), fish)).toBe("a");
   });
-  it("a fish dragged into the net stays in it", () => {
-    expect(fishPressOutcome({ gesture: "drag", overNet: true, canceled: false })).toBe("net");
+  it("catches nothing when no fish is inside its small reach", () => {
+    expect(caughtBy(v(300, 300), fish)).toBeNull();
+    expect(caughtBy(v(400 + NET.radius + 1, 400), fish)).toBeNull();
+    expect(caughtBy(v(400 + NET.radius, 400), fish)).toBe("c");
   });
-  it("a fish let go anywhere else, or taken from the hand, swims free", () => {
-    expect(fishPressOutcome({ gesture: "drag", overNet: false, canceled: false })).toBe("free");
-    expect(fishPressOutcome({ gesture: "drag", overNet: true, canceled: true })).toBe("free");
-    expect(fishPressOutcome({ gesture: "open", overNet: false, canceled: true })).toBe("free");
+  it("startles the fish near the splash, not the one caught or ones far away", () => {
+    expect(startledBy(v(100, 100), fish, "a")).toEqual(["b"]);
+    expect(startledBy(v(250, 250), fish, null)).toEqual([]);
   });
-  it("a tap on the water lets netted fish go; a drag doesn't", () => {
-    expect(waterTapReleases("open")).toBe(true);
-    expect(waterTapReleases("drag")).toBe(false);
-  });
-  it("netted fish rest inside the net, side by side", () => {
-    const net = { x: 1000, y: 70, width: 52, height: 59 };
-    const spots = [0, 1, 2].map((i) => netSpot(net, i));
-    for (const s of spots) { expect(s.x).toBeGreaterThan(net.x - 20); expect(s.x).toBeLessThan(net.x + net.width + 20); expect(s.y).toBeGreaterThan(net.y); expect(s.y).toBeLessThan(net.y + net.height); }
-    expect(spots[0]!.x).toBe(1026);
-    expect(spots[1]!.x).toBeLessThan(spots[0]!.x);
-    expect(spots[2]!.x).toBeGreaterThan(spots[0]!.x);
+  it("a startled fish darts straight away from the splash", () => {
+    const d = dartAway(v(130, 100), v(100, 100), 0.2);
+    expect(d.x).toBeCloseTo(DART_SPEED);
+    expect(d.y).toBeCloseTo(0);
+    expect(len(dartAway(v(100, 100), v(100, 100), 0.9))).toBeCloseTo(DART_SPEED); // right under it: picks a side
   });
 });

@@ -162,7 +162,7 @@ test.describe("catching and opening dreams", () => {
     return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
   };
 
-  test("a quick tap opens a dream: themes as tags, no stages, no updates", async ({ page }) => {
+  test("a caught dream opens with its themes as tags, no stages, no updates", async ({ page }) => {
     await fakeServices(page, sea());
     await page.goto("/#sea");
     const { x, y } = await centre(page, "dreambb1");
@@ -177,60 +177,41 @@ test.describe("catching and opening dreams", () => {
     await expect(page.locator("#like-btn")).toBeVisible(); // likes and comments work as for ideas
   });
 
-  const netCentre = async (page: Page) => { const r = (await page.locator("#net").boundingBox())!; return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
-  /** Press a fish and drag it to `to` (the hand moves in small steps, as a person's would). */
-  const drag = async (page: Page, slug: string, to: { x: number; y: number }) => {
-    const from = await centre(page, slug);
-    await page.mouse.move(from.x, from.y);
-    await page.mouse.down();
-    await page.mouse.move(to.x, to.y, { steps: 12 });
-  };
-
-  test("drag a fish into the net in the corner: it stays there wriggling, and a tap opens it", async ({ page }) => {
+  test("a click on a fish swoops the net onto it: the fish wriggles in the net, then its dream opens", async ({ page }) => {
     await fakeServices(page, sea());
     await page.goto("/#sea");
-    const fish = page.locator('.fish[data-slug="dreambb2"]');
-    await drag(page, "dreambb2", await netCentre(page));
-    await expect(fish).toHaveClass(/\bheld\b/); // in the hand
-    await expect(page.locator("#sea")).toHaveClass(/\bholding-fish\b/); // the net lights up
-    await expect(page.locator("#net")).toHaveClass(/\bover\b/);
-    await page.mouse.up();
-    await expect(fish).toHaveClass(/\bnetted\b/);
-    await expect(fish).not.toHaveClass(/\bheld\b/);
-    await expect(page.locator("#letter")).toBeHidden(); // netting doesn't open it
-    const at = await fish.evaluate((el) => (el as HTMLElement).style.transform);
-    await page.waitForTimeout(700);
-    expect(await fish.evaluate((el) => (el as HTMLElement).style.transform)).toBe(at); // it stays in the net
-    const net = (await page.locator("#net").boundingBox())!, inNet = await centre(page, "dreambb2");
-    expect(inNet.x).toBeGreaterThan(net.x - 15); expect(inNet.x).toBeLessThan(net.x + net.width + 15);
-    expect(inNet.y).toBeGreaterThan(net.y); expect(inNet.y).toBeLessThan(net.y + net.height + 10);
-    await page.mouse.click(inNet.x, inNet.y);
+    const { x, y } = await centre(page, "dreambb2");
+    await page.mouse.click(x, y);
+    await expect(page.locator(".hand-net.hit")).toHaveCount(1);
+    await expect(page.locator('.fish[data-slug="dreambb2"]')).toHaveClass(/\bcaught\b/);
     await expect(page.locator("#letter-from")).toHaveText("Dream2");
+    await expect(page.locator('.fish[data-slug="dreambb2"]')).not.toHaveClass(/\bcaught\b/);
   });
 
-  test("a fish let go away from the net swims free", async ({ page }) => {
+  test("a click on empty water swoops an empty net: nothing opens, and the net goes", async ({ page }) => {
     await fakeServices(page, sea());
     await page.goto("/#sea");
+    await centre(page, "dreambb1");
+    const fishAt = await page.locator(".fish .body").evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }));
     const water = (await page.locator("#sea").boundingBox())!;
-    await drag(page, "dreambb1", { x: water.x + water.width / 2, y: water.y + water.height * 0.7 });
-    await page.mouse.up();
-    const fish = page.locator('.fish[data-slug="dreambb1"]');
-    await expect(fish).not.toHaveClass(/\bnetted\b/);
-    await expect(fish).not.toHaveClass(/\bheld\b/);
+    // the spot in the lower water farthest from every fish
+    let spot = { x: 0, y: 0 }, far = -1;
+    for (let gx = 0.1; gx < 0.95; gx += 0.1) for (let gy = 0.55; gy < 0.95; gy += 0.1) {
+      const p = { x: water.x + water.width * gx, y: water.y + water.height * gy };
+      const d = Math.min(...fishAt.map(([fx, fy]) => Math.hypot(fx! - p.x, fy! - p.y)));
+      if (d > far) { far = d; spot = p; }
+    }
+    await page.mouse.click(spot.x, spot.y);
+    await expect(page.locator(".hand-net")).toHaveCount(1);
+    await expect(page.locator(".hand-net.hit")).toHaveCount(0);
+    await expect(page.locator(".hand-net")).toHaveCount(0, { timeout: 2000 });
     await expect(page.locator("#letter")).toBeHidden();
-    const a = await fish.evaluate((el) => (el as HTMLElement).style.transform);
-    await expect.poll(() => fish.evaluate((el) => (el as HTMLElement).style.transform)).not.toBe(a); // off it goes
   });
 
-  test("a tap on the water lets netted fish go", async ({ page }) => {
+  test("the corner net is gone", async ({ page }) => {
     await fakeServices(page, sea());
     await page.goto("/#sea");
-    await drag(page, "dreambb1", await netCentre(page));
-    await page.mouse.up();
-    await expect(page.locator('.fish[data-slug="dreambb1"]')).toHaveClass(/\bnetted\b/);
-    const water = (await page.locator("#sea").boundingBox())!;
-    await page.mouse.click(water.x + water.width / 2, water.y + water.height - 40);
-    await expect(page.locator('.fish[data-slug="dreambb1"]')).not.toHaveClass(/\bnetted\b/);
+    await expect(page.locator("#net")).toHaveCount(0);
   });
 
   test("keyboard: Enter on a focused fish opens its dream", async ({ page }) => {
@@ -308,12 +289,3 @@ test.describe("the Dream Note", () => {
   });
 });
 
-test("the net says what it is for when you point at it", async ({ page }) => {
-  await fakeServices(page);
-  await page.goto("/#sea");
-  const hint = page.locator(".net-hint");
-  await expect(hint).toHaveText("Catch a dream and drop it in the net to keep it.");
-  await expect(hint).toHaveCSS("opacity", "0");
-  await page.locator("#net").hover();
-  await expect(hint).toHaveCSS("opacity", "1");
-});
