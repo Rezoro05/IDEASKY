@@ -27,11 +27,36 @@ export function bagDepth(heldMs: number): number {
 }
 
 /** Which way the bag trails (degrees, screen: 0 = right, 90 = down). Moving, it streams out behind the net, opposite the way the hand
- *  moves; still, it sinks and hangs down. It swings there smoothly, the short way round. */
-export const TRAIL = { minSpeed: 25, turnRate: 7 } as const;
+ *  moves, swinging there smoothly (faster the faster the hand); still, it drifts down slowly like cloth in water, never like a stone. */
+export const TRAIL = { minSpeed: 40, turnRate: 4.5, sinkRate: 0.9 } as const;
 export function trailAngle(current: number, velocity: Vec, dt: number): number {
-  const target = len(velocity) < TRAIL.minSpeed ? 90 : (Math.atan2(-velocity.y, -velocity.x) * 180) / Math.PI;
-  return normalizeDeg(current + normalizeDeg(target - current) * Math.min(1, dt * TRAIL.turnRate));
+  const speed = len(velocity), moving = speed >= TRAIL.minSpeed;
+  const target = moving ? (Math.atan2(-velocity.y, -velocity.x) * 180) / Math.PI : 90;
+  const rate = moving ? TRAIL.turnRate * Math.min(1, Math.max(0.35, speed / 220)) : TRAIL.sinkRate;
+  return normalizeDeg(current + normalizeDeg(target - current) * Math.min(1, dt * rate));
+}
+
+/** The hand's velocity, smoothed: each pointer sample eases in (pointer events arrive unevenly), and when the hand stops, it fades. */
+export const easeVelocity = (current: Vec, sample: Vec, dt: number, tau = 0.09): Vec => {
+  const k = 1 - Math.exp(-Math.max(0, dt) / tau);
+  return v(current.x + (sample.x - current.x) * k, current.y + (sample.y - current.y) * k);
+};
+
+/** The water drags on the hoop: the net leans back a few degrees about the hand as it moves (moving right or up tilts it back). */
+export const dragTilt = (velocity: Vec): number => Math.max(-8, Math.min(8, (velocity.y - velocity.x) * 0.015));
+
+/** Swept in: a fish the moving hoop reaches while heading its way goes into the net, like a real sweep. The hand must be moving
+ *  (SWEEP.minSpeed) and the fish inside the hoop, ahead of its centre or nearly at it. The nearest such fish. */
+export const SWEEP = { minSpeed: 60 } as const;
+export function sweptIn(hoop: Vec, velocity: Vec, fish: readonly { slug: string; position: Vec }[], radius: number = NET.radius): string | null {
+  const speed = len(velocity);
+  if (speed < SWEEP.minSpeed) return null;
+  let best: string | null = null, bestD = radius;
+  for (const f of fish) {
+    const to = sub(f.position, hoop), d = len(to), ahead = to.x * velocity.x + to.y * velocity.y >= 0;
+    if (d <= bestD && (ahead || d <= radius * 0.5)) { best = f.slug; bestD = d; }
+  }
+  return best;
 }
 
 /** How long the bag is: it stretches while the net is held (bagDepth), and a little more while the hand moves fast through the water. */

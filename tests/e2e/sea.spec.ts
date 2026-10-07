@@ -218,6 +218,26 @@ test.describe("catching and opening dreams", () => {
     await expect(page.locator(".hand-net")).toHaveCount(0, { timeout: 2000 });
   });
 
+  test("a net swept onto a fish takes it in before letting go; letting go lifts it out and opens its dream", async ({ page }) => {
+    await fakeServices(page, sea());
+    await page.goto("/#sea");
+    const inNet = () => page.locator('.fish[data-slug="dreambb2"].netted');
+    let swept = false;
+    await until(page, async () => {
+      const c = await centre(page, "dreambb2"), from = grip({ x: c.x - 75, y: c.y });
+      await page.mouse.move(from.x, from.y); await page.mouse.down();
+      for (let i = 1; i <= 12 && !(await inNet().count()); i++) { await page.mouse.move(from.x + i * 14, from.y); await page.waitForTimeout(16); }
+      swept = (await inNet().count()) > 0;
+      if (!swept) await page.mouse.up();
+    }, async () => swept);
+    expect(swept).toBe(true);
+    await expect(page.locator(".hand-net:not(.hit) .hn-catch svg")).toHaveCount(1); // in the bag while still held
+    await expect(page.locator("#letter")).toBeHidden();
+    await page.mouse.up();
+    await expect(page.locator(".hand-net.hit")).toHaveCount(1);
+    await expect(page.locator("#letter-from")).toHaveText("Dream2");
+  });
+
   /** The spot in the lower water farthest from every fish. */
   const emptyWater = async (page: Page) => {
     await centre(page, "dreambb1");
