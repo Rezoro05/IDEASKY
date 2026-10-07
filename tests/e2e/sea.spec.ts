@@ -324,6 +324,49 @@ test.describe("catching and opening dreams", () => {
     await expect(page.locator("#letter-from")).toHaveText("Dream1");
   });
 
+  test.describe("on a phone", () => {
+    test.use({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
+    /** A real finger: touch events through the browser, so touch-action and pointer cancelling apply as on a phone. */
+    const finger = async (page: Page) => {
+      const cdp = await page.context().newCDPSession(page);
+      const touch = (type: string, p?: { x: number; y: number }) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: p ? [{ x: p.x, y: p.y }] : [] });
+      return { down: (p: { x: number; y: number }) => touch("touchStart", p), move: (p: { x: number; y: number }) => touch("touchMove", p), up: () => touch("touchEnd") };
+    };
+    const hoopOnScreen = (page: Page) => page.locator(".hand-net .hn-mouth").evaluate((el) => { const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+
+    test("a finger drags the net in any direction, even up and down, without the page taking it for a scroll", async ({ page }) => {
+      await fakeServices(page, sea());
+      await page.goto("/#sea");
+      const f = await finger(page), start = await emptyWater(page), at = { x: 195, y: start.y - 120 };
+      await f.down(at);
+      await expect(page.locator(".hand-net")).toHaveCount(1);
+      for (let i = 1; i <= 20; i++) { await f.move({ x: at.x, y: at.y + i * 9 }); await page.waitForTimeout(16); } // straight down: once a "scroll"
+      const hand = { x: at.x, y: at.y + 180 };
+      await expect(page.locator(".hand-net:not(.miss):not(.hit)")).toHaveCount(1); // still in the water, not cancelled
+      await expect.poll(async () => (await hoopOnScreen(page)).y).toBeGreaterThan(hand.y + 30); // it swung to lead the finger: below it
+      for (let i = 1; i <= 20; i++) { await f.move({ x: hand.x - i * 7, y: hand.y }); await page.waitForTimeout(16); } // now left
+      await expect.poll(async () => (await hoopOnScreen(page)).x).toBeLessThan(hand.x - 140 - 30); // ahead of the finger, to its left
+      for (let i = 1; i <= 20; i++) { await f.move({ x: hand.x - 140 + i * 9, y: hand.y }); await page.waitForTimeout(16); } // and back right
+      await expect.poll(async () => (await hoopOnScreen(page)).x).toBeGreaterThan(hand.x + 40 + 30);
+      await f.up();
+      await expect(page.locator(".hand-net.miss")).toHaveCount(1);
+      expect(await depth(page)).toBe("sea"); // a drag in the water is the net, not a swipe back to the sky
+    });
+
+    test("a finger sweeping the net onto a fish catches it and opens its dream", async ({ page }) => {
+      await fakeServices(page, sea());
+      await page.goto("/#sea");
+      const f = await finger(page);
+      await until(page, async () => {
+        const c = await centre(page, "dreambb2"), from = { x: Math.max(8, c.x - 170), y: c.y };
+        await f.down(from);
+        for (let i = 1; i <= 24 && !(await page.locator(".fish.netted").count()); i++) { await f.move({ x: from.x + i * 9, y: from.y }); await page.waitForTimeout(16); }
+        await f.up();
+      }, opened(page));
+      await expect(page.locator("#letter")).toBeVisible();
+    });
+  });
+
   test.describe("with reduced motion", () => {
     test.use({ reducedMotion: "reduce" });
     test("dreams are a plain list in the sea, and open from it", async ({ page }) => {

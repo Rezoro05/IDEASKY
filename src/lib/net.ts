@@ -66,9 +66,30 @@ export const bagLength = (heldMs: number, speed: number): number => bagDepth(hel
 export const HANDLE_END = { x: 52, y: 40 } as const;
 export const HOOP_UNITS = 30;
 
-/** The pointer holds the handle: the hoop's centre is up and to the left of it, by the handle's length at this size. */
-export const hoopCentre = (pointer: Vec, reach: number = NET.radius): Vec =>
-  v(pointer.x - (HANDLE_END.x * reach) / HOOP_UNITS, pointer.y - (HANDLE_END.y * reach) / HOOP_UNITS);
+/** The pointer holds the handle: the hoop's centre is up and to the left of it, by the handle's length at this size.
+ *  `swingDeg` turns the whole net about the hand (positive: clockwise on screen); 0 is the drawing as made. */
+export function hoopCentre(pointer: Vec, reach: number = NET.radius, swingDeg = 0): Vec {
+  const dx = -(HANDLE_END.x * reach) / HOOP_UNITS, dy = -(HANDLE_END.y * reach) / HOOP_UNITS, a = (swingDeg * Math.PI) / 180;
+  return v(pointer.x + dx * Math.cos(a) - dy * Math.sin(a), pointer.y + dx * Math.sin(a) + dy * Math.cos(a));
+}
+
+/** On a touch screen the finger covers what it holds, so the net swings about the hand to lead the way the finger moves:
+ *  sweeping right puts the hoop to the right of the finger, sweeping down puts it below. Still, it keeps where it last pointed. */
+export const SWING = {
+  /** Which way the hoop points from the hand in the drawing as made (degrees, screen y down): up and to the left. */
+  restDeg: (Math.atan2(-HANDLE_END.y, -HANDLE_END.x) * 180) / Math.PI,
+  /** The finger must move at least this fast (px/s) to turn the net. */
+  minSpeed: 90,
+  /** How quickly it turns toward the finger's heading (per second). */
+  turnRate: 9,
+} as const;
+
+/** The net's swing this frame, eased toward leading the finger's heading. Pure. */
+export function swingToward(current: number, velocity: Vec, dt: number): number {
+  if (len(velocity) < SWING.minSpeed) return current;
+  const target = normalizeDeg((Math.atan2(velocity.y, velocity.x) * 180) / Math.PI - SWING.restDeg);
+  return normalizeDeg(current + normalizeDeg(target - current) * Math.min(1, dt * SWING.turnRate));
+}
 
 /** The fish the net catches: the one nearest the click, if it is inside the net. */
 export function caughtBy(at: Vec, fish: readonly { slug: string; position: Vec }[], radius: number = NET.radius): string | null {

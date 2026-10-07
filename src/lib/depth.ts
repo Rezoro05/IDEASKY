@@ -27,7 +27,8 @@ export function wheelStep(depth: Depth, wheel: Wheel, deltaY: number, now: numbe
 }
 
 /** A finished touch swipe: `upBy` is how far the finger moved up (negative = down). Swiping up in the sky dives; down in the sea surfaces. */
-export const swipeStep = (depth: Depth, upBy: number): Depth => depthFor(depth, upBy, DIVE.swipePx);
+/** Swipes only dive: in the sea a finger drag is the hand net (any direction), so the way back up is "Back to the sky". */
+export const swipeStep = (depth: Depth, upBy: number): Depth => (depth === "sky" ? depthFor(depth, upBy, DIVE.swipePx) : depth);
 
 /** Keys: Page Down dives, Page Up surfaces. */
 export function keyStep(depth: Depth, key: string): Depth {

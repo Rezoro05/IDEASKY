@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { DART_SPEED, HANDLE_END, HOOP_UNITS, NET, bagDepth, bagLength, caughtBy, dartAway, dragTilt, easeVelocity, hoopCentre, startledBy, sweptIn, trailAngle } from "../../src/lib/net";
+import { DART_SPEED, HANDLE_END, HOOP_UNITS, NET, bagDepth, bagLength, caughtBy, dartAway, dragTilt, easeVelocity, hoopCentre, startledBy, SWING, swingToward, sweptIn, trailAngle } from "../../src/lib/net";
 import { len, v } from "../../src/lib/vec";
+import { normalizeDeg } from "../../src/lib/orientation";
 
 const fish = [{ slug: "a", position: v(100, 100) }, { slug: "b", position: v(130, 100) }, { slug: "c", position: v(400, 400) }];
 
@@ -81,5 +82,37 @@ describe("the hand net", () => {
     expect(d.x).toBeCloseTo(DART_SPEED);
     expect(d.y).toBeCloseTo(0);
     expect(len(dartAway(v(100, 100), v(100, 100), 0.9))).toBeCloseTo(DART_SPEED); // right under it: picks a side
+  });
+});
+
+describe("the net swinging to lead a finger", () => {
+  const away = (swing: number) => { const c = hoopCentre(v(0, 0), NET.radius, swing); return { x: c.x, y: c.y, d: len(c) }; };
+  it("keeps the handle's length whichever way it swings", () => {
+    for (const s of [0, 45, 90, 180, -120]) expect(away(s).d).toBeCloseTo(away(0).d, 6);
+  });
+  it("with no swing, sits up and to the left of the hand, as drawn", () => {
+    const c = away(0);
+    expect(c.x).toBeLessThan(0); expect(c.y).toBeLessThan(0);
+  });
+  it("turns toward the finger's heading, so the hoop leads it", () => {
+    let s = 0;
+    for (let i = 0; i < 120; i++) s = swingToward(s, v(400, 0), 1 / 60); // sweeping right
+    const c = hoopCentre(v(0, 0), NET.radius, s);
+    expect(c.x).toBeGreaterThan(len(c) * 0.99);
+    for (let i = 0; i < 120; i++) s = swingToward(s, v(0, 400), 1 / 60); // now down
+    const d = hoopCentre(v(0, 0), NET.radius, s);
+    expect(d.y).toBeGreaterThan(len(d) * 0.99);
+  });
+  it("eases rather than snapping, and holds still when the finger does", () => {
+    const once = swingToward(0, v(400, 0), 1 / 60);
+    expect(Math.abs(once)).toBeGreaterThan(0);
+    expect(Math.abs(once)).toBeLessThan(40);
+    expect(swingToward(37, v(SWING.minSpeed - 1, 0), 1 / 60)).toBe(37);
+  });
+  it("takes the short way round", () => {
+    const target = swingToward(0, v(-1000, 1000), 1); // dt * rate ≥ 1: lands on the target
+    expect(Math.abs(target)).toBeLessThanOrEqual(180);
+    const nudged = swingToward(170, v(-1000, -1), 1 / 60);
+    expect(Math.abs(normalizeDeg(nudged - 170))).toBeLessThan(30); // crossing 180, not swinging all the way back round
   });
 });
