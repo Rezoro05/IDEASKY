@@ -17,7 +17,7 @@ export const NET = {
   /** How long the lift takes before a caught fish's dream opens (ms). */
   swoopMs: 260,
   /** How long a caught fish wriggles in the net before its dream opens (ms). */
-  holdMs: 420,
+  holdMs: 640,
 } as const;
 
 /** How deep the bag hangs after the net has been held `heldMs`: 1 when it dips in, easing out to `bagStretch`. */

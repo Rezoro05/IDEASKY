@@ -171,6 +171,16 @@ export function startSea(opts: {
   sea.addEventListener("pointermove", (e) => {
     if (netting && e.pointerId === netting.pointerId) netting.at = local(e);
   });
+  /** The caught fish slides from the hoop into the bag (behind its outer mesh) and stays there, wriggling, as the net lifts. */
+  function netFish(n: NonNullable<typeof netting>, fishEl: HTMLElement | undefined): void {
+    const art = fishEl?.querySelector("svg"), spot = n.el.querySelector(".hn-catch-g");
+    if (!art || !spot || !fishEl) return;
+    const flip = Math.abs(n.trail) > 90 ? " scale(1 -1)" : ""; // stay belly-down whichever way the bag streams
+    spot.setAttribute("transform", `rotate(${n.trail.toFixed(1)})${flip}`);
+    spot.innerHTML = `<g class="hn-catch"><svg x="-20" y="-20" width="40" height="40" viewBox="-32 -32 64 64" overflow="visible">${art.innerHTML}</svg></g>`;
+    n.el.style.setProperty("--fish-tint", getComputedStyle(fishEl).getPropertyValue("--fish-tint"));
+    fishEl.classList.add("netted"); // the fish is now the one in the net
+  }
   const lift = (el: HTMLElement, hit: boolean) => {
     el.classList.add(hit ? "hit" : "miss");
     setTimeout(() => el.remove(), hit ? NET.swoopMs + NET.holdMs + 200 : 420);
@@ -189,9 +199,9 @@ export function startSea(opts: {
     if (!slug) return;
     caught = { slug, at: hoop };
     const fishEl = els.get(slug);
-    fishEl?.classList.add("caught"); // in the net: it wriggles as it is lifted
+    netFish(n, fishEl);
     setTimeout(() => {
-      fishEl?.classList.remove("caught");
+      fishEl?.classList.remove("netted");
       if (caught?.slug === slug) { open(slug); caught = null; }
     }, NET.swoopMs + NET.holdMs);
   };

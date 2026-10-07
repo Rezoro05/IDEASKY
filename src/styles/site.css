@@ -182,15 +182,14 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .hn-art { width: 100%; height: 100%; transform-origin: 93.33% 83.33%; /* the handle's end (52, 40 in a 120-unit drawing): the hand */
   animation: net-dip .24s cubic-bezier(.2,1.4,.4,1) both, net-search 1.4s ease-in-out .24s infinite alternate; }
 .hand-net.miss .hn-art { animation: net-lift .4s ease-in forwards; }
-.hand-net.hit .hn-art { animation: net-scoop .68s cubic-bezier(.3,0,.3,1) forwards; }
-.hn-art svg { width: 100%; height: 100%; overflow: visible; }
+.hand-net.hit .hn-art { animation: net-scoop .9s cubic-bezier(.3,0,.3,1) forwards; }
+.hn-art > svg { width: 100%; height: 100%; overflow: visible; }
 .hn-handle-edge { stroke: var(--fish-edge); stroke-width: 6.6; stroke-linecap: round; }
 .hn-handle { stroke: #C9935B; stroke-width: 4.2; stroke-linecap: round; } /* a wooden handle */
 .hn-grain { stroke: #A8743F; stroke-width: 1; stroke-linecap: round; opacity: .8; }
 .hn-mouth { fill: color-mix(in srgb, var(--sea-deep) 22%, transparent); }
 .hn-sack { fill: color-mix(in srgb, var(--fish) 14%, transparent); stroke: none; }
 .hn-threads { fill: none; stroke: var(--fish); stroke-width: .9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.hn-knot { fill: var(--fish); }
 .hn-out .hn-threads { stroke-opacity: .9; } .hn-out .hn-sack { fill: color-mix(in srgb, var(--fish) 18%, transparent); }
 .hn-in .hn-threads { stroke-opacity: .38; } .hn-in .hn-sack { fill: color-mix(in srgb, var(--fish) 6%, transparent); } /* seen through the opening: lighter */
 .hn-rim-edge { fill: none; stroke: var(--fish-edge); stroke-width: 4.4; }
@@ -200,10 +199,16 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 @keyframes net-dip { from { opacity: 0; transform: rotate(-38deg) scale(.8); } to { opacity: 1; transform: none; } }
 @keyframes net-search { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
 @keyframes net-lift { to { opacity: 0; transform: rotate(-24deg) scale(.9); } }
-@keyframes net-scoop { 0% { transform: none; } 35% { transform: rotate(8deg); } 100% { opacity: 0; transform: rotate(-30deg) scale(.92); } }
-.fish.caught svg { animation: wriggle .09s linear infinite alternate; }
+@keyframes net-scoop { 0%, 30% { transform: none; } 50% { transform: rotate(8deg); } 100% { opacity: 0; transform: rotate(-30deg) scale(.92); } }
+.fish.netted { visibility: hidden; } /* it is in the net now */
+.hn-catch { animation: into-net .3s cubic-bezier(.3,.6,.4,1) forwards; }
+.hn-catch svg { animation: wriggle .09s linear .3s infinite alternate; }
+.hn-catch .pf { fill: var(--fish); stroke: var(--fish-edge); stroke-width: 1.3; stroke-linejoin: round; }
+.hn-catch .fish-fin { fill: var(--fish-tint); } .hn-catch .fish-stripe { fill: none; stroke: var(--fish-tint); stroke-width: 2.4; stroke-linecap: round; }
+.hn-catch .pf-shade { fill: var(--fish-edge); fill-opacity: .14; stroke: none; } .hn-catch .pf-eye { fill: var(--fish-edge); }
+@keyframes into-net { from { transform: translateX(0); } to { transform: translateX(46px); } }
 @keyframes wriggle { from { transform: rotate(-6deg) translateX(-1px); } to { transform: rotate(6deg) translateX(1px); } }
-.fish.caught .tag { color: var(--sea-text); }
+.fish.netted .tag { color: var(--sea-text); }
 .fish.arriving { visibility: hidden; } /* a fish is flying down to it from the folded note */
 /* A dream's letter: no stages and no owner updates */
 .letter-card.no-stages .stage-track, .letter-card.no-stages #stage-error,
@@ -614,8 +619,9 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   .cloud.c1 { transform: translateX(62vw); } .cloud.c2 { transform: translateX(18vw); } .cloud.c3 { transform: translateX(84vw); } .cloud.c4 { display: none; }
   .btn-idea, .btn-idea::after, .act svg, .stage-bar .fill, .stage-bar .knob { transition: none; }
   .btn-idea:hover { transform: none; }
-  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .c-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="idea"] .body, .holding-bird .cage svg, .listening .mic svg, .fish.caught svg { animation: none; }
+  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .c-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="idea"] .body, .holding-bird .cage svg, .listening .mic svg, .hn-catch svg { animation: none; }
   .hn-art, .hand-net.hit .hn-art, .hand-net.miss .hn-art { animation: none; }
+  .hn-catch { animation: none; transform: translateX(46px); }
 }
 @media (prefers-reduced-transparency: reduce) {
   .letter, .toast, .plane .tag { -webkit-backdrop-filter: none; backdrop-filter: none; }

@@ -174,11 +174,11 @@ test.describe("catching and opening dreams", () => {
     rows: [dreamRow("dreambb1", "A whale showed me the way home", ["water", "animals"], 3), dreamRow("dreambb2", "Stairs that never ended", ["places"], 2)],
     posts: [], deletes: [], mails: 0,
   });
-  /** Fish keep swimming while a busy test machine works, so a catch may miss: re-aim and try again, as a person would (up to 4 tries). */
+  /** Fish keep swimming while a busy test machine works, so a catch may miss: re-aim and try again, as a person would (up to 6 tries). */
   const until = async (page: Page, attempt: () => Promise<void>, done: () => Promise<boolean>) => {
-    for (let i = 0; i < 4; i++) { await attempt(); if (await done()) return; await page.waitForTimeout(900); }
+    for (let i = 0; i < 6; i++) { await attempt(); if (await done()) return; await page.waitForTimeout(900); }
   };
-  const opened = (page: Page) => async () => (await page.locator("#letter").isVisible()) || (await page.waitForTimeout(1200), page.locator("#letter").isVisible());
+  const opened = (page: Page) => async () => (await page.locator("#letter").isVisible()) || (await page.waitForTimeout(1500), page.locator("#letter").isVisible());
   const centre = async (page: Page, slug: string) => {
     await page.waitForFunction((s) => (document.querySelector(`.fish[data-slug="${s}"]`) as HTMLElement | null)?.style.transform, slug);
     const r = (await page.locator(`.fish[data-slug="${slug}"] .body`).boundingBox())!;
@@ -199,7 +199,7 @@ test.describe("catching and opening dreams", () => {
     await expect(page.locator("#like-btn")).toBeVisible(); // likes and comments work as for ideas
   });
 
-  test("pressing with the hoop over a fish dips the net onto it; on release the fish wriggles in the net, then its dream opens", async ({ page }) => {
+  test("pressing with the hoop over a fish dips the net onto it; on release the fish goes into the net, then its dream opens", async ({ page }) => {
     await fakeServices(page, sea());
     await page.goto("/#sea");
     let netWhilePressed = 0;
@@ -208,11 +208,13 @@ test.describe("catching and opening dreams", () => {
       await page.mouse.move(x, y); await page.mouse.down();
       netWhilePressed = await page.locator(".hand-net:not(.miss):not(.hit)").count(); // in the water while pressed
       await page.mouse.up();
-    }, async () => (await page.locator('.fish[data-slug="dreambb2"].caught').count()) > 0);
+    }, async () => (await page.locator('.fish[data-slug="dreambb2"].netted').count()) > 0);
     expect(netWhilePressed).toBe(1);
     await expect(page.locator(".hand-net.hit")).toHaveCount(1);
+    await expect(page.locator(".hand-net.hit .hn-catch svg")).toHaveCount(1); // the fish is in the net, behind its outer mesh
+    expect(await page.locator(".hand-net .hn-catch-g + .hn-out").count()).toBe(1);
     await expect(page.locator("#letter-from")).toHaveText("Dream2");
-    await expect(page.locator('.fish[data-slug="dreambb2"]')).not.toHaveClass(/\bcaught\b/);
+    await expect(page.locator('.fish[data-slug="dreambb2"]')).not.toHaveClass(/\bnetted\b/);
     await expect(page.locator(".hand-net")).toHaveCount(0, { timeout: 2000 });
   });
 
