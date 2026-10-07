@@ -9,6 +9,10 @@ import type { IdeaStore } from "../boundaries/ideaStore";
 import type { Categorizer } from "../boundaries/categorizer";
 import { fishRelease, netsNow, waterTapReleases, NET } from "../lib/net";
 import { v, type Vec } from "../lib/vec";
+import type { PointerInfo } from "../lib/plane";
+
+/** A mouse that hasn't moved for this long counts as still (as in the sky). */
+const MOUSE_STILL_MS = 120;
 
 /** How many fish swim at once (the newest dreams). */
 export const DREAMS_IN_SEA = 16;
@@ -110,6 +114,17 @@ export function startSea(opts: {
     opts.onOpen(a.dataset.dream!, v(r.left + 40, r.top + r.height / 2));
   });
 
+  /* The mouse over the sea: fish dart away from it when it moves near (touch has no hover, so it never sets this). */
+  let mouse: (PointerInfo & { at: number }) | null = null;
+  const local = (e: PointerEvent): Vec => { const r = field.getBoundingClientRect(); return v(e.clientX - r.left, e.clientY - r.top); };
+  field.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const at = performance.now(), position = local(e);
+    const speed = mouse ? Math.hypot(position.x - mouse.position.x, position.y - mouse.position.y) / Math.max(8, at - mouse.at) * 1000 : 0;
+    mouse = { position, speed: mouse ? speed * 0.6 + mouse.speed * 0.4 : 0, at }; // smoothed, since pointer events come unevenly
+  });
+  field.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") mouse = null; });
+
   /* Tap to open; press and hold to net (pure rules in lib/net). A netted fish holds still and wriggles until tapped or let go. */
   const netted = new Set<string>();
   let press: { slug: string | null; point: Vec; at: number; nettedBefore: boolean; nettedDuring: boolean; timer: number } | null = null, suppressClick = false;
@@ -156,7 +171,8 @@ export function startSea(opts: {
     last = now;
     if (opts.active() && fish.length > 0) {
       time += dt;
-      fish = stepSwim(fish, { dt, time, bounds: size, still: netted });
+      const pointer = mouse && !press ? { position: mouse.position, speed: now - mouse.at < MOUSE_STILL_MS ? mouse.speed : 0 } : null; // a fish being pressed doesn't flee the hand
+      fish = stepSwim(fish, { dt, time, bounds: size, still: netted, pointer });
       for (const f of fish) {
         const el = els.get(f.slug);
         if (!el) continue;

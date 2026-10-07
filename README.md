@@ -1,4 +1,6 @@
-# IDEA SKY
+# Sky of Ideas
+
+_(Formerly IDEA SKY; the repository and web address keep the old name.)_
 
 A public sky of ideas. Visitors fold an idea into a paper plane and send it into a full-screen sky over the New York skyline, where anyone can catch it, read it, like it and comment. Its author moves it from Idea through In Progress to Live; each stage flies as its own form (paper plane, airplane, bird), and the author adds dated updates along the way.
 

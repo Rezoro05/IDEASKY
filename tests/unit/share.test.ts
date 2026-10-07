@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { shareLink, type ShareNav } from "../../src/boundaries/share";
 
-const link = { title: "IDEA SKY", url: "https://example.com/" };
+const link = { title: "Sky of Ideas", url: "https://example.com/" };
 const abort = () => Promise.reject(Object.assign(new Error("x"), { name: "AbortError" }));
 
 describe("sharing a link", () => {

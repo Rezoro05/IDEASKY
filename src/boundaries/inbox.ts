@@ -18,7 +18,7 @@ export function inboxFields(idea: Idea, email: string, page: string): [string, s
     ["message", idea.message],
     ["idea_id", idea.id],
     ["page", page],
-    ["_subject", idea.kind === "dream" ? `New dream in the Sea of Dreams from ${idea.name}` : `New idea on IDEA SKY from ${idea.name}`],
+    ["_subject", idea.kind === "dream" ? `New dream in the Sea of Dreams from ${idea.name}` : `New idea on Sky of Ideas from ${idea.name}`],
   ];
 }
 
@@ -39,7 +39,7 @@ export function feedbackFields(f: Feedback, page: string): [string, string][] {
     ...(f.email ? [["email", f.email] as [string, string]] : []),
     ["message", f.message],
     ["page", page],
-    ["_subject", "Feedback on IDEA SKY"],
+    ["_subject", "Feedback on Sky of Ideas"],
   ];
 }
 

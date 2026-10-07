@@ -113,6 +113,33 @@ test.describe("fish (dreams)", () => {
     expect(await where()).toBe(b);
   });
 
+  test("a fish darts away from a quickly moving mouse, as a bird does", async ({ page }) => {
+    await fakeServices(page, { rows: [dreamRow("dreamcc1", "A lone fish", null, 1)], posts: [], deletes: [], mails: 0 });
+    await page.goto("/#sea");
+    await page.waitForFunction(() => (document.querySelector(".fish") as HTMLElement | null)?.style.transform);
+    await page.waitForTimeout(1000); // the glide down has ended
+    const at = async () => { const r = (await page.locator(".fish .body").boundingBox())!; return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
+    const before = await at();
+    /** The fish's fastest pace (px/s) over the next `ms`, measured over 0.1 s windows (single frames jitter). A calm fish never tops 78 px/s. */
+    const topSpeed = (ms: number) => page.evaluate((ms) => new Promise<number>((done) => {
+      const el = document.querySelector(".fish") as HTMLElement, read = () => el.style.transform.match(/-?[\d.]+/g)!.slice(1, 3).map(Number);
+      let last = read(), lastT = performance.now(), top = 0; const end = lastT + ms;
+      const tick = (t: number) => {
+        const p = read(), dt = (t - lastT) / 1000;
+        if (dt >= 0.1) { top = Math.max(top, Math.hypot(p[0]! - last[0]!, p[1]! - last[1]!) / dt); last = p; lastT = t; }
+        if (t < end) requestAnimationFrame(tick); else done(top);
+      };
+      requestAnimationFrame(tick);
+    }), ms);
+    expect(await topSpeed(500)).toBeLessThan(80); // calm
+    await page.mouse.move(before.x - 160, before.y);
+    const sampling = topSpeed(700);
+    await page.mouse.move(before.x - 25, before.y, { steps: 6 }); // a quick sweep straight at it
+    expect(await sampling).toBeGreaterThan(95); // it darted
+    const after = await at();
+    expect(after.x).toBeGreaterThan(before.x); // away from the mouse, not toward it
+  });
+
   test.describe("with reduced motion", () => {
     test.use({ reducedMotion: "reduce" });
     test("no fish are drawn", async ({ page }) => {

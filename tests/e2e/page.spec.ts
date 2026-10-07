@@ -1,18 +1,18 @@
 import { test, expect } from "@playwright/test";
 import { fakeServices, watchErrors, withGio } from "./fixtures";
 
-test("the home page opens with IDEA SKY content and no errors", async ({ page }) => {
+test("the home page opens with Sky of Ideas content and no errors", async ({ page }) => {
   await fakeServices(page);
   const errors = watchErrors(page);
   await page.goto("/");
-  await expect(page).toHaveTitle("IDEA SKY · Share ideas, bring them to life");
-  await expect(page.locator("h1")).toHaveText("IDEA SKY");
+  await expect(page).toHaveTitle("Sky of Ideas · Share ideas, bring them to life");
+  await expect(page.locator("h1")).toHaveText("Sky of Ideas");
   await expect(page.locator(".closing")).toHaveCount(0); // one section: the sky
   await expect(page.locator(".bar .wordmark")).toHaveCount(0); // the name is the headline now, not repeated top left
   await expect(page.locator(".thesis p").first()).toHaveText(/^Idea without execution is just a thought exercise\./);
   const rez = page.locator(".foot a", { hasText: "REZ" }); // the footer credits REZ and links to his site (no site name there: the headline has it)
   await expect(page.locator(".foot")).toContainText("Ideas from REZ");
-  await expect(page.locator(".foot")).not.toContainText("IDEA SKY");
+  await expect(page.locator(".foot")).not.toContainText("Sky of Ideas");
   await expect(rez).toHaveAttribute("href", "https://revazkuparadze.com");
   await expect(rez).toHaveAttribute("target", "_blank");
   await page.waitForTimeout(500);
@@ -42,7 +42,7 @@ test("unknown URLs get the 404 page, which still works as the site", async ({ pa
   const res = await page.goto("/nope/");
   expect(res?.status()).toBe(404);
   await expect(page.locator("#field")).toBeVisible();
-  await expect(page.locator("h1")).toHaveText("IDEA SKY");
+  await expect(page.locator("h1")).toHaveText("Sky of Ideas");
 });
 
 test.describe("reduced motion", () => {
@@ -74,7 +74,7 @@ test("SEO basics: canonical, structured data, sitemap", async ({ page, request }
   await page.goto("/");
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://rezoro05.github.io/IDEASKY/");
   const ld = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent())!);
-  expect(ld).toMatchObject({ "@type": "WebSite", name: "IDEA SKY" });
+  expect(ld).toMatchObject({ "@type": "WebSite", name: "Sky of Ideas" });
   const sitemap = await (await request.get("/sitemap.xml")).text();
   expect(sitemap).toContain("<loc>https://rezoro05.github.io/IDEASKY/</loc>");
   expect(await (await request.get("/robots.txt")).text()).toContain("Sitemap: https://rezoro05.github.io/IDEASKY/sitemap.xml");

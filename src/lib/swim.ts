@@ -3,6 +3,8 @@
 import { add, clampLen, len, scale, sub, v, type Vec } from "./vec";
 import { hashString } from "./random";
 import type { Bounds } from "./sim";
+import type { PointerInfo } from "./plane";
+import { BIRD } from "./bird";
 
 export type Fish = {
   readonly slug: string;
@@ -29,12 +31,30 @@ export const SWIM = {
   wall: 80, wallPush: 120,
   /** The top part of the sea (a share of its height) holds the headline: fish stay below it. */
   surfaceShare: 0.3,
+  /** A frightened fish's top speed, in cruise speeds (like a bird's: a creeping mouse never reaches it, a quick one does). */
+  fleeSpeedScale: BIRD.fleeSpeedScale,
+  /** How hard a mouse right next to a fish pushes it (px/s²), fading to nothing at the alarm radius. Stronger than a bird's:
+   *  a fish darts in a flick of its tail, and the burst has to show before a quick mouse has passed. */
+  fleeAccel: 1500,
 } as const;
+
+/** Fish take fright like birds do: the same alarm radius and the same "a slow mouse frightens nothing"; they dart harder. */
+export const isFrightened = (position: Vec, pointer: PointerInfo | null | undefined): boolean =>
+  !!pointer && pointer.speed >= BIRD.alarmSpeed && len(sub(position, pointer.position)) < BIRD.alarmRadius;
+
+/** The push away from a moving mouse: strongest right next to it, nothing at the alarm radius. */
+function fleeFrom(position: Vec, pointer: PointerInfo): Vec {
+  const away = sub(position, pointer.position), d = len(away);
+  const dir = d > 1e-6 ? scale(away, 1 / d) : v(1, 0);
+  return scale(dir, SWIM.fleeAccel * (1 - d / BIRD.alarmRadius));
+}
 
 export type SwimInput = {
   readonly dt: number; readonly time: number; readonly bounds: Bounds;
   /** Fish that hold still (netted, or focused for the keyboard). */
   readonly still: ReadonlySet<string>;
+  /** The mouse over the sea, if any: fish dart away from it when it moves near (touch has no hover, so it never sets this). */
+  readonly pointer?: PointerInfo | null;
 };
 
 /** The water a fish may swim in: below the headline band, inside the walls. */
@@ -57,12 +77,14 @@ export function stepSwim(fish: readonly Fish[], input: SwimInput): Fish[] {
     }
     if (near > 0) steer = add(steer, scale(sub(scale(heading, 1 / near), f.velocity), SWIM.align));
     if (mates > 0) steer = add(steer, scale(sub(scale(middle, 1 / mates), f.position), SWIM.cohere * (near > 0 ? 1 : 0.35)));
+    const frightened = isFrightened(f.position, input.pointer);
+    if (frightened) steer = add(steer, fleeFrom(f.position, input.pointer!));
     steer = add(steer, wander(f, time));
     steer = add(steer, walls(f.position, area));
     let velocity = add(f.velocity, scale(steer, dt));
     const speed = len(velocity) || 1e-6;
-    const eased = speed + (SWIM.cruise - speed) * Math.min(1, SWIM.settle * dt);
-    velocity = clampLen(scale(velocity, Math.max(SWIM.slowest, eased) / speed), SWIM.fastest);
+    const eased = frightened ? speed : speed + (SWIM.cruise - speed) * Math.min(1, SWIM.settle * dt); // a frightened fish keeps its burst; it calms down after
+    velocity = clampLen(scale(velocity, Math.max(SWIM.slowest, eased) / speed), frightened ? SWIM.cruise * SWIM.fleeSpeedScale : Math.max(SWIM.fastest, Math.min(len(f.velocity), SWIM.cruise * SWIM.fleeSpeedScale))); // after a fright it only slows down
     const p = add(f.position, scale(velocity, dt));
     const position = v(Math.min(area.right, Math.max(area.left, p.x)), Math.min(area.bottom, Math.max(area.top, p.y)));
     return { ...f, position, velocity };

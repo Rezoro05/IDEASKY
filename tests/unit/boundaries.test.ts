@@ -140,7 +140,7 @@ describe("memoryStore", () => {
 
 describe("inbox", () => {
   it("sends the fields Formspree expects; email only when given", () => {
-    expect(inboxFields(idea, "", "https://x/")).toEqual([["name", "Nino"], ["message", "An idea"], ["idea_id", "abc123"], ["page", "https://x/"], ["_subject", "New idea on IDEA SKY from Nino"]]);
+    expect(inboxFields(idea, "", "https://x/")).toEqual([["name", "Nino"], ["message", "An idea"], ["idea_id", "abc123"], ["page", "https://x/"], ["_subject", "New idea on Sky of Ideas from Nino"]]);
     expect(inboxFields({ ...idea, kind: "dream" }, "", "https://x/").at(-1)).toEqual(["_subject", "New dream in the Sea of Dreams from Nino"]);
     expect(inboxFields(idea, "a@b.c", "p").map(([k]) => k)).toContain("email");
   });
@@ -166,7 +166,7 @@ describe("inbox", () => {
     expect(formspreeInbox("https://formspree.io/f/x", vi.fn() as unknown as typeof fetch).configured).toBe(true);
   });
   it("feedback goes out with its own subject; email only when given", async () => {
-    expect(feedbackFields({ message: "Love it", email: "" }, "https://x/")).toEqual([["message", "Love it"], ["page", "https://x/"], ["_subject", "Feedback on IDEA SKY"]]);
+    expect(feedbackFields({ message: "Love it", email: "" }, "https://x/")).toEqual([["message", "Love it"], ["page", "https://x/"], ["_subject", "Feedback on Sky of Ideas"]]);
     expect(feedbackFields({ message: "Love it", email: "a@b.c" }, "p")[0]).toEqual(["email", "a@b.c"]);
     const f = vi.fn(async (_u: string, _i?: RequestInit) => res({}));
     expect(await formspreeInbox("https://formspree.io/f/x", f as unknown as typeof fetch).sendFeedback({ message: "Love it", email: "" }, "p")).toBe(true);

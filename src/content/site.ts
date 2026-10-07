@@ -1,6 +1,6 @@
 /** Site-wide facts and service endpoints. Public by design (no secrets here). */
 export const SITE = {
-  name: "IDEA SKY",
+  name: "Sky of Ideas", // the owner renamed IDEA SKY on 2026-10-07; the web address stays .../IDEASKY/
   url: "https://rezoro05.github.io/IDEASKY/",
 } as const;
 
@@ -11,7 +11,7 @@ export const SEA = {
 } as const;
 
 export const HERO = {
-  headline: "IDEA SKY",
+  headline: "Sky of Ideas",
   lede: "Idea without execution is just a thought exercise. Let yours fly into this sky as a bird, where anyone can catch it, read it, and maybe bring it to life.",
 } as const;
 
@@ -32,6 +32,6 @@ export const PUBLIC_BOARD = {
 
 export type PageMeta = { title: string; description: string };
 export const PAGE_META: Record<"home" | "notFound", PageMeta> = {
-  home: { title: "IDEA SKY · Share ideas, bring them to life", description: HERO.lede },
-  notFound: { title: "Page not found · IDEA SKY", description: HERO.lede },
+  home: { title: "Sky of Ideas · Share ideas, bring them to life", description: HERO.lede },
+  notFound: { title: "Page not found · Sky of Ideas", description: HERO.lede },
 };

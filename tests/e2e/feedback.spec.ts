@@ -18,7 +18,7 @@ test.describe("feedback", () => {
     const body = board.mailBodies!.at(-1)!;
     expect(body).toContain("The bar is lovely");
     expect(body).toContain("rez@example.com");
-    expect(body).toContain("Feedback on IDEA SKY");
+    expect(body).toContain("Feedback on Sky of Ideas");
     expect(board.posts).toHaveLength(0); // feedback never reaches the public board
     await expect(page.locator(".plane")).toHaveCount(0);
   });

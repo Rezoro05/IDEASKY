@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { SWIM, fishFacing, fishTransform, spawnFish, stepSwim, swimArea, type Fish } from "../../src/lib/swim";
+import { SWIM, fishFacing, fishTransform, isFrightened, spawnFish, stepSwim, swimArea, type Fish } from "../../src/lib/swim";
+import { BIRD } from "../../src/lib/bird";
 import { mulberry32 } from "../../src/lib/random";
 import { len, sub, v } from "../../src/lib/vec";
 
@@ -58,6 +59,31 @@ describe("swimming", () => {
   });
   it("is the same every time for the same start", () => {
     expect(swimFor(sea(["a", "b"]), 3)).toEqual(swimFor(sea(["a", "b"]), 3));
+  });
+});
+
+describe("fish flee the mouse, like birds", () => {
+  const fishAt = (x: number, y: number): Fish => ({ slug: "f", school: "", position: v(x, y), velocity: v(SWIM.cruise, 0) });
+  it("only a moving mouse within the birds' alarm radius frightens a fish", () => {
+    expect(isFrightened(v(600, 500), { position: v(650, 500), speed: 300 })).toBe(true);
+    expect(isFrightened(v(600, 500), { position: v(650, 500), speed: BIRD.alarmSpeed - 1 })).toBe(false); // a creeping mouse
+    expect(isFrightened(v(600, 500), { position: v(600 + BIRD.alarmRadius + 1, 500), speed: 300 })).toBe(false);
+    expect(isFrightened(v(600, 500), null)).toBe(false);
+  });
+  it("a fish darts away from a quick mouse, faster than it ever cruises, then calms down (functional)", () => {
+    let fish: Fish[] = [fishAt(600, 500)], time = 0, fastest = 0;
+    const mouse = { position: v(560, 500), speed: 400 };
+    for (let i = 0; i < 30; i++) { fish = stepSwim(fish, { dt, time, bounds, still: NONE, pointer: mouse }); time += dt; fastest = Math.max(fastest, len(fish[0]!.velocity)); }
+    expect(fish[0]!.position.x).toBeGreaterThan(600); // away from the mouse on its left
+    expect(fastest).toBeGreaterThan(SWIM.fastest);
+    expect(fastest).toBeLessThanOrEqual(SWIM.cruise * SWIM.fleeSpeedScale + 1e-6);
+    fish = swimFor(fish, 20);
+    expect(len(fish[0]!.velocity)).toBeLessThanOrEqual(SWIM.fastest + 1e-6);
+  });
+  it("a netted fish stays in the net, however the mouse moves", () => {
+    const start = [fishAt(600, 500)];
+    const end = stepSwim(start, { dt, time: 0, bounds, still: new Set(["f"]), pointer: { position: v(590, 500), speed: 500 } });
+    expect(end[0]!.position).toEqual(start[0]!.position);
   });
 });
 
