@@ -11,17 +11,20 @@ export const FISH_SVG =
   `</svg>`;
 
 /** The hand net, in the planes' paper style, seen a little from above: an oval hoop with a cream rim, a diamond-mesh bag hanging
- *  beneath it, and a wooden handle with a wrapped grip running off to the lower right. The hoop is centred on (0, 0) with a
- *  horizontal reach of 30 units, so the drawing scales to the net's reach in px (1 unit = reach / 30). */
-export const HAND_NET_REACH_UNITS = 30;
+ *  below it, and a wooden handle with a wrapped grip running down to the right. Inside the rim there is only water (the mesh shows
+ *  only on the bag outside it). The hoop is centred on (0, 0) with a reach of 30 units; the handle ends at HANDLE_END (lib/net),
+ *  where the pointer holds it. The bag's group (.hn-bag-g) stretches downward from the rim while the net is held. */
 export const HAND_NET_SVG =
   `<svg viewBox="-60 -60 120 120" aria-hidden="true"><defs>` +
   `<pattern id="hn-diamonds" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path class="hn-thread" d="M0 0H7M0 0V7"/></pattern>` +
-  `</defs><g transform="rotate(-10)">` +
-  `<path class="hn-handle-edge" d="M23 15 L56 47"/><path class="hn-handle" d="M23 15 L56 47"/>` +
-  `<path class="hn-grip" d="M44 35.5 l-3.2 3.2 M48 39.5 l-3.2 3.2 M52 43.5 l-3.2 3.2"/>` +
+  `<mask id="hn-outside" maskUnits="userSpaceOnUse" x="-60" y="-60" width="200" height="200"><rect x="-60" y="-60" width="200" height="200" fill="#fff"/><ellipse rx="30" ry="24" fill="#000"/></mask>` +
+  `</defs>` +
+  `<path class="hn-handle-edge" d="M23.6 14.8 L52 40"/><path class="hn-handle" d="M23.6 14.8 L52 40"/>` +
+  `<path class="hn-grip" d="M40.5 26.6 l-2.7 3 M44.5 30.2 l-2.7 3 M48.5 33.8 l-2.7 3"/>` +
+  `<g mask="url(#hn-outside)"><g class="hn-bag-g">` +
   `<path class="hn-bag" d="M-30 0 C-29 22 -12 40 2 42 C15 40 29 22 30 0 Z"/>` +
   `<path class="hn-bag-mesh" d="M-30 0 C-29 22 -12 40 2 42 C15 40 29 22 30 0 Z"/>` +
-  `<ellipse class="hn-mouth" rx="30" ry="24"/><ellipse class="hn-mouth-mesh" rx="30" ry="24"/>` +
+  `</g></g>` +
+  `<ellipse class="hn-mouth" rx="30" ry="24"/>` +
   `<ellipse class="hn-rim-edge" rx="30" ry="24"/><ellipse class="hn-rim" rx="30" ry="24"/>` +
-  `</g></svg>`;
+  `</svg>`;

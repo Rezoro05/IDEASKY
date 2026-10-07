@@ -1,13 +1,14 @@
-/** Catching a dream with a hand net: pressing in the sea dips a small net into the water at the pointer. Held, it follows the pointer
- *  and slowly stretches open; on release, a fish inside the hoop is caught (its dream opens) and fish just outside dart off.
+/** Catching a dream with a hand net: pressing in the sea dips a small net into the water. The pointer holds the end of its handle,
+ *  so the hoop sits just ahead of it. Held, the net follows the pointer and its bag stretches out behind the rim (the net itself
+ *  keeps its size); on release, a fish inside the hoop is caught (its dream opens) and fish just outside dart off.
  *  Pure rules; the sea island draws the net. */
 import { len, sub, v, type Vec } from "./vec";
 
 export const NET = {
-  /** The hoop's reach (px from the pointer) the moment it dips in: small, so a fish has to be right there. */
+  /** The hoop's reach (px from its centre): small, so a fish has to be right there. */
   radius: 34,
-  /** Held down, the hoop stretches open to this reach (px)… */
-  stretched: 52,
+  /** Held down, the bag behind the rim stretches to this many times its depth… */
+  bagStretch: 1.5,
   /** …over this long (ms), easing out. */
   stretchMs: 1200,
   /** Fish this close (px) but not caught are startled by the splash. */
@@ -18,11 +19,19 @@ export const NET = {
   holdMs: 420,
 } as const;
 
-/** How far the hoop reaches after being held `heldMs`: from `radius` easing out to `stretched`. */
-export function netReach(heldMs: number): number {
+/** How deep the bag hangs after the net has been held `heldMs`: 1 when it dips in, easing out to `bagStretch`. */
+export function bagDepth(heldMs: number): number {
   const u = Math.min(1, Math.max(0, heldMs / NET.stretchMs)), eased = 1 - (1 - u) ** 3;
-  return NET.radius + (NET.stretched - NET.radius) * eased;
+  return 1 + (NET.bagStretch - 1) * eased;
 }
+
+/** Where the end of the handle is, from the hoop's centre, in drawing units (the hoop's reach is 30 units). Shared with the drawing. */
+export const HANDLE_END = { x: 52, y: 40 } as const;
+export const HOOP_UNITS = 30;
+
+/** The pointer holds the handle: the hoop's centre is up and to the left of it, by the handle's length at this size. */
+export const hoopCentre = (pointer: Vec, reach: number = NET.radius): Vec =>
+  v(pointer.x - (HANDLE_END.x * reach) / HOOP_UNITS, pointer.y - (HANDLE_END.y * reach) / HOOP_UNITS);
 
 /** The fish the net catches: the one nearest the click, if it is inside the net. */
 export function caughtBy(at: Vec, fish: readonly { slug: string; position: Vec }[], radius: number = NET.radius): string | null {

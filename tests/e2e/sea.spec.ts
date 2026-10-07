@@ -1,5 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
 import { dreamRow, fakeServices, gioRow, settled } from "./fixtures";
+import { HANDLE_END, HOOP_UNITS, NET } from "../../src/lib/net";
+
+/** The pointer holds the net's handle: to put the hoop on a point, hold the handle this far down and to the right of it. */
+const grip = (p: { x: number; y: number }) => ({ x: p.x + HANDLE_END.x * NET.radius / HOOP_UNITS, y: p.y + HANDLE_END.y * NET.radius / HOOP_UNITS });
 
 const depth = (page: Page) => page.evaluate(() => document.documentElement.dataset.depth);
 const planeAt = (page: Page) => page.locator(".plane").first().evaluate((el) => (el as HTMLElement).style.transform);
@@ -165,7 +169,7 @@ test.describe("catching and opening dreams", () => {
   test("a caught dream opens with its themes as tags, no stages, no updates", async ({ page }) => {
     await fakeServices(page, sea());
     await page.goto("/#sea");
-    const { x, y } = await centre(page, "dreambb1");
+    const { x, y } = grip(await centre(page, "dreambb1"));
     await page.mouse.click(x, y);
     await expect(page.locator("#letter")).toBeVisible();
     await expect(page.locator("#letter-from")).toHaveText("Dream1");
@@ -177,10 +181,10 @@ test.describe("catching and opening dreams", () => {
     await expect(page.locator("#like-btn")).toBeVisible(); // likes and comments work as for ideas
   });
 
-  test("pressing on a fish dips the net onto it; on release the fish wriggles in the net, then its dream opens", async ({ page }) => {
+  test("pressing with the hoop over a fish dips the net onto it; on release the fish wriggles in the net, then its dream opens", async ({ page }) => {
     await fakeServices(page, sea());
     await page.goto("/#sea");
-    const { x, y } = await centre(page, "dreambb2");
+    const { x, y } = grip(await centre(page, "dreambb2"));
     await page.mouse.move(x, y); await page.mouse.down();
     await expect(page.locator(".hand-net")).toHaveCount(1); // in the water while pressed
     await page.mouse.up();
@@ -205,33 +209,46 @@ test.describe("catching and opening dreams", () => {
     return spot;
   };
 
-  test("held, the net follows the pointer and stretches open a little; released on empty water it lifts away and nothing opens", async ({ page }) => {
+  test("the pointer holds the handle; held, the net follows it and only its bag stretches; released on empty water it lifts away", async ({ page }) => {
     await fakeServices(page, sea());
     await page.goto("/#sea");
-    const spot = await emptyWater(page);
-    await page.mouse.move(spot.x, spot.y); await page.mouse.down();
+    const spot = await emptyWater(page), hand = grip(spot);
+    await page.mouse.move(hand.x, hand.y); await page.mouse.down();
     const net = page.locator(".hand-net");
-    const k = () => net.evaluate((el) => Number((el as HTMLElement).style.getPropertyValue("--k")));
-    expect(await k()).toBeLessThan(1.05);
+    const hoopAt = async () => { const r = (await net.boundingBox())!; return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width }; };
+    const first = await hoopAt();
+    expect(Math.abs(first.x - spot.x)).toBeLessThan(2); expect(Math.abs(first.y - spot.y)).toBeLessThan(2); // the hoop is ahead of the hand
+    const bag = () => net.evaluate((el) => Number((el as HTMLElement).style.getPropertyValue("--bag")));
+    expect(await bag()).toBeLessThan(1.1);
     await page.waitForTimeout(1300);
-    expect(await k()).toBeGreaterThan(1.4); // stretched open
-    expect(await k()).toBeLessThan(1.6); // a little, no more
-    await page.mouse.move(spot.x - 30, spot.y - 20);
-    await expect.poll(async () => (await net.boundingBox())!.x + (await net.boundingBox())!.width / 2).toBeLessThan(spot.x - 20); // it follows
+    expect(await bag()).toBeGreaterThan(1.4); // the bag has stretched…
+    expect((await hoopAt()).w).toBe(first.w); // …and the net kept its size
+    await page.mouse.move(hand.x - 30, hand.y - 20);
+    await expect.poll(async () => (await hoopAt()).x).toBeLessThan(spot.x - 20); // it follows the hand
     await page.mouse.up();
     await expect(page.locator(".hand-net.miss")).toHaveCount(1);
     await expect(page.locator(".hand-net")).toHaveCount(0, { timeout: 2000 });
     await expect(page.locator("#letter")).toBeHidden();
   });
 
+  test("inside the hoop there is only water; the mesh is on the bag outside the rim", async ({ page }) => {
+    await fakeServices(page, sea());
+    await page.goto("/#sea");
+    const spot = await emptyWater(page), hand = grip(spot);
+    await page.mouse.move(hand.x, hand.y); await page.mouse.down();
+    await expect(page.locator(".hand-net .hn-mouth-mesh")).toHaveCount(0);
+    await expect(page.locator(".hand-net [mask] .hn-bag-mesh")).toHaveCount(1); // the bag's mesh is masked off inside the rim
+    await page.mouse.up();
+  });
+
   test("a net held in the water and brought onto a fish catches it on release", async ({ page }) => {
     await fakeServices(page, sea());
     await page.goto("/#sea");
-    const spot = await emptyWater(page);
+    const spot = grip(await emptyWater(page));
     await page.mouse.move(spot.x, spot.y); await page.mouse.down();
     await page.waitForTimeout(400);
-    const fish = await centre(page, "dreambb1");
-    await page.mouse.move(fish.x, fish.y); // bring the net over it…
+    const fish = grip(await centre(page, "dreambb1"));
+    await page.mouse.move(fish.x, fish.y); // bring the hoop over it…
     await page.mouse.up(); // …and lift
     await expect(page.locator("#letter-from")).toHaveText("Dream1");
   });

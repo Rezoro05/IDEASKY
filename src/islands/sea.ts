@@ -7,7 +7,7 @@ import { FISH_SVG } from "../lib/fish-art";
 import type { Bounds } from "../lib/sim";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { Categorizer } from "../boundaries/categorizer";
-import { NET, caughtBy, dartAway, netReach, startledBy } from "../lib/net";
+import { NET, bagDepth, caughtBy, dartAway, hoopCentre, startledBy } from "../lib/net";
 import { HAND_NET_SVG } from "../lib/fish-art";
 import { v, type Vec } from "../lib/vec";
 import type { PointerInfo } from "../lib/plane";
@@ -131,8 +131,8 @@ export function startSea(opts: {
   });
   sea.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") mouse = null; });
 
-  /* Catching (pure rules in lib/net): pressing in the sea dips a small hand net into the water at the pointer. Held, it follows the
-     pointer and slowly stretches open. On release, a fish inside the hoop is caught: it wriggles in the net as it is lifted, then its
+  /* Catching (pure rules in lib/net): pressing in the sea dips a small hand net into the water; the pointer holds its handle. Held,
+     it follows the pointer and its bag stretches out behind the rim. On release, a fish inside the hoop is caught: it wriggles in the net as it is lifted, then its
      dream opens. A miss lifts the empty net away, and fish just outside dart off. */
   let caught: { slug: string; at: Vec } | null = null; // the fish in the net, held still there until its dream opens
   let netting: { el: HTMLElement; at: Vec; since: number; pointerId: number } | null = null; // the net in the water, while pressed
@@ -141,9 +141,11 @@ export function startSea(opts: {
     const body = els.get(slug)?.querySelector(".body");
     if (body) opts.onOpen(slug, centreOf(body));
   }
-  function placeNet(el: HTMLElement, at: Vec, reach: number): void {
-    el.style.setProperty("--x", at.x + "px"); el.style.setProperty("--y", at.y + "px");
-    el.style.setProperty("--k", (reach / NET.radius).toFixed(3)); // the drawing is sized for the fresh reach; held, it stretches
+  /** `at` is the pointer, which holds the handle; the hoop is drawn ahead of it. Held, the bag stretches (`depth`). */
+  function placeNet(el: HTMLElement, at: Vec, depth: number): void {
+    const hoop = hoopCentre(at);
+    el.style.setProperty("--x", hoop.x + "px"); el.style.setProperty("--y", hoop.y + "px");
+    el.style.setProperty("--bag", depth.toFixed(3));
   }
   sea.addEventListener("pointerdown", (e) => {
     if ((e.target as Element).closest("button, a:not(.fish), input, textarea")) return; // controls are not water
@@ -155,7 +157,7 @@ export function startSea(opts: {
     el.style.setProperty("--r", NET.radius + "px");
     el.innerHTML = `<div class="hn-art">${HAND_NET_SVG}</div>`;
     netting = { el, at: local(e), since: performance.now(), pointerId: e.pointerId };
-    placeNet(el, netting.at, NET.radius);
+    placeNet(el, netting.at, 1);
     field.appendChild(el);
   });
   sea.addEventListener("pointermove", (e) => {
@@ -167,17 +169,17 @@ export function startSea(opts: {
   };
   const release = (e: PointerEvent) => {
     if (!netting || e.pointerId !== netting.pointerId) return;
-    const n = netting, reach = netReach(performance.now() - n.since);
+    const n = netting, hoop = hoopCentre(n.at);
     netting = null;
     if (e.type !== "pointerup") { lift(n.el, false); return; }
-    const slug = caughtBy(n.at, fish, reach);
+    const slug = caughtBy(hoop, fish);
     lift(n.el, slug !== null);
-    for (const s of startledBy(n.at, fish, slug)) {
+    for (const s of startledBy(hoop, fish, slug)) {
       const i = fish.findIndex((f) => f.slug === s);
-      if (i >= 0) fish[i] = { ...fish[i]!, velocity: dartAway(fish[i]!.position, n.at, rand()) };
+      if (i >= 0) fish[i] = { ...fish[i]!, velocity: dartAway(fish[i]!.position, hoop, rand()) };
     }
     if (!slug) return;
-    caught = { slug, at: n.at };
+    caught = { slug, at: hoop };
     const fishEl = els.get(slug);
     fishEl?.classList.add("caught"); // in the net: it wriggles as it is lifted
     setTimeout(() => {
@@ -198,7 +200,7 @@ export function startSea(opts: {
   function frame(now: number): void {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    if (netting) placeNet(netting.el, netting.at, netReach(now - netting.since)); // the held net follows the pointer and stretches
+    if (netting) placeNet(netting.el, netting.at, bagDepth(now - netting.since)); // the held net follows the pointer; its bag stretches
     if (opts.active() && fish.length > 0) {
       time += dt;
       const pointer = mouse && !caught ? { position: mouse.position, speed: now - mouse.at < MOUSE_STILL_MS ? mouse.speed : 0 } : null; // a fish being pressed doesn't flee the hand
