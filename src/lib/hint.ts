@@ -16,11 +16,15 @@ export function shouldShowHint(p: { seen: boolean; reducedMotion: boolean; hash:
   return !p.seen && !p.reducedMotion && p.hash === "";
 }
 
-/** Where the ghost bird is caught: left of and below the cage, inside the sky, clear of the edges. */
+/** Where the ghost bird is caught: to the left of the cage, on the far side of the sky's middle from it (above a cage at the bottom,
+ *  below one at the top), inside the sky and clear of the edges. */
 export function hintStart(cage: Vec, field: { width: number; height: number }): Vec {
   const dx = Math.min(420, field.width * 0.42), dy = Math.min(320, field.height * 0.38);
-  return v(Math.max(60, cage.x - dx), Math.min(field.height - 80, cage.y + dy));
+  const y = cageLow(cage, field) ? Math.max(80, cage.y - dy) : Math.min(field.height - 80, cage.y + dy);
+  return v(Math.max(60, cage.x - dx), y);
 }
+/** The cage sits in the lower half of the sky: the hint's labels go above things, not below them. */
+export const cageLow = (cage: Vec, field: { height: number }): boolean => cage.y > field.height / 2;
 
 /** The dashed path the ghost hand drags the bird along: a gentle upward curve from the catch to the cage. */
 export function hintPath(from: Vec, to: Vec): string {

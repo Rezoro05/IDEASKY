@@ -4,6 +4,7 @@
    Fish (dreams) are added to #sea-field by the sea island. The site's footer sits at the bottom of the sea, the end of the site. */
 import { SEA } from "../content/site";
 import Footer from "./Footer.astro";
+import FishNet from "./FishNet.astro";
 const BUBBLES = [8, 19, 31, 44, 58, 67, 79, 91];
 ---
 <section class="sea" id="sea" aria-labelledby="sea-title" inert>
@@ -20,10 +21,10 @@ const BUBBLES = [8, 19, 31, 44, 58, 67, 79, 91];
       <button class="btn btn-idea" type="button" id="dream-btn" aria-haspopup="dialog">Share a Dream</button>
     </div>
   </div>
-  <button class="dive-link dive-btn surface-link" type="button" id="surface-btn"><span aria-hidden="true">↑</span> Back to the sky</button>
+  <FishNet />
   <div id="dreams-fallback" class="dreams-fallback" hidden>
     <div class="list-head"><h3>Dreams</h3><span>Shown because reduced motion is on</span></div>
     <ul class="ideas" id="dreams-list"></ul>
   </div>
-  <Footer /><!-- the end of the site: at the bottom of the sea -->
+  <Footer><button class="dive-link surface-link" type="button" id="surface-btn"><span aria-hidden="true">↑</span> Back to the sky</button></Footer><!-- the end of the site: at the bottom of the sea -->
 </section>

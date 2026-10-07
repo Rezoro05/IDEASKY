@@ -36,7 +36,7 @@ describe("wheel", () => {
 describe("swipes and keys", () => {
   it("swiping up in the sky dives; swiping down in the sea surfaces", () => {
     expect(swipeStep("sky", DIVE.swipePx)).toBe("sea");
-    expect(swipeStep("sea", -DIVE.swipePx)).toBe("sea"); // in the sea a drag is the net, not a swipe
+    expect(swipeStep("sea", -DIVE.swipePx)).toBe("sky");
     expect(swipeStep("sky", DIVE.swipePx - 1)).toBe("sky");
     expect(swipeStep("sea", 300)).toBe("sea");
   });

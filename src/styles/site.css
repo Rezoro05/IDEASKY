@@ -91,15 +91,22 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .btn-idea:hover::after, .btn-idea:focus-visible::after { width: 1em; opacity: 1; margin-left: 2px; }
 .btn-idea:active { transform: translateY(0); }
 
+/* The footer, at the bottom of the sea (the end of the site). On the web one line: Ideas from REZ, Back to the sky in the middle, Feedback;
+   on a phone Back to the sky sits above, and the two links stay together on the left. */
 .foot { position: absolute; left: var(--gutter); right: var(--gutter); bottom: 0; z-index: 1; pointer-events: none;
-  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding-block: 14px max(14px, env(safe-area-inset-bottom, 0px));
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px 16px; padding-block: 14px max(14px, env(safe-area-inset-bottom, 0px));
   font: 500 11px/1.3 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--sky-text); }
 .foot-link { pointer-events: auto; padding: 3px 0; border: 0; background: none; cursor: pointer; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
 .foot-link:hover, .foot-link:focus-visible { outline: none; text-decoration: underline; text-underline-offset: 3px; }
 .foot-link:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; text-decoration: none; }
 .sea .foot { color: var(--sea-text); z-index: 4; } /* the end of the site, above the fish */
 .sea .foot-link:focus-visible { outline-color: var(--accent-sea); }
-@media (max-width: 560px) { .foot { flex-direction: column; align-items: center; text-align: center; gap: 14px; } }
+.foot > :first-child { justify-self: start; } .foot > :last-child { justify-self: end; }
+.foot .surface-link { justify-self: center; pointer-events: auto; }
+@media (max-width: 560px) {
+  .foot { grid-template-columns: auto auto 1fr; grid-template-areas: "back back back" "rez feedback ."; gap: 14px 18px; }
+  .foot > :first-child { grid-area: rez; } .foot > :last-child { grid-area: feedback; justify-self: start; } .foot .surface-link { grid-area: back; }
+}
 
 /* The picture: the New York skyline over the water, anchored to the bottom edge. Its top row is the sky colour, so it melts into the sky above;
    on narrow screens its sides are cropped, never squeezed. */
@@ -126,13 +133,13 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .dive-btn { position: absolute; z-index: 1; left: 50%; bottom: 56px; transform: translateX(-50%); white-space: nowrap; }
 .dive-btn span { display: inline-block; animation: dive-hint 1.6s ease-in-out infinite alternate; }
 @keyframes dive-hint { from { transform: translateY(-2px); } to { transform: translateY(3px); } }
-@media (max-width: 560px) { .dive-btn { bottom: 88px; } }
-.surface-link { color: var(--sea-text); z-index: 4; } /* in the sea, where Dive is in the sky: bottom centre, above the fish */
-.surface-link span { animation-name: surface-hint; }
+@media (max-width: 560px) { .dive-btn { bottom: 34px; } }
+.surface-link { color: var(--sea-text); white-space: nowrap; } /* in the footer line: the middle of it on the web, above it on a phone */
+.surface-link span { display: inline-block; animation: surface-hint 1.6s ease-in-out infinite alternate; }
 @keyframes surface-hint { from { transform: translateY(2px); } to { transform: translateY(-3px); } }
 
 /* The Sea of Dreams */
-.sea { position: absolute; left: 0; right: 0; top: 100%; height: 100%; overflow: hidden; color: var(--sea-text); touch-action: none; /* a finger in the water is the hand net, in any direction: the browser must not take it for a scroll (that cancelled the net) */
+.sea { position: absolute; left: 0; right: 0; top: 100%; height: 100%; overflow: hidden; color: var(--sea-text);
   background: linear-gradient(180deg, var(--sea-top), var(--sea-mid) 42%, var(--sea-deep)); }
 .sea::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background-image: linear-gradient(var(--sea-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sea-grid) 1px, transparent 1px);
@@ -149,7 +156,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 @keyframes bubble-rise { from { transform: translate(0, 0); opacity: .9; } 50% { transform: translate(10px, -55svh); } to { transform: translate(-6px, -108svh); opacity: 0; } }
 :root:not([data-depth="sea"]) .bubbles span, .sky-covered .bubbles span { animation-play-state: paused; } /* nothing moves where nobody looks */
 [data-depth="sea"] .cloud { animation-play-state: paused; }
-.sea-field { position: absolute; inset: 0; z-index: 2; pointer-events: none; } /* clicks go through to the water: the sea listens, and swoops the net */
+.sea-field { position: absolute; inset: 0; z-index: 2; pointer-events: none; } /* only the fish take presses; the water lets them through */
 .sea-field .fish { pointer-events: auto; }
 .dreams-fallback { position: relative; z-index: 3; padding: 0 var(--gutter) 32px; }
 .dreams-fallback .list-head { margin-top: 8px; } .dreams-fallback .list-head h3 { margin: 0; font: 500 22px/1.2 var(--font-display); }
@@ -176,41 +183,33 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .fish:hover .pf, .fish:focus-visible .pf { fill: var(--accent-sea); }
 .fish:hover .tag, .fish:focus-visible .tag { color: var(--sea-text); }
 .fish:focus-visible .body { outline: 2px solid var(--sea-text); outline-offset: 6px; border-radius: 50%; }
-/* The hand net (lib/net, lib/fish-art): the pointer holds the end of its handle. Pressing dips it in with a quick scooping motion;
-   held, it follows the pointer and bobs as if searching while its bag stretches (--bag; the net keeps its size); released, it lifts
-   out, with the fish if one was in it. Every motion pivots on the hand. */
-.hand-net { position: absolute; left: var(--x); top: var(--y); z-index: 3; width: calc(var(--r) * 4); height: calc(var(--r) * 4);
-  margin: calc(var(--r) * -2) 0 0 calc(var(--r) * -2); pointer-events: none; }
-.hn-art { width: 100%; height: 100%; transform-origin: 93.33% 83.33%; rotate: var(--tilt, 0deg); /* leans against the water as it moves */ /* the handle's end (52, 40 in a 120-unit drawing): the hand */
-  animation: net-dip .24s cubic-bezier(.2,1.4,.4,1) both, net-search 1.4s ease-in-out .24s infinite alternate; }
-.hand-net.miss .hn-art { animation: net-lift .4s ease-in forwards; }
-.hand-net.hit .hn-art { animation: net-scoop .9s cubic-bezier(.3,0,.3,1) forwards; }
-.hn-art > svg { width: 100%; height: 100%; overflow: visible; }
-.hn-handle-edge { stroke: var(--fish-edge); stroke-width: 6.6; stroke-linecap: round; }
-.hn-handle { stroke: #C9935B; stroke-width: 4.2; stroke-linecap: round; } /* a wooden handle */
-.hn-grain { stroke: #A8743F; stroke-width: 1; stroke-linecap: round; opacity: .8; }
-.hn-mouth { fill: color-mix(in srgb, var(--sea-deep) 22%, transparent); }
-.hn-sack { fill: color-mix(in srgb, var(--fish) 14%, transparent); stroke: var(--fish); stroke-width: 1.4; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.hn-threads { fill: none; stroke: var(--fish); stroke-width: .9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.hn-out .hn-threads { stroke-opacity: .9; } .hn-out .hn-sack { fill: color-mix(in srgb, var(--fish) 18%, transparent); }
-.hn-in .hn-threads { stroke-opacity: .38; } .hn-in .hn-sack { fill: color-mix(in srgb, var(--fish) 6%, transparent); stroke-opacity: .38; } /* seen through the opening: lighter */
-.hn-rim-edge { fill: none; stroke: var(--fish-edge); stroke-width: 4.4; }
-.hn-rim { fill: none; stroke: var(--fish); stroke-width: 1.8; }
-.hn-collar { stroke: var(--fish-edge); stroke-width: 5; stroke-linecap: round; }
-.hand-net.hit .hn-rim { stroke: var(--accent-sea); }
-@keyframes net-dip { from { opacity: 0; transform: rotate(-38deg) scale(.8); } to { opacity: 1; transform: none; } }
-@keyframes net-search { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
-@keyframes net-lift { to { opacity: 0; transform: rotate(-24deg) scale(.9); } }
-@keyframes net-scoop { 0%, 30% { transform: none; } 50% { transform: rotate(8deg); } 100% { opacity: 0; transform: rotate(-30deg) scale(.92); } }
-.fish.netted { visibility: hidden; } /* it is in the net now */
-.hn-catch { animation: into-net .3s cubic-bezier(.3,.6,.4,1) forwards; }
-.hn-catch svg { animation: wriggle .09s linear .3s infinite alternate; }
-.hn-catch .pf { fill: var(--fish); stroke: var(--fish-edge); stroke-width: 1.3; stroke-linejoin: round; }
-.hn-catch .fish-fin { fill: var(--fish-tint); } .hn-catch .fish-stripe { fill: none; stroke: var(--fish-tint); stroke-width: 2.4; stroke-linecap: round; }
-.hn-catch .pf-shade { fill: var(--fish-edge); fill-opacity: .14; stroke: none; } .hn-catch .pf-eye { fill: var(--fish-edge); }
-@keyframes into-net { from { transform: translateX(0); } to { transform: translateX(46px); } }
-@keyframes wriggle { from { transform: rotate(-6deg) translateX(-1px); } to { transform: rotate(6deg) translateX(1px); } }
-.fish.netted .tag { color: var(--sea-text); }
+/* Holding a fish (lib/net): a press holds it; it wriggles in the hand and follows it. Dropped in the small net it lies there, smaller,
+   wriggling behind the mesh, until its dream closes. */
+.fish .body { cursor: grab; }
+.fish.held { z-index: 3; } .fish.held .body { cursor: grabbing; animation: tug .09s linear infinite alternate; }
+.fish.held .tag, .fish.in-net .tag { opacity: 0; }
+.fish.in-net .body { scale: .55; animation: tug .12s linear infinite alternate; }
+.fish.in-net .fish-tail { animation-duration: .2s; }
+/* The small net: where a held fish is dropped to read its dream. Always there; lights up while a fish is held. The sea measures it.
+   Web: bottom right, just above Feedback. Phone: bottom centre, just above Back to the sky. */
+.fish-net { position: absolute; z-index: 3; right: var(--gutter); bottom: 52px; width: 50px; height: 58px; color: var(--sea-text); }
+.fish-net svg { display: block; width: 100%; height: 100%; overflow: visible; transform-origin: 50% 70%; transition: transform .2s; }
+.fn-bag { fill: color-mix(in srgb, var(--fish) 10%, transparent); stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; transition: fill .2s, stroke .2s; }
+.fn-mesh { fill: none; stroke: currentColor; stroke-width: .9; stroke-linecap: round; opacity: .7; }
+.fn-rim { fill: none; stroke: currentColor; stroke-width: 2.4; }
+.fn-handle { stroke: #C9935B; stroke-width: 4; stroke-linecap: round; } .fn-handle-edge { stroke: var(--fish-edge); stroke-width: 6; stroke-linecap: round; }
+.net-hint { position: absolute; right: 0; bottom: calc(100% + 8px); width: max-content; max-width: min(230px, calc(100vw - 2 * var(--gutter))); padding: 6px 9px; border-radius: 3px;
+  pointer-events: none; opacity: 0; transition: opacity .2s; background: color-mix(in srgb, var(--sea-deep) 55%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  font: 500 11px/1.35 var(--font-mono); letter-spacing: .04em; color: var(--sea-text); }
+.holding-fish .fish-net { color: var(--accent-sea); }
+.holding-fish .fish-net svg { animation: cage-ready .8s ease-in-out infinite alternate; }
+.fish-net:hover .net-hint { opacity: 1; } .holding-fish .net-hint { opacity: 0; } /* like the cage's hint */
+.fish-net.over svg { animation: none; transform: scale(1.14); }
+.fish-net.over .fn-bag { fill: color-mix(in srgb, var(--accent-sea) 30%, transparent); }
+@media (max-width: 560px) {
+  .fish-net { right: auto; left: 50%; translate: -50% 0; bottom: 84px; width: 42px; height: 49px; }
+  .net-hint { right: auto; left: 50%; translate: -50% 0; }
+}
 .fish.arriving { visibility: hidden; } /* a fish is flying down to it from the folded note */
 /* A dream's letter: no stages and no owner updates */
 .letter-card.no-stages .stage-track, .letter-card.no-stages #stage-error,
@@ -272,16 +271,17 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
    Planes in the sky (paper plane, airplane, bird) and hand-flown fliers
    ============================================================ */
 /* The cage (top right): a drop target for caught birds; under the planes (z 2) so a plane flying past is never hidden by it */
-.cage { position: absolute; z-index: 1; top: calc(var(--bar-h) + 14px); right: var(--gutter); width: 52px; height: 59px; color: var(--sky-plane-edge); }
-@media (max-width: 560px) { .cage { top: 6px; width: 40px; height: 45px; } } /* on a phone it sits in the empty right end of the header bar, clear of the headline */
+.cage { position: absolute; z-index: 1; right: var(--gutter); bottom: 28px; width: 52px; height: 59px; color: var(--sky-plane-edge); }
+@media (max-width: 560px) { .cage { right: auto; left: 50%; translate: -50% 0; bottom: 72px; width: 40px; height: 45px; } } /* on a phone: bottom centre, on top of Dive */
 .cage svg { display: block; width: 100%; height: 100%; overflow: visible; transform-origin: 50% 80%; transition: transform .2s; }
 .cage-body { fill: rgba(255,255,255,.3); stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; transition: fill .2s, stroke .2s; }
 .cage-bars, .cage-ring { fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; transition: stroke .2s; }
 .cage-base { fill: currentColor; fill-opacity: .8; }
-.cage-hint { position: absolute; right: 0; top: calc(100% + 8px); width: max-content; max-width: min(230px, calc(100vw - 2 * var(--gutter))); padding: 6px 9px; border-radius: 3px; pointer-events: none; opacity: 0; transition: opacity .2s;
+.cage-hint { position: absolute; right: 0; bottom: calc(100% + 8px); width: max-content; max-width: min(230px, calc(100vw - 2 * var(--gutter))); padding: 6px 9px; border-radius: 3px; pointer-events: none; opacity: 0; transition: opacity .2s;
   background: color-mix(in srgb, var(--sky-bottom) 80%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   font: 500 11px/1.35 var(--font-mono); letter-spacing: .04em; color: var(--sky-text); }
 .cage:hover .cage-hint { opacity: 1; }
+@media (max-width: 560px) { .cage-hint { right: auto; left: 50%; translate: -50% 0; } }
 .holding-bird .cage .cage-hint { opacity: 0; }
 .holding-bird .cage { color: var(--accent); }
 .holding-bird .cage svg { animation: cage-ready .8s ease-in-out infinite alternate; }
@@ -612,8 +612,8 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   .sea { position: relative; top: auto; height: auto; min-height: 100svh; }
   .sea-thesis { position: relative; top: auto; left: auto; padding: calc(var(--bar-h) + 3vh) var(--gutter) 24px; max-width: none; }
   .bubbles { display: none; }
-  .dive-btn span { animation: none; }
-  .surface-link { position: relative; display: block; left: auto; bottom: auto; transform: none; margin: 8px auto 32px; } /* after the list, in the flow */
+  .dive-btn span, .surface-link span { animation: none; }
+  .fish-net { display: none; } /* no fish to hold: dreams are a list */
   .field { position: relative; height: 100svh; }
   #fallback { padding: 0 var(--gutter) 24px; }
   .foot { position: static; margin-inline: var(--gutter); }
@@ -622,9 +622,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   .cloud.c1 { transform: translateX(62vw); } .cloud.c2 { transform: translateX(18vw); } .cloud.c3 { transform: translateX(84vw); } .cloud.c4 { display: none; }
   .btn-idea, .btn-idea::after, .act svg, .stage-bar .fill, .stage-bar .knob { transition: none; }
   .btn-idea:hover { transform: none; }
-  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .c-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="idea"] .body, .holding-bird .cage svg, .listening .mic svg, .hn-catch svg { animation: none; }
-  .hn-art, .hand-net.hit .hn-art, .hand-net.miss .hn-art { animation: none; }
-  .hn-catch { animation: none; transform: translateX(46px); }
+  .compose.open .note-slot, .letter.open .letter-card, .note.folding, .act-like[aria-pressed="true"] svg, .c-like[aria-pressed="true"] svg, .plane.fresh .body::after, .plane.held[data-stage="idea"] .body, .holding-bird .cage svg, .listening .mic svg { animation: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .letter, .toast, .plane .tag { -webkit-backdrop-filter: none; backdrop-filter: none; }

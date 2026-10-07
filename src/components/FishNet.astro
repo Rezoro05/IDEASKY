@@ -1,0 +1,14 @@
+---
+/* The small net, at the bottom of the sea. Hold a fish (a dream) and drop it here to read it, as a bird is dropped in the cage.
+   The sea measures this element to know where a drop counts; it is not a control (keyboard users open dreams directly), so it is not focusable. */
+const HINT = "Catch a dream and drop it in the net to read it.";
+---
+<div class="fish-net" id="fish-net" role="img" aria-label={HINT}>
+  <svg viewBox="-30 -34 60 68" aria-hidden="true">
+    <path class="fn-handle-edge" d="M18 -20 L28 -33"></path><path class="fn-handle" d="M18 -20 L28 -33"></path>
+    <path class="fn-bag" d="M-20 -18 C-20 6 -9 24 0 24 C9 24 20 6 20 -18 Z"></path>
+    <path class="fn-mesh" d="M-10 -23.5 Q-9 10 -3 23 M0 -24 L0 24 M10 -23.5 Q9 10 3 23 M-19 -6 Q0 0 19 -6 M-15 8 Q0 13 15 8"></path>
+    <ellipse class="fn-rim" cx="0" cy="-18" rx="20" ry="6"></ellipse>
+  </svg>
+  <span class="net-hint">{HINT}</span>
+</div>

@@ -1,6 +1,6 @@
 /** The first-visit hint, drawn like a blueprint over the sky: a ghost hand presses a ghost bird, drags it along a dashed curve into
  *  the real cage, and lets go. It plays twice, then fades; any press or key ends it at once. Shown once per browser (lib/hint). */
-import { HINT, HINT_SEEN_KEY, hintPath, hintStart, shouldShowHint } from "../lib/hint";
+import { HINT, HINT_SEEN_KEY, cageLow, hintPath, hintStart, shouldShowHint } from "../lib/hint";
 import { formFor } from "../lib/forms";
 import { v } from "../lib/vec";
 
@@ -15,7 +15,7 @@ export function startCageHint(opts: { field: HTMLElement; cage: HTMLElement; red
     if (!opts.inSky() || document.documentElement.classList.contains("sky-covered")) return; // the visitor is already busy elsewhere
     const f = opts.field.getBoundingClientRect(), c = opts.cage.getBoundingClientRect();
     const end = v(c.left - f.left + c.width / 2, c.top - f.top + c.height * 0.55);
-    const start = hintStart(end, { width: f.width, height: f.height }), path = hintPath(start, end);
+    const start = hintStart(end, { width: f.width, height: f.height }), path = hintPath(start, end), low = cageLow(end, { height: f.height });
     markSeen(opts.store);
 
     const el = document.createElement("div");
@@ -28,7 +28,7 @@ export function startCageHint(opts: { field: HTMLElement; cage: HTMLElement; red
       `<circle class="ht-mark ht-target" cx="${end.x}" cy="${end.y}" r="34"/>` +
       `<text class="ht-label" x="${start.x - 26}" y="${start.y + 56}">1 · PRESS A BIRD</text>` +
       `<text class="ht-label" x="${(start.x + end.x) / 2 - 30}" y="${Math.min(start.y, end.y) + 16}">2 · DRAG</text>` +
-      `<text class="ht-label ht-end" x="${end.x + 30}" y="${end.y + 58}">3 · DROP IN THE CAGE</text>` +
+      `<text class="ht-label ht-end" x="${end.x + 30}" y="${low ? end.y - 46 : end.y + 58}">3 · DROP IN THE CAGE</text>` + // above a cage at the bottom
       `</svg>` +
       `<div class="ht-ghost" style="offset-path: path('${path}')"><span class="ht-bird">${formFor("idea")}</span><span class="ht-hand">${HAND}</span></div>`;
     opts.field.appendChild(el);
