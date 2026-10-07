@@ -252,13 +252,19 @@ test.describe("catching and opening dreams", () => {
     await expect(page.locator("#letter")).toBeHidden();
   });
 
-  test("inside the hoop there is only water; the mesh is on the bag outside the rim", async ({ page }) => {
+  test("the mesh shows inside the hoop too, lighter than outside; the bag streams behind the hand", async ({ page }) => {
     await fakeServices(page, sea());
     await page.goto("/#sea");
     const spot = await emptyWater(page), hand = grip(spot);
     await page.mouse.move(hand.x, hand.y); await page.mouse.down();
-    await expect(page.locator(".hand-net .hn-mouth-mesh")).toHaveCount(0);
-    await expect(page.locator(".hand-net [mask] .hn-bag-mesh")).toHaveCount(1); // the bag's mesh is masked off inside the rim
+    const net = page.locator(".hand-net");
+    const opacity = (sel: string) => net.locator(sel).first().evaluate((el) => Number(getComputedStyle(el).strokeOpacity));
+    const inner = await opacity(".hn-in .hn-threads"), outer = await opacity(".hn-out .hn-threads");
+    expect(inner).toBeGreaterThan(0); expect(inner).toBeLessThan(outer); // seen through the opening, the far side is lighter
+    const trail = () => net.evaluate((el) => Number((el as HTMLElement).dataset.trail));
+    await expect.poll(trail).toBeGreaterThan(70); // still: the bag hangs down
+    for (let i = 1; i <= 12; i++) { await page.mouse.move(hand.x + i * 6, hand.y); await page.waitForTimeout(16); }
+    await expect.poll(async () => Math.abs(await trail())).toBeGreaterThan(140); // moving right: the bag streams out to the left
     await page.mouse.up();
   });
 

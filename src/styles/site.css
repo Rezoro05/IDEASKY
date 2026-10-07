@@ -184,16 +184,18 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .hand-net.miss .hn-art { animation: net-lift .4s ease-in forwards; }
 .hand-net.hit .hn-art { animation: net-scoop .68s cubic-bezier(.3,0,.3,1) forwards; }
 .hn-art svg { width: 100%; height: 100%; overflow: visible; }
-.hn-handle-edge { stroke: var(--fish-edge); stroke-width: 6.4; stroke-linecap: round; }
-.hn-handle { stroke: #C9935B; stroke-width: 4; stroke-linecap: round; } /* a wooden handle */
-.hn-grip { stroke: var(--fish-edge); stroke-width: 1.4; stroke-linecap: round; opacity: .7; }
-.hn-bag { fill: color-mix(in srgb, var(--fish) 22%, transparent); stroke: var(--fish); stroke-opacity: .7; stroke-width: 1; }
-.hn-bag-mesh { fill: url(#hn-diamonds); }
-.hn-bag-g { transform-box: view-box; transform-origin: 0 0; transform: scaleY(var(--bag, 1)); } /* stretches down from the rim's middle, user (0, 0) */
-.hn-thread { fill: none; stroke: var(--fish); stroke-opacity: .7; stroke-width: .8; }
-.hn-mouth { fill: color-mix(in srgb, var(--sea-deep) 25%, transparent); }
-.hn-rim-edge { fill: none; stroke: var(--fish-edge); stroke-width: 5.2; }
-.hn-rim { fill: none; stroke: var(--fish); stroke-width: 2.8; }
+.hn-handle-edge { stroke: var(--fish-edge); stroke-width: 6.6; stroke-linecap: round; }
+.hn-handle { stroke: #C9935B; stroke-width: 4.2; stroke-linecap: round; } /* a wooden handle */
+.hn-grain { stroke: #A8743F; stroke-width: 1; stroke-linecap: round; opacity: .8; }
+.hn-mouth { fill: color-mix(in srgb, var(--sea-deep) 22%, transparent); }
+.hn-sack { fill: color-mix(in srgb, var(--fish) 14%, transparent); stroke: none; }
+.hn-threads { fill: none; stroke: var(--fish); stroke-width: .9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.hn-knot { fill: var(--fish); }
+.hn-out .hn-threads { stroke-opacity: .9; } .hn-out .hn-sack { fill: color-mix(in srgb, var(--fish) 18%, transparent); }
+.hn-in .hn-threads { stroke-opacity: .38; } .hn-in .hn-sack { fill: color-mix(in srgb, var(--fish) 6%, transparent); } /* seen through the opening: lighter */
+.hn-rim-edge { fill: none; stroke: var(--fish-edge); stroke-width: 4.4; }
+.hn-rim { fill: none; stroke: var(--fish); stroke-width: 1.8; }
+.hn-collar { stroke: var(--fish-edge); stroke-width: 5; stroke-linecap: round; }
 .hand-net.hit .hn-rim { stroke: var(--accent-sea); }
 @keyframes net-dip { from { opacity: 0; transform: rotate(-38deg) scale(.8); } to { opacity: 1; transform: none; } }
 @keyframes net-search { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }

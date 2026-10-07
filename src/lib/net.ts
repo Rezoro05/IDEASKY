@@ -3,6 +3,7 @@
  *  keeps its size); on release, a fish inside the hoop is caught (its dream opens) and fish just outside dart off.
  *  Pure rules; the sea island draws the net. */
 import { len, sub, v, type Vec } from "./vec";
+import { normalizeDeg } from "./orientation";
 
 export const NET = {
   /** The hoop's reach (px from its centre): small, so a fish has to be right there. */
@@ -24,6 +25,17 @@ export function bagDepth(heldMs: number): number {
   const u = Math.min(1, Math.max(0, heldMs / NET.stretchMs)), eased = 1 - (1 - u) ** 3;
   return 1 + (NET.bagStretch - 1) * eased;
 }
+
+/** Which way the bag trails (degrees, screen: 0 = right, 90 = down). Moving, it streams out behind the net, opposite the way the hand
+ *  moves; still, it sinks and hangs down. It swings there smoothly, the short way round. */
+export const TRAIL = { minSpeed: 25, turnRate: 7 } as const;
+export function trailAngle(current: number, velocity: Vec, dt: number): number {
+  const target = len(velocity) < TRAIL.minSpeed ? 90 : (Math.atan2(-velocity.y, -velocity.x) * 180) / Math.PI;
+  return normalizeDeg(current + normalizeDeg(target - current) * Math.min(1, dt * TRAIL.turnRate));
+}
+
+/** How long the bag is: it stretches while the net is held (bagDepth), and a little more while the hand moves fast through the water. */
+export const bagLength = (heldMs: number, speed: number): number => bagDepth(heldMs) * (1 + Math.min(0.35, speed / 900));
 
 /** Where the end of the handle is, from the hoop's centre, in drawing units (the hoop's reach is 30 units). Shared with the drawing. */
 export const HANDLE_END = { x: 52, y: 40 } as const;
