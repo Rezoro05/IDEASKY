@@ -5,7 +5,9 @@ import { LISTS, cleanCategories, type Kind } from "./categories";
 
 export type Idea = { id: string; name: string; message: string; at: number; stage: Stage; links: Link[];
   /** Set by Jev after posting: up to three category keys ([] = none fit). Absent until the idea is sorted. */
-  categories?: readonly string[] };
+  categories?: readonly string[];
+  /** "dream" for a dream in the Sea of Dreams; absent for an idea. */
+  kind?: "dream" };
 export type Draft = { name: string; email: string; message: string; trap: string; linkRows: readonly LinkRow[] };
 export type DraftCheck =
   | { ok: true; idea: Pick<Idea, "name" | "message" | "links">; email: string }
@@ -30,7 +32,7 @@ export function cleanIdea(raw: unknown, kind: Kind = "idea"): Idea | null {
   if (!message) return null;
   const name = typeof r.name === "string" ? r.name.trim().slice(0, IDEA_LIMITS.name) : "";
   const categories = cleanCategories(LISTS[kind], r.categories);
-  return { id: r.id, name: name || ANONYMOUS, message, at: Number(r.at) || 0, stage: stageOrIdea(r.stage), links: cleanLinks(r.links), ...(categories ? { categories } : {}) };
+  return { id: r.id, name: name || ANONYMOUS, message, at: Number(r.at) || 0, stage: stageOrIdea(r.stage), links: cleanLinks(r.links), ...(categories ? { categories } : {}), ...(kind === "dream" ? { kind } : {}) };
 }
 
 export function newestIdeas(ideas: Iterable<Idea>, max: number): Idea[] {

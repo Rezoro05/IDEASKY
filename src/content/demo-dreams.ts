@@ -4,7 +4,7 @@ import type { Idea } from "../lib/ideas";
 
 const HOUR = 3_600_000;
 const dream = (id: string, name: string, message: string, hoursAgo: number, now: number, categories: string[]): Idea =>
-  ({ id, name, message, stage: "idea", at: now - hoursAgo * HOUR, links: [], categories });
+  ({ id, name, message, stage: "idea", at: now - hoursAgo * HOUR, links: [], categories, kind: "dream" });
 
 export const demoDreams = (now: number): Idea[] => [
   dream("dream001", "Anonymous", "I could fly if I ran fast enough down the hill, and the whole town watched from their roofs.", 40, now, ["flying", "places"]),

@@ -18,10 +18,12 @@ export function flyAcrossPage(opts: {
   scaleAt: (u: number) => number;
   /** Which form flies: a new idea is a bird; a letter flies home as its idea's form. */
   stage: Stage;
+  /** A dream flies as a fish instead (its drawing). */
+  fish?: string;
   mayLand?: (elapsedMs: number) => boolean;
 }): Promise<Landing> {
   const el = document.createElement("div");
-  el.className = "note-flier"; el.innerHTML = formFor(opts.stage); el.setAttribute("aria-hidden", "true");
+  el.className = opts.fish ? "note-flier fish-flier" : "note-flier"; el.innerHTML = opts.fish ?? formFor(opts.stage); el.setAttribute("aria-hidden", "true");
   document.body.appendChild(el);
   return new Promise((resolve) => {
     const t0 = performance.now();

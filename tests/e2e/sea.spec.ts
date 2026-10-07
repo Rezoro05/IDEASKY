@@ -123,3 +123,80 @@ test.describe("fish (dreams)", () => {
     });
   });
 });
+
+test.describe("catching and opening dreams", () => {
+  const sea = () => ({
+    rows: [dreamRow("dreambb1", "A whale showed me the way home", ["water", "animals"], 3), dreamRow("dreambb2", "Stairs that never ended", ["places"], 2)],
+    posts: [], deletes: [], mails: 0,
+  });
+  const centre = async (page: Page, slug: string) => {
+    await page.waitForFunction((s) => (document.querySelector(`.fish[data-slug="${s}"]`) as HTMLElement | null)?.style.transform, slug);
+    const r = (await page.locator(`.fish[data-slug="${slug}"] .body`).boundingBox())!;
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  };
+
+  test("a quick tap opens a dream: themes as tags, no stages, no updates", async ({ page }) => {
+    await fakeServices(page, sea());
+    await page.goto("/#sea");
+    const { x, y } = await centre(page, "dreambb1");
+    await page.mouse.click(x, y);
+    await expect(page.locator("#letter")).toBeVisible();
+    await expect(page.locator("#letter-from")).toHaveText("Dream1");
+    await expect(page.locator("#letter-body")).toHaveText("A whale showed me the way home");
+    await expect(page.locator("#letter-cats li")).toHaveText(["Water", "Animals"]);
+    await expect(page.locator("#stage-track")).toBeHidden();
+    await expect(page.locator("#updates")).toBeHidden();
+    await expect(page.locator("#add-update")).toBeHidden();
+    await expect(page.locator("#like-btn")).toBeVisible(); // likes and comments work as for ideas
+  });
+
+  test("press and hold nets a fish: it stays put, and a tap opens it", async ({ page }) => {
+    await fakeServices(page, sea());
+    await page.goto("/#sea");
+    const { x, y } = await centre(page, "dreambb2");
+    await page.mouse.move(x, y); await page.mouse.down();
+    await page.waitForTimeout(650);
+    await page.mouse.up();
+    const fish = page.locator('.fish[data-slug="dreambb2"]');
+    await expect(fish).toHaveClass(/\bnetted\b/);
+    await expect(page.locator("#letter")).toBeHidden(); // a hold nets, it doesn't open
+    const at = await fish.evaluate((el) => (el as HTMLElement).style.transform);
+    await page.waitForTimeout(700);
+    expect(await fish.evaluate((el) => (el as HTMLElement).style.transform)).toBe(at);
+    const c = await centre(page, "dreambb2");
+    await page.mouse.click(c.x, c.y);
+    await expect(page.locator("#letter-from")).toHaveText("Dream2");
+    await expect(fish).not.toHaveClass(/\bnetted\b/); // read and let go: it swims off when the letter closes
+  });
+
+  test("a tap on the water lets a netted fish go", async ({ page }) => {
+    await fakeServices(page, sea());
+    await page.goto("/#sea");
+    const { x, y } = await centre(page, "dreambb1");
+    await page.mouse.move(x, y); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up();
+    await expect(page.locator('.fish[data-slug="dreambb1"]')).toHaveClass(/\bnetted\b/);
+    const water = (await page.locator("#sea").boundingBox())!;
+    await page.mouse.click(water.x + water.width - 30, water.y + water.height - 30);
+    await expect(page.locator('.fish[data-slug="dreambb1"]')).not.toHaveClass(/\bnetted\b/);
+  });
+
+  test("keyboard: Enter on a focused fish opens its dream", async ({ page }) => {
+    await fakeServices(page, sea());
+    await page.goto("/#sea");
+    await page.locator('.fish[data-slug="dreambb1"]').focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#letter-from")).toHaveText("Dream1");
+  });
+
+  test.describe("with reduced motion", () => {
+    test.use({ reducedMotion: "reduce" });
+    test("dreams are a plain list in the sea, and open from it", async ({ page }) => {
+      await fakeServices(page, sea());
+      await page.goto("/");
+      await page.locator("#dive-btn").click();
+      await expect(page.locator("#dreams-list a")).toHaveCount(2);
+      await page.locator("#dreams-list a", { hasText: "Stairs" }).click();
+      await expect(page.locator("#letter-from")).toHaveText("Dream2");
+    });
+  });
+});

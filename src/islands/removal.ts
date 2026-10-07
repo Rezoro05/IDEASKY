@@ -9,7 +9,10 @@ export type Removal = { open(idea: Idea): void; close(): void; /** Hide the ques
 
 const REMOVE_FAILED = "Couldn’t remove it. Try again later.";
 
-export function startRemoval(opts: { store: Promise<IdeaStore>; removed: (idea: Idea) => void; /** The question was just opened by the bin. */ opened?: () => void }): Removal {
+export function startRemoval(opts: {
+  store: Promise<IdeaStore>; /** Where dreams live (the same table; a separate store in memory). */ dreamStore?: Promise<IdeaStore>;
+  removed: (idea: Idea) => void; /** The question was just opened by the bin. */ opened?: () => void;
+}): Removal {
   const bin = byId<HTMLButtonElement>("letter-remove"), confirm = byId("remove-confirm");
   const yes = byId<HTMLButtonElement>("remove-yes"), cancel = byId<HTMLButtonElement>("remove-cancel"), error = byId("remove-error");
   let idea: Idea | null = null, owner = false, asking = false, token = 0, store: IdeaStore | null = null;
@@ -43,7 +46,7 @@ export function startRemoval(opts: { store: Promise<IdeaStore>; removed: (idea: 
       const mine = ++token;
       idea = next; owner = false; asking = false; error.hidden = true;
       render();
-      store = await opts.store;
+      store = await (next.kind === "dream" && opts.dreamStore ? opts.dreamStore : opts.store);
       if (mine !== token) return;
       owner = store.ownsKey(next.id);
       render();

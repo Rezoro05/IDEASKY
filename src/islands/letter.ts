@@ -2,7 +2,9 @@
  *  States: closed → open → folding → closed (flying home), or open → closed directly (removed, or no sky to fly home to).
  *  The board owns the ideas; the letter asks it for one. */
 import { letterDateLine, type Idea } from "../lib/ideas";
-import { IDEA_CATEGORIES, categoryLabel } from "../lib/categories";
+import { LISTS, categoryLabel } from "../lib/categories";
+import { FISH_SVG } from "../lib/fish-art";
+import type { SeaBoard } from "./sea";
 import { v, type Vec } from "../lib/vec";
 import type { Sky } from "./sky";
 import { byId, cancelPendingOpen, openWithTransition } from "./dom";
@@ -25,6 +27,8 @@ const dateOf = (at: number) => new Date(at).toLocaleDateString(undefined, { mont
 
 export function startLetter(opts: {
   sky: Sky | null;
+  /** Where dreams swim: a dream's letter folds home to its fish. */
+  sea?: SeaBoard | null;
   ideaOf(id: string): Idea | undefined; nameOf(id: string): string;
   hooks?: LetterHooks;
 }): Letter {
@@ -38,6 +42,7 @@ export function startLetter(opts: {
     if (!idea || state === "folding") return;
     shown = idea; returnFocus = document.activeElement; state = "open"; opening++;
     card.classList.remove("folding");
+    card.classList.toggle("is-dream", idea.kind === "dream"); // no stages, no updates
     byId("letter-from").textContent = opts.nameOf(idea.id);
     byId("letter-date").textContent = letterDateLine(idea, dateOf);
     byId("letter-body").textContent = idea.message;
@@ -53,9 +58,9 @@ export function startLetter(opts: {
 
   /** Category tags under the name and date: shown once Jev has sorted the idea. */
   function showCategories(idea: Idea): void {
-    const tags = byId<HTMLUListElement>("letter-cats"), keys = idea.categories ?? [];
+    const tags = byId<HTMLUListElement>("letter-cats"), keys = idea.categories ?? [], list = LISTS[idea.kind ?? "idea"];
     tags.hidden = keys.length === 0;
-    tags.replaceChildren(...keys.map((k) => { const li = document.createElement("li"); li.textContent = categoryLabel(IDEA_CATEGORIES, k); return li; }));
+    tags.replaceChildren(...keys.map((k) => { const li = document.createElement("li"); li.textContent = categoryLabel(list, k); return li; }));
   }
 
   function close(): void {
@@ -69,9 +74,11 @@ export function startLetter(opts: {
 
   /** Every way of closing a letter folds it back into its plane, which flies home and merges into the plane in the sky. */
   function fold(): void {
-    const idea = shown, home = idea && sky?.screenPointOf(idea.id);
+    const idea = shown, dream = idea?.kind === "dream";
+    const homeOf = (id: string) => (dream ? opts.sea?.screenPointOf(id) : sky?.screenPointOf(id)) ?? null;
+    const home = idea && homeOf(idea.id);
     if (state !== "open") return;
-    if (!idea || !sky || !home) { close(); return; }
+    if (!idea || !home) { close(); return; }
     state = "folding";
     opts.hooks?.closed();
     cancelPendingOpen(letter);
@@ -82,7 +89,8 @@ export function startLetter(opts: {
       close();
       flyAcrossPage({
         from, durationMs: RETURN_FLIGHT_MS, scaleAt: (u) => 1 - 0.45 * u, stage: (opts.ideaOf(idea.id) ?? idea).stage,
-        target: () => (lastHome = sky.screenPointOf(idea.id) ?? lastHome),
+        ...(dream ? { fish: FISH_SVG } : {}),
+        target: () => (lastHome = homeOf(idea.id) ?? lastHome),
       });
     }, FOLD_MS);
   }
