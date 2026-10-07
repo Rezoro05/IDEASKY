@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { IDEA_CATEGORIES, PICK, categoryLabel, categoryQuestions, cleanCategories, pickCategories } from "../../src/lib/categories";
+import { DREAM_THEMES, IDEA_CATEGORIES, LISTS, PICK, categoryLabel, categoryQuestions, cleanCategories, kindOf, pickCategories } from "../../src/lib/categories";
 import { categorize, noulAnswers, type CategorizeDeps, type Stored } from "../../supabase/functions/_shared/categorize";
 import { supabaseCategorizer } from "../../src/boundaries/categorizer";
 import { cleanIdea } from "../../src/lib/ideas";
@@ -9,11 +9,17 @@ describe("the category list", () => {
   it("has the eleven agreed categories", () => {
     expect(IDEA_CATEGORIES.map((c) => c.label)).toEqual(["Tech", "Food & Drink", "City & Places", "Health", "Learning", "Business", "Art & Design", "Social Good", "Environment", "Play & Games", "Science"]);
   });
-  it("matches the keys the database accepts (supabase/07-categories.sql)", () => {
-    const sql = readFileSync("supabase/07-categories.sql", "utf8");
-    const keys = sql.match(/array\[([^\]]+)\]/)![1]!.split(",").map((k) => k.trim().replace(/'/g, ""));
-    expect(keys).toEqual(IDEA_CATEGORIES.map((c) => c.key));
-    expect(sql).toContain(`cardinality(categories) <= ${PICK.max}`);
+  it("matches the keys the database accepts (07 for ideas; 08 for ideas and dreams, which replaces it)", () => {
+    const arrays = (file: string) => [...readFileSync(file, "utf8").matchAll(/array\[([^\]]+)\]::text/g)].map((m) => m[1]!.split(",").map((k) => k.trim().replace(/'/g, "")));
+    expect(arrays("supabase/07-categories.sql")).toEqual([IDEA_CATEGORIES.map((c) => c.key)]);
+    expect(arrays("supabase/08-dreams.sql")).toEqual([IDEA_CATEGORIES.map((c) => c.key), DREAM_THEMES.map((c) => c.key)]);
+    expect(readFileSync("supabase/08-dreams.sql", "utf8")).toContain(`cardinality(categories) <= ${PICK.max}`);
+  });
+  it("has the ten agreed dream themes, asked about as dreams", () => {
+    expect(DREAM_THEMES.map((c) => c.label)).toEqual(["Flying", "Falling", "Being chased", "Water", "Lost", "People", "Places", "Animals", "Strange", "Nightmare"]);
+    expect(categoryQuestions(DREAM_THEMES, "dream")["chased"]!.instructions).toMatch(/^Is this dream about "Being chased"/);
+    expect(LISTS).toEqual({ idea: IDEA_CATEGORIES, dream: DREAM_THEMES });
+    expect([kindOf("dream"), kindOf("idea"), kindOf(undefined)]).toEqual(["dream", "idea", "idea"]);
   });
   it("asks Jev one complete yes/no question per category (ids are never sent to the model)", () => {
     const q = categoryQuestions(IDEA_CATEGORIES);
@@ -32,11 +38,8 @@ describe("pickCategories", () => {
   it("keeps up to three that fit, most likely first", () => {
     expect(pick({ tech: 0.6, health: 0.9, science: 0.7, learning: 0.55, business: 0.1 })).toEqual(["health", "science", "tech"]);
   });
-  it("keeps the single best when none clearly fits but it comes close", () => {
-    expect(pick({ tech: 0.35, health: 0.2 })).toEqual(["tech"]);
-  });
-  it("keeps nothing when nothing comes close", () => {
-    expect(pick({ tech: 0.29, health: 0.1 })).toEqual([]);
+  it("keeps nothing when nothing clearly fits (no best guess: it tagged gibberish)", () => {
+    expect(pick({ tech: 0.49, health: 0.35 })).toEqual([]);
   });
   it("ignores keys it doesn't know and answers that aren't numbers", () => {
     expect(pick({ dreams: 0.99, tech: "yes", health: 0.8 })).toEqual(["health"]);
@@ -68,13 +71,20 @@ describe("the categorize function", () => {
     };
     return { deps, calls };
   }
-  const run = (body: unknown, f: ReturnType<typeof fakes>) => categorize(body, IDEA_CATEGORIES, f.deps);
+  const run = (body: unknown, f: ReturnType<typeof fakes>) => categorize(body, LISTS, f.deps);
 
   it("asks Jev about the stored text (never the caller's), saves and returns the categories", async () => {
     const f = fakes({ message: "Telescope app for kids", categories: null });
     expect(await run({ id: "abcdef1", message: "spoofed" }, f)).toEqual({ status: 200, categories: ["tech", "science"] });
     expect(f.calls.ask).toEqual(["Telescope app for kids"]);
     expect(f.calls.save).toEqual([["abcdef1", ["tech", "science"]]]);
+  });
+  it("sorts a dream by dream themes, asked about as a dream", async () => {
+    const f = fakes({ message: "I was flying over the sea", categories: null, kind: "dream" }, { flying: 0.95, water: 0.7, tech: 0.99 });
+    const questions: string[][] = [];
+    f.deps.ask = async (_state, q) => { questions.push(Object.keys(q)); return { flying: 0.95, water: 0.7, tech: 0.99 }; };
+    expect(await run({ id: "abcdef1" }, f)).toEqual({ status: 200, categories: ["flying", "water"] });
+    expect(questions[0]).toEqual(DREAM_THEMES.map((c) => c.key));
   });
   it("sorts an idea only once: an already sorted idea costs no Jev call", async () => {
     const f = fakes({ message: "m", categories: ["health"] });

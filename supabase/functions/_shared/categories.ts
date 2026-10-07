@@ -1,4 +1,4 @@
-/** Categories for ideas (and, later, themes for dreams): the list, the questions Jev is asked, and the rule that turns Jev's answers into at most three.
+/** Categories for ideas and themes for dreams: the lists, the questions Jev is asked, and the rule that turns Jev's answers into at most three.
  *  Pure and import-free, so the site (Vite) and the Supabase Edge Function (Deno) share this one file. */
 
 export type Category = { readonly key: string; readonly label: string; /** What fits, in words Jev reads. */ readonly fits: string };
@@ -19,27 +19,47 @@ export const IDEA_CATEGORIES = [
 
 export type IdeaCategoryKey = (typeof IDEA_CATEGORIES)[number]["key"];
 
-/** How Jev's yes/no answers become categories: up to `max` with probability at least `fits`; if none reaches it, the single best one if at least `bestFits`. */
-export const PICK = { max: 3, fits: 0.5, bestFits: 0.3 } as const;
+/** Themes for dreams (the Sea of Dreams): fish that share one swim together. */
+export const DREAM_THEMES = [
+  { key: "flying", label: "Flying", fits: "flying, floating, soaring, weightless" },
+  { key: "falling", label: "Falling", fits: "falling, dropping, losing footing, sinking" },
+  { key: "chased", label: "Being chased", fits: "being chased, hunted, followed, running away" },
+  { key: "water", label: "Water", fits: "sea, rivers, rain, swimming, drowning, floods" },
+  { key: "lost", label: "Lost", fits: "being lost, searching, missing something, late, can't find the way" },
+  { key: "people", label: "People", fits: "family, friends, strangers, someone from the past, conversations" },
+  { key: "places", label: "Places", fits: "houses, cities, schools, rooms, travel, places that change" },
+  { key: "animals", label: "Animals", fits: "animals, creatures, pets, beasts" },
+  { key: "strange", label: "Strange", fits: "surreal, impossible, absurd or magical things" },
+  { key: "nightmare", label: "Nightmare", fits: "fear, danger, darkness, death, something terrible" },
+] as const satisfies readonly Category[];
+
+/** What a record is: an idea in the sky, or a dream in the sea. Each has its own list. */
+export type Kind = "idea" | "dream";
+export const LISTS: Record<Kind, readonly Category[]> = { idea: IDEA_CATEGORIES, dream: DREAM_THEMES };
+export const kindOf = (raw: unknown): Kind => (raw === "dream" ? "dream" : "idea");
+
+/** How Jev's yes/no answers become categories: up to `max` with probability at least `fits`. Nothing reaching it means no category
+ *  (owner's choice: no "best guess", which tagged gibberish). */
+export const PICK = { max: 3, fits: 0.5 } as const;
 
 /** One yes/no question per category, all asked in one Jev call. Question ids are the category keys (Jev never sees them). */
-export function categoryQuestions(list: readonly Category[]): Record<string, { type: "noul"; instructions: string }> {
+export function categoryQuestions(list: readonly Category[], kind: Kind = "idea"): Record<string, { type: "noul"; instructions: string }> {
   return Object.fromEntries(list.map((c) => [c.key, {
     type: "noul" as const,
-    instructions: `Does this idea belong in the category "${c.label}" (${c.fits})?`,
+    instructions: kind === "dream"
+      ? `Is this dream about "${c.label}" (${c.fits})?`
+      : `Does this idea belong in the category "${c.label}" (${c.fits})?`,
   }]));
 }
 
 /** Jev's answers (probability per category key) → the categories to keep, most likely first. Unknown keys and non-numbers are ignored. */
-export function pickCategories(list: readonly Category[], probabilities: Readonly<Record<string, unknown>>, rule: { max: number; fits: number; bestFits: number } = PICK): string[] {
-  const scored = list
+export function pickCategories(list: readonly Category[], probabilities: Readonly<Record<string, unknown>>, rule: { max: number; fits: number } = PICK): string[] {
+  return list
     .map((c) => ({ key: c.key, p: probabilities[c.key] }))
-    .filter((s): s is { key: string; p: number } => typeof s.p === "number" && Number.isFinite(s.p))
-    .sort((a, b) => b.p - a.p);
-  const fitting = scored.filter((s) => s.p >= rule.fits).slice(0, rule.max);
-  if (fitting.length > 0) return fitting.map((s) => s.key);
-  const best = scored[0];
-  return best && best.p >= rule.bestFits ? [best.key] : [];
+    .filter((s): s is { key: string; p: number } => typeof s.p === "number" && Number.isFinite(s.p) && s.p >= rule.fits)
+    .sort((a, b) => b.p - a.p)
+    .slice(0, rule.max)
+    .map((s) => s.key);
 }
 
 /** Stored categories (untrusted) → known keys only, at most `max`, no repeats. */

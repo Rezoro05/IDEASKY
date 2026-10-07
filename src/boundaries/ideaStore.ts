@@ -39,7 +39,7 @@ export function supabaseStore(d: SupabaseDeps): IdeaStore {
   return {
     async subscribe(onIdeas) {
       try {
-        const r = await d.fetch(d.url + "/rest/v1/ideas?select=id,name,message,stage,links,categories,created_at&order=created_at.desc&limit=60", { headers });
+        const r = await d.fetch(d.url + "/rest/v1/ideas?select=id,name,message,stage,links,categories,created_at&kind=eq.idea&order=created_at.desc&limit=60", { headers });
         if (!r.ok) return false;
         const rows = (await r.json()) as { id: string; name: string; message: string; stage: unknown; links: unknown; categories?: unknown; created_at: string }[];
         const out = new Map<string, Idea>();

@@ -44,6 +44,7 @@ describe("supabaseStore", () => {
     const ideas = got.mock.calls[0]![0] as Map<string, Idea>;
     expect([...ideas.values()]).toEqual([{ id: "abc123", name: "Anonymous", message: "hi", at: Date.parse("2026-10-01T00:00:00Z"), stage: "live", links: [{ title: "demo.app", url: "https://demo.app/" }] }]);
     expect((f.mock.calls[0] as unknown[])[0]).toContain("/rest/v1/ideas?select=id,name,message,stage,links,categories,created_at");
+    expect((f.mock.calls[0] as unknown[])[0]).toContain("&kind=eq.idea"); // dreams live in the sea, never in the sky
   });
   it("adding stores only the key's hash remotely and the key locally", async () => {
     const f = vi.fn(async (_u: string, _i?: RequestInit) => res(null));
