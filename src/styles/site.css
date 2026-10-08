@@ -220,6 +220,9 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 /* A dream's letter: no stages and no owner updates */
 .letter-card.no-stages .stage-track, .letter-card.no-stages #stage-error,
 .letter-card.is-dream .stage-track, .letter-card.is-dream #stage-error, .letter-card.is-dream #updates, .letter-card.is-dream #add-update { display: none !important; }
+/* Without stages the header above the text is empty: drop it, so the text sits right under the name */
+.letter-card.no-stages .letter-head, .letter-card.is-dream .letter-head { display: none; }
+.letter-card.no-stages .letter-content, .letter-card.is-dream .letter-content { margin-top: -6px; }
 .fish-flier .pf { fill: var(--fish, #FFFDF4); stroke: var(--accent); }
 /* One tint per dream theme */
 .fish[data-school="flying"] { --fish-tint: #F2C14E; } .fish[data-school="falling"] { --fish-tint: #E07A5F; }
