@@ -5,7 +5,7 @@ import { NO_WHEEL, depthFromHash, keyStep, swipeStep, wheelStep, type Depth, typ
 
 export type DepthControl = { depth(): Depth; go(depth: Depth): void };
 
-const SWIPE_IGNORES = ".plane, .fish, button, a, input, textarea, select, label";
+const SWIPE_IGNORES = ".plane, .fish, button, a, input, textarea, select, label, .holding-bird, .holding-fish"; // a held bird or fish is being carried, not swiped
 
 export function startDepth(opts: {
   root: HTMLElement; world: HTMLElement; sky: HTMLElement; sea: HTMLElement;

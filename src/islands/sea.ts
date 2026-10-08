@@ -8,7 +8,7 @@ import type { Bounds } from "../lib/sim";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { Categorizer } from "../boundaries/categorizer";
 import { BOLT_SCALE, DART_SPEED, boltAway, dartAway, fishDrop, startledBy } from "../lib/net";
-import type { Rect } from "../lib/cage";
+import { TOUCH_REACH, nearestWithin, slackFor, type Rect } from "../lib/cage";
 import { v, type Vec } from "../lib/vec";
 import type { PointerInfo } from "../lib/plane";
 
@@ -134,7 +134,7 @@ export function startSea(opts: {
   /* Catching, as birds are caught in the sky (pure rules in lib/net): a press on a fish holds it; it wriggles and follows the hand.
      Dropped in the small net, it lies there and its dream opens from the net; when the dream closes, it darts out. Let go anywhere
      else, it bolts the way the hand carried it, and fish nearby dart off. */
-  let held: { slug: string; pointerId: number; at: Vec; moved: number; velocity: Vec } | null = null;
+  let held: { slug: string; pointerId: number; at: Vec; moved: number; velocity: Vec; slack: number } | null = null;
   /** The fish in the net: where it lies, and whether its dream has covered the sea yet (it darts out once the sea shows again). */
   let netted: { slug: string; at: Vec; since: number; covered: boolean } | null = null;
   const centreOf = (el: Element): Vec => { const r = el.getBoundingClientRect(); return v(r.left + r.width / 2, r.top + r.height / 2); };
@@ -152,26 +152,33 @@ export function startSea(opts: {
   function startle(at: Vec, slug: string | null): void {
     for (const s of startledBy(at, fish, slug)) { const f = fish.find((x) => x.slug === s); if (f) setVelocity(s, dartAway(f.position, at, rand())); }
   }
-  field.addEventListener("pointerdown", (e) => {
+  /** The fish a press takes: the one under it, or on touch the nearest one close by (a fingertip lands near, not on, a swimming fish). */
+  function pressedFish(e: PointerEvent): HTMLElement | null {
     const a = (e.target as Element).closest<HTMLElement>(".fish");
+    if (a || e.pointerType !== "touch" || (e.target as Element).closest("button, a, input, textarea")) return a;
+    const near = nearestWithin(local(e), fish.filter((f) => f.slug !== netted?.slug), TOUCH_REACH);
+    return near ? els.get(near.slug) ?? null : null;
+  }
+  sea.addEventListener("pointerdown", (e) => {
+    const a = pressedFish(e);
     if (!a || e.button !== 0 || held || netted?.slug === a.dataset.slug) return;
     e.preventDefault();
     a.setPointerCapture(e.pointerId);
     const now = performance.now();
-    held = { slug: a.dataset.slug!, pointerId: e.pointerId, at: local(e), moved: now, velocity: v(0, 0) };
+    held = { slug: a.dataset.slug!, pointerId: e.pointerId, at: local(e), moved: now, velocity: v(0, 0), slack: slackFor(e.pointerType) };
     a.classList.add("held");
     sea.classList.add("holding-fish"); // the net lights up
   });
-  field.addEventListener("pointermove", (e) => {
+  sea.addEventListener("pointermove", (e) => {
     if (!held || e.pointerId !== held.pointerId) return;
     const at = local(e), now = performance.now(), dt = Math.max(0.008, (now - held.moved) / 1000);
     const k = Math.min(1, dt / 0.09); // the hand's velocity, smoothed: pointer samples come unevenly
     held = { ...held, at, moved: now, velocity: v(held.velocity.x + ((at.x - held.at.x) / dt - held.velocity.x) * k, held.velocity.y + ((at.y - held.at.y) / dt - held.velocity.y) * k) };
-    opts.net.classList.toggle("over", fishDrop(at, netRect(), false) === "netted");
+    opts.net.classList.toggle("over", fishDrop(at, netRect(), false, held.slack) === "netted");
   });
   const letGo = (e: PointerEvent) => {
     if (!held || e.pointerId !== held.pointerId) return;
-    const h = held, drop = fishDrop(local(e), netRect(), e.type !== "pointerup");
+    const h = held, drop = fishDrop(local(e), netRect(), e.type !== "pointerup", h.slack);
     held = null;
     els.get(h.slug)?.classList.remove("held");
     sea.classList.remove("holding-fish"); opts.net.classList.remove("over");
@@ -185,8 +192,8 @@ export function startSea(opts: {
     setVelocity(h.slug, boltAway(still ? v(0, 0) : h.velocity, rand()));
     startle(h.at, h.slug);
   };
-  field.addEventListener("pointerup", letGo);
-  field.addEventListener("pointercancel", letGo);
+  sea.addEventListener("pointerup", letGo);
+  sea.addEventListener("pointercancel", letGo);
   /** Once its dream has closed (the sea shows again), the fish in the net darts out, back toward open water. If the dream never
    *  covered the sea (it couldn't open), it leaves after a moment anyway. */
   function freeFromNet(now: number): void {

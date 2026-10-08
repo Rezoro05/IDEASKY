@@ -1,7 +1,7 @@
 /** The hero sky: renders the pure flight simulation, and turns pointer and keyboard input into held/paused planes. */
 import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
-import { isOverCage, type Rect } from "../lib/cage";
+import { TOUCH_REACH, isOverCage, nearestWithin, slackFor, type Rect } from "../lib/cage";
 import { isCatchable, pressOutcome } from "../lib/catch";
 import type { FlightConfig } from "../lib/motion";
 import { formFor } from "../lib/forms";
@@ -57,7 +57,7 @@ export function startSky(opts: {
   const trailLayer = createTrailLayer(field); // airplanes leave a faint line
   const pausedSlugs = new Set<string>(); // keyboard focus only; hover just recolors
   let mouse: (PointerInfo & { at: number }) | null = null; // the mouse over the sky: birds flee it; touch has no hover, so it never sets this
-  let held: Held | null = null, press: (PointerMark & { slug: string }) | null = null, suppressClick = false;
+  let held: Held | null = null, press: (PointerMark & { slug: string; slack: number }) | null = null, suppressClick = false;
 
   function makePlane(slug: string, spec: PlaneSpec): HTMLAnchorElement {
     const a = document.createElement("a");
@@ -99,11 +99,18 @@ export function startSky(opts: {
     mouse = { position, speed: mouse ? speed * 0.6 + mouse.speed * 0.4 : 0, at }; // smoothed, since pointer events come unevenly
   });
   field.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") mouse = null; });
-  field.addEventListener("pointerdown", (e) => {
+  /** The plane a press takes: the one under it, or on touch the nearest bird close by (a fingertip lands near, not on, a flying bird). */
+  function pressedPlane(e: PointerEvent): HTMLElement | null {
     const a = (e.target as Element).closest<HTMLElement>(".plane");
+    if (a || e.pointerType !== "touch" || (e.target as Element).closest("button, a, input, textarea")) return a;
+    const near = nearestWithin(local(e), world.planes.filter((p) => isCatchable(p.stage)), TOUCH_REACH);
+    return near ? els.get(near.slug) ?? null : null;
+  }
+  field.addEventListener("pointerdown", (e) => {
+    const a = pressedPlane(e);
     if (!a) return;
     e.preventDefault();
-    press = { slug: a.dataset.slug!, point: v(e.clientX, e.clientY), at: performance.now() };
+    press = { slug: a.dataset.slug!, point: v(e.clientX, e.clientY), at: performance.now(), slack: slackFor(e.pointerType) };
     a.setPointerCapture(e.pointerId);
     if (isCatchable(stageOf(press.slug))) hold(press.slug, local(e)); // a press on a bird catches it at once
   });
@@ -112,14 +119,14 @@ export function startSky(opts: {
     if (!held && movedFarEnough(press.point, v(e.clientX, e.clientY))) hold(press.slug, local(e));
     if (held) {
       held = { ...held, pointer: local(e) };
-      if (isCatchable(stageOf(held.slug))) opts.cage.classList.toggle("over", isOverCage(held.pointer, cageRect()));
+      if (isCatchable(stageOf(held.slug))) opts.cage.classList.toggle("over", isOverCage(held.pointer, cageRect(), press.slack));
     }
   });
   const endPress = (e: PointerEvent) => {
     if (!press) return;
     const gesture = classifyGesture(press, { point: v(e.clientX, e.clientY), at: performance.now() });
     const slug = press.slug, canceled = e.type !== "pointerup";
-    const outcome = pressOutcome({ stage: stageOf(slug), gesture, canceled, overCage: isOverCage(local(e), cageRect()) });
+    const outcome = pressOutcome({ stage: stageOf(slug), gesture, canceled, overCage: isOverCage(local(e), cageRect(), press.slack) });
     letGo();
     press = null;
     suppressClick = true; // the click that follows a press is handled here, not by the click listener

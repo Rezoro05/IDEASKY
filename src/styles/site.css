@@ -74,7 +74,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .bar a { pointer-events: auto; }
 @media (max-width: 560px) { .bar { flex-wrap: nowrap; gap: 12px; } }
 
-.field { position: absolute; inset: 0; overflow: hidden; touch-action: pan-y; border-bottom: 1px solid var(--rule);
+.field { position: absolute; inset: 0; overflow: hidden; touch-action: none; /* nothing here scrolls: a finger carries birds (the dive swipe reads touch events) */ border-bottom: 1px solid var(--rule);
   background: var(--sky-top); }
 .field::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; /* the grid (and at night a veil) lies over the picture and the clouds, under the planes */
   background-image: linear-gradient(var(--sky-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sky-grid) 1px, transparent 1px), var(--sky-veil);
@@ -149,7 +149,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 @keyframes surface-hint { from { transform: translateY(2px); } to { transform: translateY(-3px); } }
 
 /* The Sea of Dreams */
-.sea { position: absolute; left: 0; right: 0; top: 100%; height: 100%; overflow: hidden; color: var(--sea-text);
+.sea { position: absolute; left: 0; right: 0; top: 100%; height: 100%; overflow: hidden; color: var(--sea-text); touch-action: none; /* a finger carries fish; the browser must not take it for a scroll */
   background: linear-gradient(180deg, var(--sea-top), var(--sea-mid) 42%, var(--sea-deep)); }
 .sea::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background-image: linear-gradient(var(--sea-grid) 1px, transparent 1px), linear-gradient(90deg, var(--sea-grid) 1px, transparent 1px);
@@ -455,7 +455,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 /* ============================================================
    The Idea Note (compose overlay)
    ============================================================ */
-.compose .note-slot { width: min(460px, 100%); max-height: calc(100vh - 32px); overflow: auto; }
+.compose .note-slot { width: min(460px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow: auto; } /* dvh: the screen actually visible (100vh on a phone runs under the browser bars) */
 .compose.open .note-slot { animation: letter-unfold .7s cubic-bezier(.2,.8,.2,1) both; }
 .note { padding: 24px 24px 22px; display: flex; flex-direction: column; gap: 18px; color: var(--n-ink);
   box-shadow: 0 1px 0 var(--n-rule), 0 18px 40px -22px rgba(0,0,0,.45); }
@@ -476,7 +476,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 /* ============================================================
    The letter: an open idea
    ============================================================ */
-.letter-card { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 24px 24px 22px;
+.letter-card { width: min(520px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow: auto; padding: 24px 24px 22px;
   display: flex; flex-direction: column; gap: 12px; color: var(--plane-edge); box-shadow: 0 30px 60px -28px rgba(0,0,0,.6); }
 .letter-card::after { background: linear-gradient(225deg, transparent 0 50%, color-mix(in srgb, var(--plane-edge) 14%, var(--plane)) 50%); }
 .letter.open .letter-card { animation: card-unfold .7s cubic-bezier(.2,.8,.2,1) both; }
@@ -629,7 +629,8 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   .fish-net { display: none; } /* no fish to hold: dreams are a list */
   .surface-link { position: relative; display: block; left: auto; bottom: auto; transform: none; margin: 8px auto 72px; } /* after the list, in the flow */
   .maker-card { animation: none; }
-  .field { position: relative; height: 100svh; }
+  .field { position: relative; height: 100svh; touch-action: pan-y; }
+  .sea { touch-action: auto; } /* a plain page here: it scrolls */
   #fallback { padding: 0 var(--gutter) 24px; }
   .loader { display: none; }
   .cloud { animation: none; }

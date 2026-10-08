@@ -2,14 +2,14 @@
  *  dropped into the small net, its dream opens and it waits there until the dream closes; let go anywhere else, it bolts.
  *  Pure rules; the sea island moves the fish and measures the net (its rectangle, as the sky measures the cage). */
 import { len, sub, v, type Vec } from "./vec";
-import { isOverCage, type Rect } from "./cage";
+import { CAGE_SLACK, isOverCage, type Rect } from "./cage";
 
 /** What letting go of a held fish comes to. netted: dropped in the net (open its dream). released: let go elsewhere (it bolts). */
 export type FishDrop = "netted" | "released";
 
 /** A drop counts as in the net with the same generous edge as the cage: a wriggling fish is hard to aim. A pointer taken away
  *  (pointercancel) never nets anything. */
-export const fishDrop = (point: Vec, net: Rect, canceled: boolean): FishDrop => (!canceled && isOverCage(point, net) ? "netted" : "released");
+export const fishDrop = (point: Vec, net: Rect, canceled: boolean, slack: number = CAGE_SLACK): FishDrop => (!canceled && isOverCage(point, net, slack) ? "netted" : "released");
 
 export const NET = {
   /** Fish this close (px) to a splash (a fish let go of) are startled. */
