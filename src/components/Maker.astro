@@ -1,0 +1,12 @@
+---
+/* Who made the site, and a way to reach him: a small round "R" at the bottom left, in the sky and in the sea (it stays put while
+   diving). Pressing it opens a little card: "Folded by REZ" (linking to his site) and a "Send a note" button that opens the private
+   feedback note. Wired by islands/maker. */
+---
+<div class="maker" id="maker">
+  <div class="maker-card" id="maker-card" role="group" aria-label="About this site" hidden>
+    <p class="maker-by">Folded by <a href="https://revazkuparadze.com" target="_blank" rel="noopener">REZ</a></p>
+    <button class="maker-note" type="button" id="feedback-btn" aria-haspopup="dialog">Send a note</button>
+  </div>
+  <button class="maker-btn" type="button" id="maker-btn" aria-expanded="false" aria-controls="maker-card" aria-label="About this site: folded by REZ">R</button>
+</div>

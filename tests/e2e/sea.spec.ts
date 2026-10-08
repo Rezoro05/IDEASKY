@@ -280,18 +280,20 @@ test.describe("catching and opening dreams", () => {
     await expect(page.locator("#letter-from")).toHaveText("Dream1");
   });
 
-  test("on the web: the net sits bottom right just above Feedback; Back to the sky is in the middle of the footer line", async ({ page }) => {
+  test("on the web: the net sits bottom right, Back to the sky bottom centre where Dive is, the round R bottom left on the same line", async ({ page }) => {
     await fakeServices(page, sea());
-    await page.goto("/#sea");
+    await page.goto("/");
+    const dive = (await page.locator("#dive-btn").boundingBox())!, rSky = (await page.locator("#maker-btn").boundingBox())!;
+    await page.goto("/#sea"); await page.reload();
     const vp = page.viewportSize()!;
-    const net = (await page.locator("#fish-net").boundingBox())!, feedback = (await page.locator("#feedback-btn").boundingBox())!;
-    const rez = (await page.locator(".foot > span").first().boundingBox())!, back = (await page.locator("#surface-btn").boundingBox())!;
+    const net = (await page.locator("#fish-net").boundingBox())!, back = (await page.locator("#surface-btn").boundingBox())!, r = (await page.locator("#maker-btn").boundingBox())!;
     expect(net.x + net.width).toBeGreaterThan(vp.width - 60); // the right edge, at the gutter
-    expect(net.y + net.height).toBeLessThan(feedback.y); // above Feedback…
-    expect(feedback.y - (net.y + net.height)).toBeLessThan(30); // …just above
     expect(Math.abs(back.x + back.width / 2 - vp.width / 2)).toBeLessThan(2); // centred
-    const mid = (r: { y: number; height: number }) => r.y + r.height / 2;
-    expect(Math.abs(mid(back) - mid(feedback))).toBeLessThan(3); expect(Math.abs(mid(rez) - mid(feedback))).toBeLessThan(3); // one line
+    expect(Math.abs((back.y + back.height) - (dive.y + dive.height))).toBeLessThan(2); // where Dive is
+    expect(r.x).toBeLessThan(60); expect(r.y + r.height).toBeGreaterThan(vp.height - 110); // bottom left
+    const mid = (b: { y: number; height: number }) => b.y + b.height / 2;
+    expect(Math.abs(mid(r) - mid(back))).toBeLessThan(3); // one line with Back to the sky
+    expect(Math.abs(r.x - rSky.x) + Math.abs(r.y - rSky.y)).toBeLessThan(1.5); // the same spot in the sky and the sea
   });
 
   /** The cage's box in the sky and the net's box in the sea, each measured on its own screen. */
@@ -341,17 +343,18 @@ test.describe("catching and opening dreams", () => {
       await expect(page.locator("#letter-from")).toHaveText("Dream2");
     });
 
-    test("the net sits at the bottom centre on top of Back to the sky; Ideas from REZ and Feedback stack on two lines on the left, below it", async ({ page }) => {
+    test("the net sits at the bottom centre on top of Back to the sky; the round R sits bottom left, clear of both", async ({ page }) => {
       await fakeServices(page, sea());
       await page.goto("/#sea");
-      const net = (await page.locator("#fish-net").boundingBox())!, back = (await page.locator("#surface-btn").boundingBox())!;
-      const rez = (await page.locator(".foot > span").first().boundingBox())!, feedback = (await page.locator("#feedback-btn").boundingBox())!;
-      const cx = (r: { x: number; width: number }) => r.x + r.width / 2;
+      const net = (await page.locator("#fish-net").boundingBox())!, back = (await page.locator("#surface-btn").boundingBox())!, r = (await page.locator("#maker-btn").boundingBox())!;
+      const cx = (b: { x: number; width: number }) => b.x + b.width / 2;
       expect(Math.abs(cx(net) - 195)).toBeLessThan(2); expect(Math.abs(cx(back) - 195)).toBeLessThan(2);
       expect(net.y + net.height).toBeLessThan(back.y); expect(back.y - (net.y + net.height)).toBeLessThan(24); // just above it
-      expect(back.y + back.height).toBeLessThan(rez.y); // the links are below it…
-      expect(rez.x).toBeLessThan(30); expect(Math.abs(feedback.x - rez.x)).toBeLessThan(2); // …on the left…
-      expect(feedback.y).toBeGreaterThan(rez.y + rez.height - 2); // …one above the other
+      expect(r.x).toBeLessThan(30); expect(r.x + r.width).toBeLessThan(back.x); // bottom left, clear of Back to the sky
+      expect(r.y + r.height).toBeGreaterThan(780 - 110);
+      await page.locator("#maker-btn").tap();
+      const card = (await page.locator("#maker-card").boundingBox())!;
+      expect(card.x).toBeGreaterThanOrEqual(0); expect(card.x + card.width).toBeLessThanOrEqual(390); expect(card.y + card.height).toBeLessThan(r.y); // above the R, on screen
     });
   });
 

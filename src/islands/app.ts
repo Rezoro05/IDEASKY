@@ -3,6 +3,7 @@ import { DEMO_IDEAS, FORMSPREE_ENDPOINT, PUBLIC_BOARD } from "../content/site";
 import { demoIdeas } from "../content/demo-ideas";
 import { demoDreams } from "../content/demo-dreams";
 import { startSea } from "./sea";
+import { startMaker } from "./maker";
 import { FLIGHT_CONFIGS, motionProfileFor } from "../lib/motion";
 import { memoryStore, supabaseStore, toHex, type IdeaStore } from "../boundaries/ideaStore";
 import type { Idea } from "../lib/ideas";
@@ -145,6 +146,7 @@ export function startSite(): void {
   startComposer({ board, sky, sea, reducedMotion, inbox, dictation });
   const say = startToast();
   startFeedback({ inbox, say, reducedMotion });
+  startMaker();
   board.sync();
 
   /** A link to one idea (#idea-<id>) opens it once the board has loaded; a link to one that is gone says so. */

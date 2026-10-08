@@ -6,6 +6,7 @@ import Loader from "../components/Loader.astro";
 import Header from "../components/Header.astro";
 import Hero from "../components/Hero.astro";
 import Overlays from "../components/Overlays.astro";
+import Maker from "../components/Maker.astro";
 import Sea from "../components/Sea.astro";
 import { SITE, type PageMeta } from "../content/site";
 
@@ -49,6 +50,7 @@ const ld = { "@context": "https://schema.org", "@type": "WebSite", name: SITE.na
     </div>
     <Sea />
   </div>
+  <Maker /><!-- bottom left, over the sky and the sea alike -->
 </div>
 <Overlays />
 <script>

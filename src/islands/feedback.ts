@@ -1,4 +1,4 @@
-/** The feedback note, in the overlay the footer's "Feedback" opens. It goes to the owner's email only.
+/** The feedback note, in the overlay "Send a note" opens (in the card behind the round "R", bottom left). It goes to the owner's email only.
  *  States: closed → editing ⇄ invalid → sending → folding → closed (sent) | sending → editing with an error (text kept).
  *  With no inbox set up (local runs) it says so instead of pretending to send. */
 import { validateFeedbackDraft } from "../lib/feedback";

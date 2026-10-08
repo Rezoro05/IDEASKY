@@ -1,9 +1,8 @@
 ---
 /* The Sea of Dreams: a second screen below the sky. Dive and Surface (islands/depth) glide between them.
    Underwater: the skyline's water deepening to navy, light falling from the surface, slow bubbles, the same faint grid.
-   Fish (dreams) are added to #sea-field by the sea island. The site's footer sits at the bottom of the sea, the end of the site. */
+   Fish (dreams) are added to #sea-field by the sea island. Back to the sky sits where Dive is in the sky. */
 import { SEA } from "../content/site";
-import Footer from "./Footer.astro";
 import FishNet from "./FishNet.astro";
 const BUBBLES = [8, 19, 31, 44, 58, 67, 79, 91];
 ---
@@ -26,5 +25,5 @@ const BUBBLES = [8, 19, 31, 44, 58, 67, 79, 91];
     <div class="list-head"><h3>Dreams</h3><span>Shown because reduced motion is on</span></div>
     <ul class="ideas" id="dreams-list"></ul>
   </div>
-  <Footer><button class="dive-link surface-link" type="button" id="surface-btn"><span aria-hidden="true">↑</span> Back to the sky</button></Footer><!-- the end of the site: at the bottom of the sea -->
+  <button class="dive-link dive-btn surface-link" type="button" id="surface-btn"><span aria-hidden="true">↑</span> Back to the sky</button><!-- where Dive is in the sky -->
 </section>

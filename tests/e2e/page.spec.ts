@@ -10,14 +10,20 @@ test("the home page opens with Sky of Ideas content and no errors", async ({ pag
   await expect(page.locator(".closing")).toHaveCount(0); // one section: the sky
   await expect(page.locator(".bar .wordmark")).toHaveCount(0); // the name is the headline now, not repeated top left
   await expect(page.locator(".thesis p").first()).toHaveText(/^Idea without execution is just a thought exercise\./);
-  const rez = page.locator(".foot a", { hasText: "REZ" }); // the footer credits REZ and links to his site (no site name there: the headline has it)
-  await expect(page.locator(".foot")).toContainText("Folded by REZ");
+  await expect(page.locator("#maker-card")).toBeHidden(); // the round R keeps the credit out of the way until pressed
+  await page.locator("#maker-btn").click();
+  await expect(page.locator("#maker-btn")).toHaveAttribute("aria-expanded", "true");
+  const rez = page.locator("#maker-card a", { hasText: "REZ" });
+  await expect(page.locator("#maker-card")).toContainText("Folded by REZ");
   await expect(page.locator("#feedback-btn")).toHaveText("Send a note");
-  await expect(page.locator(".foot")).not.toContainText("Sky of Ideas");
   await expect(rez).toHaveAttribute("href", "https://revazkuparadze.com");
   await expect(rez).toHaveAttribute("target", "_blank");
-  await expect(page.locator("#sea .foot")).toHaveCount(1); // the footer is at the end of the site, not the end of the sky
-  await expect(page.locator("#sky-part .foot")).toHaveCount(0);
+  await page.mouse.click(600, 300); // a press elsewhere closes it
+  await expect(page.locator("#maker-card")).toBeHidden();
+  await page.locator("#maker-btn").click();
+  await page.keyboard.press("Escape"); // and so does Escape
+  await expect(page.locator("#maker-card")).toBeHidden();
+  await expect(page.locator("#maker-btn")).toBeFocused();
   await page.waitForTimeout(500);
   expect(errors).toEqual([]);
 });
