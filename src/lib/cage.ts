@@ -11,8 +11,11 @@ export const TOUCH_SLACK = 30;
 /** How generous a drop target is for this kind of pointer ("mouse", "touch", "pen"). */
 export const slackFor = (pointerType: string): number => (pointerType === "touch" ? TOUCH_SLACK : CAGE_SLACK);
 
-/** On touch, a press that lands near a bird or fish (not exactly on it) takes the nearest one within this distance (px). */
-export const TOUCH_REACH = 36;
+/** A press that lands near a bird or fish (not exactly on it) takes the nearest one within this distance (px): wide for a fingertip,
+ *  a little for a mouse, since both are chasing something that moves. */
+export const TOUCH_REACH = 48;
+export const MOUSE_REACH = 18;
+export const reachFor = (pointerType: string): number => (pointerType === "touch" ? TOUCH_REACH : MOUSE_REACH);
 /** The nearest of `things` within `reach` of `point`, or null. Pure. */
 export function nearestWithin<T extends { readonly position: Vec }>(point: Vec, things: readonly T[], reach: number): T | null {
   let best: T | null = null, bestD = reach;

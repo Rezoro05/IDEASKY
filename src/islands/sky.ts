@@ -1,7 +1,7 @@
 /** The hero sky: renders the pure flight simulation, and turns pointer and keyboard input into held/paused planes. */
 import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
-import { TOUCH_REACH, isOverCage, nearestWithin, slackFor, type Rect } from "../lib/cage";
+import { isOverCage, nearestWithin, reachFor, slackFor, type Rect } from "../lib/cage";
 import { isCatchable, pressOutcome } from "../lib/catch";
 import type { FlightConfig } from "../lib/motion";
 import { formFor } from "../lib/forms";
@@ -12,6 +12,7 @@ import { BIRD_STAGE, FORM_FLIGHT, configFor } from "../lib/flight-forms";
 import { trailSegments } from "../lib/trail";
 import { planeView, type PlaneMemory } from "../lib/plane-view";
 import { createTrailLayer } from "./trail-canvas";
+import { keepLongPressAway, keyboardFocus } from "./dom";
 
 export type PlaneSpec = { tag: string; label: string; stage: Stage; from?: Vec; velocity?: Vec; fresh?: boolean };
 export type Sky = {
@@ -45,6 +46,7 @@ export function startSky(opts: {
   covered?: () => boolean;
 }): Sky {
   const { field, config } = opts;
+  keepLongPressAway(field);
   /** The field's size, measured once and again only when it changes: reading it every frame would force a layout each frame. */
   let size: Bounds = { width: field.clientWidth, height: field.clientHeight };
   new ResizeObserver(() => { size = { width: field.clientWidth, height: field.clientHeight }; }).observe(field);
@@ -70,7 +72,7 @@ export function startSky(opts: {
     a.dataset.stage = spec.stage;
     a.querySelector(".tag")!.textContent = spec.tag;
     wings.set(slug, wingGroupsOf(a));
-    a.addEventListener("focus", () => pausedSlugs.add(slug));
+    a.addEventListener("focus", () => { if (keyboardFocus(a)) pausedSlugs.add(slug); }); // a long press can focus it too: no ring, no pause
     a.addEventListener("blur", () => pausedSlugs.delete(slug));
     field.appendChild(a);
     els.set(slug, a);
@@ -102,8 +104,8 @@ export function startSky(opts: {
   /** The plane a press takes: the one under it, or on touch the nearest bird close by (a fingertip lands near, not on, a flying bird). */
   function pressedPlane(e: PointerEvent): HTMLElement | null {
     const a = (e.target as Element).closest<HTMLElement>(".plane");
-    if (a || e.pointerType !== "touch" || (e.target as Element).closest("button, a, input, textarea")) return a;
-    const near = nearestWithin(local(e), world.planes.filter((p) => isCatchable(p.stage)), TOUCH_REACH);
+    if (a || (e.target as Element).closest("button, a, input, textarea")) return a;
+    const near = nearestWithin(local(e), world.planes.filter((p) => isCatchable(p.stage)), reachFor(e.pointerType));
     return near ? els.get(near.slug) ?? null : null;
   }
   field.addEventListener("pointerdown", (e) => {

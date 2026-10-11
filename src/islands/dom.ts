@@ -33,3 +33,26 @@ export function randomBytes(n: number): Uint8Array {
   try { return crypto.getRandomValues(new Uint8Array(n)); }
   catch { return Uint8Array.from({ length: n }, () => Math.floor(Math.random() * 256)); }
 }
+
+/* Whether a finger, mouse button or pen is pressed on the page right now. */
+let pressing = false;
+if (typeof addEventListener === "function") {
+  addEventListener("pointerdown", () => { pressing = true; }, true);
+  for (const t of ["pointerup", "pointercancel"]) addEventListener(t, () => { pressing = false; }, true);
+}
+
+/** A bird or fish that took focus: true when it came from the keyboard or a screen reader. When it came during a press (a long
+ *  press on a phone focuses the link), it gives the focus straight back, so no ring shows and nothing pauses. */
+export function keyboardFocus(el: HTMLElement): boolean {
+  if (!pressing) return true;
+  el.blur();
+  return false;
+}
+
+/** Birds and fish are carried with a finger: the phone's own long press (link preview, copy menu, highlight) must never take over,
+ *  or it shows a frame and cancels the carry. */
+export function keepLongPressAway(area: HTMLElement): void {
+  area.addEventListener("contextmenu", (e) => { if ((e.target as Element).closest(".plane, .fish") || area.querySelector(".held")) e.preventDefault(); });
+  area.addEventListener("touchstart", (e) => { if ((e.target as Element).closest(".plane, .fish") || area.querySelector(".held")) e.preventDefault(); }, { passive: false });
+  area.addEventListener("dragstart", (e) => e.preventDefault());
+}

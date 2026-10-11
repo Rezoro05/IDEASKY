@@ -8,9 +8,10 @@ import type { Bounds } from "../lib/sim";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { Categorizer } from "../boundaries/categorizer";
 import { BOLT_SCALE, DART_SPEED, boltAway, dartAway, fishDrop, startledBy } from "../lib/net";
-import { TOUCH_REACH, nearestWithin, slackFor, type Rect } from "../lib/cage";
+import { nearestWithin, reachFor, slackFor, type Rect } from "../lib/cage";
 import { v, type Vec } from "../lib/vec";
 import type { PointerInfo } from "../lib/plane";
+import { keepLongPressAway, keyboardFocus } from "./dom";
 
 /** A mouse that hasn't moved for this long counts as still (as in the sky). */
 const MOUSE_STILL_MS = 120;
@@ -68,6 +69,7 @@ export function startSea(opts: {
     a.setAttribute("aria-label", `${name}: open the dream`);
     a.innerHTML = `<span class="body">${FISH_SVG}</span><span class="tag"></span>`;
     a.querySelector(".tag")!.textContent = name;
+    a.addEventListener("focus", () => { keyboardFocus(a); }); // a long press can focus it: no ring
     field.appendChild(a);
     return a;
   }
@@ -121,6 +123,7 @@ export function startSea(opts: {
 
   /* The mouse over the sea: fish dart away from it when it moves near (touch has no hover, so it never sets this). */
   const sea = opts.surface;
+  keepLongPressAway(sea);
   let mouse: (PointerInfo & { at: number }) | null = null;
   const local = (e: PointerEvent): Vec => { const r = field.getBoundingClientRect(); return v(e.clientX - r.left, e.clientY - r.top); };
   sea.addEventListener("pointermove", (e) => {
@@ -155,8 +158,8 @@ export function startSea(opts: {
   /** The fish a press takes: the one under it, or on touch the nearest one close by (a fingertip lands near, not on, a swimming fish). */
   function pressedFish(e: PointerEvent): HTMLElement | null {
     const a = (e.target as Element).closest<HTMLElement>(".fish");
-    if (a || e.pointerType !== "touch" || (e.target as Element).closest("button, a, input, textarea")) return a;
-    const near = nearestWithin(local(e), fish.filter((f) => f.slug !== netted?.slug), TOUCH_REACH);
+    if (a || (e.target as Element).closest("button, a, input, textarea")) return a;
+    const near = nearestWithin(local(e), fish.filter((f) => f.slug !== netted?.slug), reachFor(e.pointerType));
     return near ? els.get(near.slug) ?? null : null;
   }
   sea.addEventListener("pointerdown", (e) => {

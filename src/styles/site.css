@@ -172,6 +172,9 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .fish:hover .pf, .fish:focus-visible .pf { fill: var(--accent-sea); }
 .fish:hover .tag, .fish:focus-visible .tag { color: var(--sea-text); }
 .fish:focus-visible .body { outline: 2px solid var(--sea-text); outline-offset: 6px; border-radius: 50%; }
+/* Birds and fish are held with a finger: no phone long-press menu, link preview or tap highlight on them (it showed as a frame). */
+.plane, .fish, .field, .sea { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.plane:focus:not(:focus-visible), .fish:focus:not(:focus-visible) { outline: none; }
 /* Holding a fish (lib/net): a press holds it; it wriggles in the hand and follows it. Dropped in the small net it lies there, smaller,
    wriggling behind the mesh, until its dream closes. */
 .fish .body { cursor: grab; }
