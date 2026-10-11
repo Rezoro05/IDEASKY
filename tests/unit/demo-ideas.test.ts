@@ -5,12 +5,13 @@ import { IDEA_LIMITS, isRecordId } from "../../src/lib/ideas";
 
 describe("the example ideas", () => {
   const ideas = demoIdeas(1_700_000_000_000);
-  it("are five, with every stage represented", () => {
-    expect(ideas).toHaveLength(5);
+  it("are six, ReZoro's first, with every stage represented", () => {
+    expect(ideas).toHaveLength(6);
+    expect(ideas[0].name).toBe("ReZoro");
     for (const stage of STAGES) expect(ideas.some((i) => i.stage === stage)).toBe(true);
   });
   it("have valid, distinct ids and fit the limits", () => {
-    expect(new Set(ideas.map((i) => i.id)).size).toBe(5);
+    expect(new Set(ideas.map((i) => i.id)).size).toBe(6);
     for (const i of ideas) {
       expect(isRecordId(i.id)).toBe(true);
       expect(i.message.length).toBeLessThanOrEqual(IDEA_LIMITS.message);

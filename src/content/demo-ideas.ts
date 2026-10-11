@@ -1,4 +1,4 @@
-/** Five ideas, across all three stages, for a board that has nothing in it (previews and local runs started with PUBLIC_DEMO_IDEAS=1).
+/** ReZoro's note (Idea1) and five ideas, across all three stages, for a board that has nothing in it (previews and local runs started with PUBLIC_DEMO_IDEAS=1).
  *  A real board never gets them. Pure: the clock comes in. */
 import type { Idea } from "../lib/ideas";
 
