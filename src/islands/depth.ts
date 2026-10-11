@@ -25,8 +25,18 @@ export function startDepth(opts: {
     const hash = next === "sea" ? "#sea" : "";
     if ((location.hash === "#sea") !== (next === "sea")) history.replaceState(null, "", location.pathname + location.search + hash);
     if (opts.reducedMotion && moveFocus) (next === "sea" ? sea : sky).scrollIntoView({ block: "start" });
-    if (moveFocus) (next === "sea" ? opts.seaTitle : opts.dive).focus({ preventScroll: true });
+    if (moveFocus) {
+      const target = next === "sea" ? opts.seaTitle : opts.dive;
+      // Focus follows the visitor for keyboards and screen readers; after a tap, click, swipe or wheel it shows no ring.
+      target.classList.toggle("quiet-focus", !usingKeys);
+      target.focus({ preventScroll: true, focusVisible: usingKeys } as FocusOptions);
+    }
   }
+  let usingKeys = false;
+  addEventListener("keydown", () => { usingKeys = true; opts.dive.classList.remove("quiet-focus"); opts.seaTitle.classList.remove("quiet-focus"); }, true);
+  addEventListener("pointerdown", () => { usingKeys = false; }, true);
+  addEventListener("touchstart", () => { usingKeys = false; }, { capture: true, passive: true });
+  addEventListener("wheel", () => { usingKeys = false; }, { capture: true, passive: true });
   function go(next: Depth): void { if (next !== depth) apply(next, true); }
 
   world.classList.add("no-glide");
