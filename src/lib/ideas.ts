@@ -35,8 +35,15 @@ export function cleanIdea(raw: unknown, kind: Kind = "idea"): Idea | null {
   return { id: r.id, name: name || ANONYMOUS, message, at: Number(r.at) || 0, stage: stageOrIdea(r.stage), links: cleanLinks(r.links), ...(categories ? { categories } : {}), ...(kind === "dream" ? { kind } : {}) };
 }
 
+/** ReZoro's founding note (Idea1 and Dream1, live and in the examples): always in the sky and the sea, however many others arrive. */
+export const PINNED_IDS: ReadonlySet<string> = new Set(["rezoro01idea", "rezoro01dream", "rezoro01", "rezoro02"]);
+
+/** The newest, capped at max; a pinned note always takes one of the places. */
 export function newestIdeas(ideas: Iterable<Idea>, max: number): Idea[] {
-  return [...ideas].sort((a, b) => b.at - a.at).slice(0, max);
+  const sorted = [...ideas].sort((a, b) => b.at - a.at);
+  const pinned = sorted.filter((i) => PINNED_IDS.has(i.id)).slice(0, max);
+  const rest = sorted.filter((i) => !PINNED_IDS.has(i.id)).slice(0, max - pinned.length);
+  return [...rest, ...pinned].sort((a, b) => b.at - a.at);
 }
 
 /** Idea1 is the oldest; ties broken by id so numbers never flicker. */

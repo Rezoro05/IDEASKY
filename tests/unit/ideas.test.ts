@@ -24,6 +24,9 @@ describe("cleanIdea", () => {
 });
 
 describe("collections", () => {
+  it("newestIdeas keeps ReZoro's pinned note however old it is", () => {
+    expect(newestIdeas([idea("rezoro01idea", 0), idea("a", 1), idea("b", 3), idea("c", 2)], 2).map((x) => x.id)).toEqual(["b", "rezoro01idea"]);
+  });
   it("newestIdeas sorts newest first and caps", () => {
     expect(newestIdeas([idea("a", 1), idea("b", 3), idea("c", 2)], 2).map((x) => x.id)).toEqual(["b", "c"]);
   });
