@@ -3,7 +3,6 @@ import { DEMO_IDEAS, FORMSPREE_ENDPOINT, PUBLIC_BOARD } from "../content/site";
 import { demoIdeas } from "../content/demo-ideas";
 import { demoDreams } from "../content/demo-dreams";
 import { startSea } from "./sea";
-import { startMaker } from "./maker";
 import { FLIGHT_CONFIGS, motionProfileFor } from "../lib/motion";
 import { memoryStore, supabaseStore, toHex, type IdeaStore } from "../boundaries/ideaStore";
 import type { Idea } from "../lib/ideas";
@@ -17,7 +16,6 @@ import { startSky, type Sky } from "./sky";
 import { startBoard } from "./board";
 import { startLetter } from "./letter";
 import { startComposer } from "./composer";
-import { startFeedback } from "./feedback";
 import { startToast } from "./toast";
 import { startThread } from "./thread";
 import { startLikes } from "./likes";
@@ -145,8 +143,6 @@ export function startSite(): void {
   const dictation = startDictation({ speech: browserSpeech(), button: byId<HTMLButtonElement>("note-mic"), field: byId<HTMLTextAreaElement>("note-msg"), status: byId("note-mic-status"), lang: navigator.language || "en-US" });
   startComposer({ board, sky, sea, reducedMotion, inbox, dictation });
   const say = startToast();
-  startFeedback({ inbox, say, reducedMotion });
-  startMaker();
   board.sync();
 
   /** A link to one idea (#idea-<id>) opens it once the board has loaded; a link to one that is gone says so. */

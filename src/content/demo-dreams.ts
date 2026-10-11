@@ -7,6 +7,7 @@ const dream = (id: string, name: string, message: string, hoursAgo: number, now:
   ({ id, name, message, stage: "idea", at: now - hoursAgo * HOUR, links: [], categories, kind: "dream" });
 
 export const demoDreams = (now: number): Idea[] => [
+  dream("rezoro02", "ReZoro", "I always wanted to have a space for ideas and dreams. Where people could express themselves, listen to others and hopefully benefit from it too", 2000, now, []),
   dream("dream001", "Anonymous", "I could fly if I ran fast enough down the hill, and the whole town watched from their roofs.", 40, now, ["flying", "places"]),
   dream("dream002", "Nino", "I was floating above the clouds and could hear my grandmother calling me for dinner.", 33, now, ["flying", "people"]),
   dream("dream003", "Anonymous", "The subway filled with warm sea water and everyone kept reading their phones.", 28, now, ["water", "strange"]),
@@ -14,5 +15,4 @@ export const demoDreams = (now: number): Idea[] => [
   dream("dream005", "Anonymous", "A tide came in through my bedroom window, slowly, like it was looking for something.", 16, now, ["water"]),
   dream("dream006", "Lena", "My old school had a hundred floors and my classroom kept moving to a new one.", 12, now, ["places", "lost"]),
   dream("dream007", "Anonymous", "Every door in my house opened onto a different city.", 7, now, ["places", "strange"]),
-  dream("dream008", "Omar", "Something was following me through a forest of streetlights.", 3, now, ["chased", "nightmare"]),
 ];

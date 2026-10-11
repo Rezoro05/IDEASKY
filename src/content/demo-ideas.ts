@@ -7,6 +7,7 @@ const demo = (id: string, name: string, message: string, stage: Idea["stage"], h
   ({ id, name, message, stage, at: now - hoursAgo * HOUR, links: [], categories });
 
 export const demoIdeas = (now: number): Idea[] => [
+  demo("rezoro01", "ReZoro", "I always wanted to have a space for ideas and dreams. Where people could express themselves, listen to others and hopefully benefit from it too", "idea", 2000, now, []),
   demo("demo001", "Steve Gates", "A tool library for the block: borrow a drill instead of buying one.", "idea", 30, now, ["city-places", "social-good"]),
   demo("demo002", "Maya", "Pocket-sized weather station that texts you when to bring the laundry in.", "idea", 20, now, ["tech", "environment"]),
   demo("demo003", "Dev", "Open-source app that turns a voice memo into a clean to-do list.", "implementation", 14, now, ["tech"]),
