@@ -182,7 +182,7 @@ export function startScenes(opts: {
   return { status: () => [sky.status(), sea.status()] };
 }
 
-const STORE_ITEM = "skyofideas.studio";
+const STORE_ITEM = "skyofideas.scene"; // its own key: the bird Motion Studio (not in this repo yet) keeps "skyofideas.studio"
 
 /** Settings for this browser: the site's defaults, with the studio's saved changes on top. Saving is best-effort. */
 export function settingsSource(defaults: Settings, merge: (base: Settings, input: unknown) => Settings): SettingsSource & { set(s: Settings): void; saved(): boolean; clear(): void } {

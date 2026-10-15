@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { fakeServices } from "./fixtures";
 
 /** The test build has the 3D backgrounds off (PUBLIC_SCENE=0), so other tests don't pay for them; these turn them on as the studio does. */
-const STORE = "skyofideas.studio";
+const STORE = "skyofideas.scene";
 // WebGL through the software renderer, so the backgrounds can be drawn headless. Only here: it changes how other pages composite.
 test.use({ launchOptions: { executablePath: "/opt/pw-browsers/chromium", args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] } });
 const turnOn = (page: Page, settings: unknown = { sky: { on: true }, sea: { on: true } }) =>
