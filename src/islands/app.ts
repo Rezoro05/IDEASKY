@@ -1,5 +1,5 @@
 /** Wires the pure parts to the page. Every feature lights up on its own; if one fails, the rest of the page still works. */
-import { DEMO_IDEAS, FORMSPREE_ENDPOINT, PUBLIC_BOARD } from "../content/site";
+import { DEMO_IDEAS, FORMSPREE_ENDPOINT, PUBLIC_BOARD, SCENE_ON } from "../content/site";
 import { demoIdeas } from "../content/demo-ideas";
 import { demoDreams } from "../content/demo-dreams";
 import { startSea } from "./sea";
@@ -32,6 +32,9 @@ import { startCageHint } from "./hint";
 import { startDictation } from "./dictation";
 import { browserSpeech } from "../boundaries/speech";
 import { noCategorizer, supabaseCategorizer } from "../boundaries/categorizer";
+import { settingsSource, startScenes, type Scenes } from "./scene";
+import { DEFAULTS, mergeSettings, presetSettings } from "../lib/scene-settings";
+import { startStudio } from "./studio";
 
 function safeStorage(): Storage | null { try { return window.localStorage; } catch { return null; } }
 
@@ -64,6 +67,33 @@ function chooseStores(): Stores {
   };
 }
 
+/** The 3D backgrounds start once the picture is up and the page has had a moment; #studio opens their control center. */
+function startBackgrounds(): void {
+  const root = document.documentElement;
+  const source = settingsSource(SCENE_ON ? DEFAULTS : presetSettings("Picture only"), mergeSettings);
+  const picture = document.querySelector<HTMLImageElement>(".skyline");
+  let scenes: Scenes | null = null;
+  const start = () => {
+    if (scenes || !picture) return;
+    scenes = startScenes({
+      field: byId("field"), picture, clouds: document.querySelector(".clouds"), sea: byId("sea"), seaBefore: document.querySelector(".sea-light"), source,
+      skyActive: () => root.dataset.depth !== "sea" && !root.classList.contains("sky-covered"),
+      seaActive: () => root.dataset.depth === "sea" && !root.classList.contains("sky-covered"),
+    });
+  };
+  const whenIdle = (fn: () => void) => ("requestIdleCallback" in window ? requestIdleCallback(fn, { timeout: 1200 }) : setTimeout(fn, 300));
+  if (picture) picture.decode().catch(() => undefined).then(() => whenIdle(start));
+  let studioOpen = false;
+  const openStudio = () => {
+    if (studioOpen || location.hash !== "#studio") return;
+    studioOpen = true;
+    start();
+    startStudio({ source, defaults: SCENE_ON ? DEFAULTS : presetSettings("Picture only"), status: () => scenes?.status() ?? [], closed: () => { studioOpen = false; } });
+  };
+  openStudio();
+  addEventListener("hashchange", openStudio);
+}
+
 export function startSite(): void {
   hideLoaderWhenReady({ loader: document.querySelector(".loader"), picture: document.querySelector(".skyline") });
   const reducedMotion = prefersReducedMotion();
@@ -94,6 +124,8 @@ export function startSite(): void {
     dive: byId("dive-btn"), surface: byId("surface-btn"), seaTitle: byId("sea-title"), reducedMotion,
     blocked: () => document.documentElement.classList.contains("sky-covered"),
   });
+
+  if (profile !== "none") startBackgrounds();
 
   const stores = Promise.resolve(chooseStores());
   const categorizer = PUBLIC_BOARD.url ? supabaseCategorizer({ url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window) }) : noCategorizer;

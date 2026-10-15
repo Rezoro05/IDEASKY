@@ -29,6 +29,10 @@ export const DEMO_IDEAS = import.meta.env.PUBLIC_DEMO_IDEAS === "1";
  *  Off for the public board (owner, 2026-10-07): every idea is a bird, and there is no stage bar. */
 export const SHOW_STAGES = import.meta.env.PUBLIC_SHOW_STAGES === "1";
 
+/** Build flag: the 3D backgrounds (skyline and deep sea as gaussian splats). On unless PUBLIC_SCENE=0 (the browser-test builds turn it off,
+ *  so the other tests don't pay for it; the studio can still turn it on in that browser). */
+export const SCENE_ON = import.meta.env.PUBLIC_SCENE !== "0";
+
 export const PUBLIC_BOARD = {
   url: (import.meta.env.PUBLIC_BOARD_URL ?? "") as string,
   key: (import.meta.env.PUBLIC_BOARD_KEY ?? "") as string,

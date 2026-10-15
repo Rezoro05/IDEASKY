@@ -16,6 +16,9 @@ src/boundaries/   the outside world behind small interfaces, each with a Supabas
                   ideaStore, commentStore, likeStore, updateStore, inbox (Formspree), keyStore (browser keys)
 src/islands/      page wiring: app (puts it together), sky, board, letter, composer (Idea Note), feedback (footer note, emailed only),
                   thread (comments), likes, stage-panel, updates, flier, link-rows, link-list, dom
+                  3D backgrounds: splats, skyline-splats (the picture given depth), deep-sea, scene-camera, scene-settings, splat-sort, mat4
+src/boundaries/splatGl.ts  the WebGL2 splat renderer (null without WebGL2: the picture stays)
+src/islands/scene.ts, studio.ts  the backgrounds' wiring, and the owner's control center at …/#studio
 src/components/   markup; src/layouts/Site.astro is the one page
 src/styles/       site.css, in sections: tokens, base, page, planes, overlays, paper cards, Idea Note, letter, preferences
 supabase/         SQL for the board, run in order: 01 ideas, 02 comments, 03 likes, 04 stages and links, 05 updates
@@ -38,6 +41,7 @@ Endpoints come from build-time environment variables, so no build points at a re
 | `PUBLIC_BOARD_URL`, `PUBLIC_BOARD_KEY` | Supabase project URL and publishable key |
 | `PUBLIC_FORMSPREE_ENDPOINT` | Formspree form that emails new ideas, comments and feedback |
 | `PUBLIC_DEMO_IDEAS` | `1` = a board with no service starts with five example ideas across the stages (previews, local runs). Ignored when a board is configured |
+| `PUBLIC_SCENE` | `0` = no 3D backgrounds by default (the browser-test builds); the studio can still turn them on in one browser |
 | `PUBLIC_BASE_PATH` | Where the site lives. Unset = `/`; the deploy workflow sets `/IDEASKY/` |
 
 Unset (the default): everything lives in memory for the visit and nothing is emailed. Good for local testing.

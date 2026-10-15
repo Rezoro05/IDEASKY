@@ -23,7 +23,7 @@
   --font-display: "Poppins", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --picture-dim: none; --sky-veil: linear-gradient(transparent, transparent);
+  --picture-dim: brightness(1); --sky-veil: linear-gradient(transparent, transparent);
   --gutter: clamp(16px, 4vw, 48px); --bar-h: 56px;
   /* The cage (sky) and the net (sea) share one size and one spot on screen, so diving or surfacing keeps the drop target in place. */
   --target-w: 52px; --target-h: 59px; --target-bottom: 52px;
@@ -100,6 +100,17 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .skyline { position: absolute; left: 0; right: 0; bottom: 0; z-index: 0; width: 100%; height: min(62%, max(40vw, 340px));
   object-fit: cover; object-position: 50% 100%; pointer-events: none; user-select: none; filter: var(--picture-dim);
   -webkit-mask-image: linear-gradient(180deg, transparent, #000 14%); mask-image: linear-gradient(180deg, transparent, #000 14%); }
+
+/* The 3D backgrounds (islands/scene): a canvas of splats over the picture (sky) or under the light and bubbles (sea). It fades in when its first frame is drawn;
+   the picture then fades out underneath. --scene-blur comes from the studio. */
+.scene-canvas { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity 1.2s ease;
+  filter: blur(var(--scene-blur, 0px)); }
+.scene-canvas.shown { opacity: 1; }
+.scene-sky { filter: var(--picture-dim) blur(var(--scene-blur, 0px)); }
+.skyline { transition: opacity 1.2s ease; }
+.scene-sky-on .skyline, .scene-sea-on .sea-light { opacity: 0; }
+.sea-light { transition: opacity 1.2s ease; }
+.clouds { will-change: transform; }
 
 /* Clouds drift across the upper sky, in the picture's own soft cream and pale blue, above its tallest towers */
 .clouds { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
