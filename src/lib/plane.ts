@@ -5,7 +5,7 @@ import type { Stage } from "./stages";
 /** What a bird is doing. Fleeing the pointer is not a state: it is a push that applies while gliding or taking off.
  *  `n` counts the decisions the bird has made, so each decision draws its own (seeded) random numbers. */
 export type BirdState =
-  | { readonly mode: "gliding"; readonly until: number; readonly n: number }
+  | { readonly mode: "gliding"; readonly until: number; readonly n: number; /** When this glide began (flock mates land together, but not straight after take-off). */ readonly from?: number }
   | { readonly mode: "approaching"; readonly target: Vec; readonly n: number }
   | { readonly mode: "perched"; readonly until: number; /** Seconds the pointer has been close and moving. */ readonly alarm: number; readonly n: number }
   | { readonly mode: "takingOff"; readonly until: number; readonly n: number }
@@ -17,6 +17,8 @@ export type Plane = {
   readonly stage: Stage;
   readonly position: Vec;
   readonly velocity: Vec;
+  /** The idea's main category: planes of one flock fly together (lib/flock). Unset or "" = a loner. */
+  readonly flock?: string;
   /** Only birds (stage "idea") have one; it starts out unset and the bird model sets it on the first frame. */
   readonly bird?: BirdState;
 };

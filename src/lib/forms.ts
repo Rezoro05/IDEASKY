@@ -4,11 +4,11 @@ import type { Stage } from "./stages";
 
 const svg = (body: string): string => `<svg viewBox="-30 -30 60 60" aria-hidden="true">${body}</svg>`;
 
-/** In Progress: a folded paper plane, its facets lit like paper (of1 lightest … of4 darkest, coloured in site.css). */
+/** In Progress: a folded paper plane, its facets lit like paper (of1 lightest … of4 darkest; ot = the flock's tint; coloured in site.css). */
 const PAPER_PLANE = svg(`
   <polygon class="pf of1" points="26,-2.2 -22.6,-18.6 -18.1,-6.3"></polygon>
   <polygon class="pf of3" points="26,-2.2 -18.1,-6.3 -28,9.5 -14.8,2.4"></polygon>
-  <polygon class="pf of4" points="-28,9.5 -14.8,2.4 -13.8,8.7"></polygon>
+  <polygon class="pf ot2" points="-28,9.5 -14.8,2.4 -13.8,8.7"></polygon>
   <polygon class="pf of2" points="26,-2.2 -14.8,2.4 -9.2,18.6"></polygon>`);
 
 /** Live: an airliner seen from above. Swept wings with engine pods, tailplane, fin, cockpit glass; the shade shapes give it depth. */
@@ -32,11 +32,11 @@ const AIRPLANE = svg(`
  *  Legs show only on a perch (CSS). Drawn at 0.75 so it is smaller than the planes. */
 const wing = (cls: string) => `<g class="bw-hinge" transform="translate(-2,-4)"><g class="bw ${cls}">
     <polygon class="pf of1" points="-1,0 10,-1 -7,-22"></polygon>
-    <polygon class="pf of3" points="-1,0 -7,-22 -6,1"></polygon></g></g>`;
+    <polygon class="pf ot2" points="-1,0 -7,-22 -6,1"></polygon></g></g>`;
 const BIRD = svg(`<g transform="scale(0.75)">
   ${wing("bw-far")}
-  <polygon class="pf of2" points="-16,-2 -29,-11 -24,2"></polygon>
-  <polygon class="pf of4" points="-16,-2 -24,2 -12,4"></polygon>
+  <polygon class="pf ot1" points="-16,-2 -29,-11 -24,2"></polygon>
+  <polygon class="pf ot2" points="-16,-2 -24,2 -12,4"></polygon>
   <g class="bird-legs"><polyline points="-1,6 -2,12 -4,12"></polyline><polyline points="4,5 3,12 1,12"></polyline></g>
   <polygon class="pf of2" points="-16,-2 12,-8 14,0"></polygon>
   <polygon class="pf of3" points="-16,-2 14,0 0,8"></polygon>

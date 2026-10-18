@@ -1,5 +1,5 @@
 /** The hero sky: renders the pure flight simulation, and turns pointer and keyboard input into held/paused planes. */
-import { createWorld, step, addPlane, removePlane, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
+import { createWorld, step, addPlane, removePlane, setFlock, setStage, type Bounds, type Held, type PointerInfo, type World } from "../lib/sim";
 import { classifyGesture, movedFarEnough, type PointerMark } from "../lib/gesture";
 import { isOverCage, nearestWithin, reachFor, slackFor, type Rect } from "../lib/cage";
 import { isCatchable, pressOutcome } from "../lib/catch";
@@ -14,7 +14,7 @@ import { planeView, type PlaneMemory } from "../lib/plane-view";
 import { createTrailLayer } from "./trail-canvas";
 import { keepLongPressAway, keyboardFocus } from "./dom";
 
-export type PlaneSpec = { tag: string; label: string; stage: Stage; from?: Vec; velocity?: Vec; fresh?: boolean };
+export type PlaneSpec = { tag: string; label: string; stage: Stage; from?: Vec; velocity?: Vec; fresh?: boolean; /** The idea's main category: its flock and tint. */ flock?: string };
 export type Sky = {
   has(slug: string): boolean;
   slugs(): string[];
@@ -26,6 +26,8 @@ export type Sky = {
   retag(slug: string, tag: string, label: string): void;
   /** The idea moved stage: draw its new form in place and fly it by that form's rules, from where it is. */
   reform(slug: string, stage: Stage): void;
+  /** The idea's main category arrived or changed: it takes that tint and joins that flock. */
+  flock(slug: string, flock: string): void;
   remove(slug: string): void;
 };
 
@@ -70,6 +72,7 @@ export function startSky(opts: {
     a.setAttribute("aria-label", spec.label);
     a.innerHTML = `<span class="body">${formFor(spec.stage)}</span><span class="tag"></span>`;
     a.dataset.stage = spec.stage;
+    a.dataset.flock = spec.flock ?? "";
     a.querySelector(".tag")!.textContent = spec.tag;
     wings.set(slug, wingGroupsOf(a));
     a.addEventListener("focus", () => { if (keyboardFocus(a)) pausedSlugs.add(slug); }); // a long press can focus it too: no ring, no pause
@@ -195,7 +198,7 @@ export function startSky(opts: {
       const a = makePlane(slug, spec);
       const velocity = spec.velocity ?? v(0, 0);
       memory.set(slug, { facing: orientationFor(headingDeg(velocity), false) });
-      world = addPlane(world, { slug, stage: spec.stage, position: spec.from ?? v(0, 0), velocity });
+      world = addPlane(world, { slug, stage: spec.stage, position: spec.from ?? v(0, 0), velocity, flock: spec.flock ?? "" });
       if (spec.fresh) setTimeout(() => a.classList.remove("fresh"), FRESH_GLOW_MS);
     },
     retag(slug, tag, label) {
@@ -212,6 +215,12 @@ export function startSky(opts: {
       a.querySelector(".body")!.innerHTML = formFor(stage);
       wings.set(slug, wingGroupsOf(a));
       world = setStage(world, slug, stage);
+    },
+    flock(slug, flock) {
+      const a = els.get(slug);
+      if (!a || a.dataset.flock === flock) return;
+      a.dataset.flock = flock;
+      world = setFlock(world, slug, flock);
     },
     remove(slug) {
       world = removePlane(world, slug);

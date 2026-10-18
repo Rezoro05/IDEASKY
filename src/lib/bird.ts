@@ -10,7 +10,8 @@ import { type Vec, v, add, sub, scale, len, clampLen } from "./vec";
 import { mulberry32, seedFor, type Rand } from "./random";
 import type { FlightConfig } from "./motion";
 import type { BirdState, Plane, PointerInfo } from "./plane";
-import { pickPerch } from "./perches";
+import { pickPerch, pickPerchBeside } from "./perches";
+import { FLOCK, NO_CALL, type FlockCall } from "./flock";
 
 /** Every number that sets the bird's pace and nerve, in one place. Times in seconds, distances in px. */
 export const BIRD = {
@@ -55,13 +56,16 @@ export type BirdContext = {
   readonly pointer: PointerInfo | null;
   /** Perch spots already taken by other birds, perched or on their way. */
   readonly taken: readonly Vec[];
+  /** Flock mates landing or taking off nearby (lib/flock); leave out for a loner. */
+  readonly flock?: FlockCall;
 };
 
 const decision = (plane: Plane, n: number, visitSeed: number): Rand => mulberry32(seedFor(`${plane.slug}#${n}`, visitSeed));
 const between = (rand: Rand, [lo, hi]: readonly [number, number]): number => lo + rand() * (hi - lo);
 type Gliding = Extract<BirdState, { mode: "gliding" }>;
 const glide = (plane: Plane, n: number, time: number, visitSeed: number): Gliding =>
-  ({ mode: "gliding", until: time + between(decision(plane, n, visitSeed), BIRD.glide), n: n + 1 });
+  ({ mode: "gliding", until: time + between(decision(plane, n, visitSeed), BIRD.glide), n: n + 1, from: time });
+const turned = (d: Vec, angle: number): Vec => v(d.x * Math.cos(angle) - d.y * Math.sin(angle), d.x * Math.sin(angle) + d.y * Math.cos(angle));
 const randomHeading = (rand: Rand): Vec => { const a = rand() * Math.PI * 2; return v(Math.cos(a), Math.sin(a)); };
 
 /** The spot a bird has claimed (perched on, or flying to), if any. */
@@ -168,8 +172,13 @@ const flown = (plane: Plane, velocity: Vec, bird: BirdState, dt: number): Plane 
 
 function gliding(plane: Plane, state: Gliding, scared: boolean, ctx: BirdContext): Plane {
   const velocity = drift(plane, scared, ctx);
-  if (ctx.time < state.until) return flown(plane, velocity, state, ctx.dt);
-  const spot = pickPerch(decision(plane, state.n, ctx.visitSeed), ctx.bounds, ctx.config.boundsMargin, ctx.taken, BIRD.perchSpacing);
+  const call = ctx.flock ?? NO_CALL;
+  const followsDown = !scared && call.landing !== null && ctx.time - (state.from ?? -Infinity) >= FLOCK.airborneAtLeast; // a mate is landing: join it
+  if (ctx.time < state.until && !followsDown) return flown(plane, velocity, state, ctx.dt);
+  const rand = decision(plane, state.n, ctx.visitSeed);
+  const beside = call.landing ? pickPerchBeside(rand, call.landing, FLOCK.besideReach, ctx.bounds, ctx.config.boundsMargin, ctx.taken, BIRD.perchSpacing) : null;
+  if (followsDown && !beside) return flown(plane, velocity, { ...state, from: ctx.time }, ctx.dt); // no room beside it: glide on, ask again later
+  const spot = beside ?? pickPerch(rand, ctx.bounds, ctx.config.boundsMargin, ctx.taken, BIRD.perchSpacing);
   const next: BirdState = spot ? { mode: "approaching", target: spot, n: state.n + 1 } : { mode: "gliding", until: ctx.time + BIRD.retry, n: state.n + 1 };
   return flown(plane, velocity, next, ctx.dt);
 }
@@ -189,9 +198,11 @@ function approaching(plane: Plane, state: Extract<BirdState, { mode: "approachin
 
 function perched(plane: Plane, state: Extract<BirdState, { mode: "perched" }>, scared: boolean, ctx: BirdContext): Plane {
   const alarm = scared ? state.alarm + ctx.dt : 0;
-  if (alarm < BIRD.startle && ctx.time < state.until) return { ...plane, velocity: v(0, 0), bird: { ...state, alarm } };
+  const lifted = ctx.flock?.leaving ?? null; // a mate close by is taking off: go with it
+  if (alarm < BIRD.startle && ctx.time < state.until && !lifted) return { ...plane, velocity: v(0, 0), bird: { ...state, alarm } };
   const rand = decision(plane, state.n, ctx.visitSeed);
-  const heading = scared && ctx.pointer ? awayFrom(plane.position, ctx.pointer) : randomHeading(rand);
+  const along = lifted && len(lifted) > 1e-6 ? scale(lifted, 1 / len(lifted)) : null;
+  const heading = scared && ctx.pointer ? awayFrom(plane.position, ctx.pointer) : along ? turned(along, (rand() - 0.5) * 0.6) : randomHeading(rand);
   const speed = ctx.config.cruise * (scared ? BIRD.fleeSpeedScale * 0.8 : 1.3);
   return { ...plane, velocity: scale(heading, speed), bird: { mode: "takingOff", until: ctx.time + BIRD.takeOff, n: state.n + 1 } };
 }

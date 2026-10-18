@@ -47,6 +47,9 @@ export function startBoard(opts: {
 
   const nameOf = (id: string) => ideaName(ideaNumbers(all.values()).get(id));
 
+  /** An idea's flock: its most likely category (Jev lists them most likely first), as a dream's school is its main theme; none yet = a loner. */
+  const flockOf = (idea: Idea): string => idea.categories?.[0] ?? "";
+
   function sync(): void {
     const shown = newestIdeas(all.values(), IDEA_LIMITS.inSky);
     renderList(shown);
@@ -56,11 +59,11 @@ export function startBoard(opts: {
     const b = sky.bounds(), nums = ideaNumbers(all.values());
     for (const n of shown) {
       const name = ideaName(nums.get(n.id));
-      if (sky.has(n.id)) { sky.retag(n.id, name, `${name}: open the idea`); sky.reform(n.id, shownStage(n.stage, SHOW_STAGES)); continue; }
+      if (sky.has(n.id)) { sky.retag(n.id, name, `${name}: open the idea`); sky.reform(n.id, shownStage(n.stage, SHOW_STAGES)); sky.flock(n.id, flockOf(n)); continue; }
       if (inFlight.has(n.id)) continue;
       const angle = rand() * Math.PI * 2;
       sky.add(n.id, {
-        tag: name, label: `${name}: open the idea`, stage: shownStage(n.stage, SHOW_STAGES),
+        tag: name, label: `${name}: open the idea`, stage: shownStage(n.stage, SHOW_STAGES), flock: flockOf(n),
         from: v(80 + rand() * Math.max(1, b.width - 160), b.height * 0.45 + rand() * Math.max(1, b.height * 0.5 - 60)),
         velocity: v(Math.cos(angle) * NEW_IDEA_SPEED, Math.sin(angle) * NEW_IDEA_SPEED),
       });
@@ -93,6 +96,7 @@ export function startBoard(opts: {
       if (!categories || !idea) return;
       const sorted = { ...idea, categories };
       all.set(id, sorted);
+      sync(); // it joins its flock
       opts.changed?.(sorted);
     });
   }

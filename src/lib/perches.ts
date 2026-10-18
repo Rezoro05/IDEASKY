@@ -28,3 +28,15 @@ export function pickPerch(rand: Rand, bounds: { width: number; height: number },
   }
   return null;
 }
+
+/** A free spot on the same wire as `near` (or the next one up or down), within `reach` of it along the wire: where a flock mate lands
+ *  beside another. Null when there is none, and the bird picks anywhere instead (pickPerch). */
+export function pickPerchBeside(rand: Rand, near: Vec, reach: number, bounds: { width: number; height: number }, inset: number, taken: readonly Vec[], spacing: number): Vec | null {
+  const lines = perchLines(bounds.height, inset).sort((a, b) => Math.abs(a - near.y) - Math.abs(b - near.y)).slice(0, 3);
+  for (const y of lines) for (let i = 0; i < TRIES; i++) {
+    const x = Math.min(bounds.width - inset, Math.max(inset, near.x + (rand() * 2 - 1) * reach));
+    const spot = v(x, y);
+    if (taken.every((t) => len(sub(spot, t)) >= spacing)) return spot;
+  }
+  return null;
+}

@@ -15,6 +15,18 @@ test.describe("categories (set by Jev)", () => {
     expect(tags.x).toBeGreaterThan(who.x + who.width); // …on the right
   });
 
+  test("a bird takes its main category's tint, as a fish takes its school's; one not sorted yet stays plain", async ({ page }) => {
+    await fakeServices(page, { rows: [{ ...gioRow, categories: ["tech", "science"] }, { ...gioRow, id: "plain1", categories: [] }], posts: [], deletes: [], mails: 0 });
+    await page.goto("/");
+    await expect(page.locator(".plane")).toHaveCount(2);
+    const tech = page.locator(`.plane[data-slug="${gioRow.id}"]`), plain = page.locator('.plane[data-slug="plain1"]');
+    await expect(tech).toHaveAttribute("data-flock", "tech");
+    await expect(plain).toHaveAttribute("data-flock", "");
+    const tailOf = (bird: typeof tech) => bird.locator(".pf.ot1").first().evaluate((el) => getComputedStyle(el).fill);
+    expect(await tailOf(tech)).toBe("rgb(140, 108, 240)");
+    expect(await tailOf(plain)).not.toBe("rgb(140, 108, 240)");
+  });
+
   test("an idea not sorted yet, or that fits nothing, shows no tags", async ({ page }) => {
     await fakeServices(page, { rows: [{ ...gioRow, categories: [] }], posts: [], deletes: [], mails: 0 });
     await page.goto("/");
@@ -34,6 +46,7 @@ test.describe("categories (set by Jev)", () => {
     await expect(plane).toHaveCount(1, { timeout: 8000 });
     await expect.poll(() => board.categorizeCalls?.length ?? 0).toBe(1);
     expect(board.categorizeCalls![0]).toBe((board.posts[0] as { id: string }).id);
+    await expect(plane).toHaveAttribute("data-flock", "tech"); // once sorted, it joins the Tech flock
     await plane.focus(); await page.keyboard.press("Enter");
     await expect(page.locator("#letter-cats li")).toHaveText(["Tech", "Science"]);
   });

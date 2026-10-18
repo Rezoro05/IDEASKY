@@ -7,6 +7,7 @@ import { DRIFT_STAGE, FORM_FLIGHT, configFor } from "./flight-forms";
 import { bank } from "./banking";
 import { asBird, flyBird, grabbed, perchSpots } from "./bird";
 import type { Plane, PointerInfo } from "./plane";
+import { flockCall, flockSteer } from "./flock";
 
 export type { Plane, PointerInfo };
 export type World = { readonly planes: readonly Plane[]; readonly visitSeed: number; readonly time: number };
@@ -99,10 +100,11 @@ export function step(world: World, input: StepInput, config: FlightConfig): Worl
     if (mode === "paused") { next.push(FORM_FLIGHT[plane.stage].kind === "bird" ? asBird(plane, world.time, world.visitSeed) : plane); return; } // a paused plane holds still, but a new bird still gets its bird state
     const flight = FORM_FLIGHT[plane.stage], own = configFor(config, flight); // each form flies by its own settings
     const others = world.planes.filter((o) => o.slug !== plane.slug);
-    const steer = add(add(wanderSteer(plane, world, own), separationSteer(plane, others, own)), boundsSteer(plane, input.bounds, own));
+    const steer = add(add(add(wanderSteer(plane, world, own), separationSteer(plane, others, own)), boundsSteer(plane, input.bounds, own)), flockSteer(plane, others));
     if (flight.kind === "bird") {
-      const taken = perchSpots([...next, ...world.planes.slice(i + 1)], plane.slug);
-      next.push(containWithin(flyBird(plane, { dt, time: world.time, visitSeed: world.visitSeed, bounds: input.bounds, config: own, steer, pointer: input.pointer ?? null, taken }), input.bounds));
+      const current = [...next, ...world.planes.slice(i + 1)]; // what the others are doing now, including choices made earlier this frame
+      const taken = perchSpots(current, plane.slug);
+      next.push(containWithin(flyBird(plane, { dt, time: world.time, visitSeed: world.visitSeed, bounds: input.bounds, config: own, steer, pointer: input.pointer ?? null, taken, flock: flockCall(plane, current) }), input.bounds));
       return;
     }
     let velocity: Vec;
@@ -120,6 +122,11 @@ export function step(world: World, input: StepInput, config: FlightConfig): Worl
 
 export function addPlane(world: World, plane: Plane): World {
   return { ...world, planes: world.planes.filter((p) => p.slug !== plane.slug).concat(plane) };
+}
+
+/** The idea's main category arrived or changed: it joins that flock. */
+export function setFlock(world: World, slug: string, flock: string): World {
+  return { ...world, planes: world.planes.map((p) => (p.slug !== slug || (p.flock ?? "") === flock ? p : { ...p, flock })) };
 }
 
 /** The idea moved stage: it flies by its new form's settings from here, from the same place at the same velocity. */
