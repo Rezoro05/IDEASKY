@@ -50,6 +50,14 @@ const ld = { "@context": "https://schema.org", "@type": "WebSite", name: SITE.na
     <Sea />
   </div>
 </div>
+<div class="account" id="account">
+  <button class="account-signin" type="button" id="account-signin" aria-haspopup="dialog">Sign in</button>
+  <button class="account-me" type="button" id="account-me" aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu" hidden><span id="account-initial"></span></button>
+  <div class="account-menu" id="account-menu" role="menu" hidden>
+    <p class="account-email" id="account-email"></p>
+    <button type="button" role="menuitem" id="account-signout">Sign out</button>
+  </div>
+</div>
 <Overlays />
 <script>
   import { startSite } from "../islands/app";

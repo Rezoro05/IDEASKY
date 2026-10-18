@@ -1,0 +1,26 @@
+---
+/* The sign-in note: the same paper as the feedback note. One email field; we send a link (Supabase magic link), so there is no password.
+   After sending, the note says where the link went. The account button (top right) opens it; islands/account runs it. */
+import { EMAIL_MAX } from "../lib/account";
+---
+<form class="note signin-form" id="signin-form" novalidate>
+  <div class="note-head">
+    <span class="note-label">Sign in</span>
+    <span class="note-to">Your board</span>
+    <button class="note-close" type="button" id="signin-close" aria-label="Close">✕</button>
+  </div>
+  <div class="signin-ask" id="signin-ask">
+    <p class="signin-lede">Your own board for private ideas and dreams. We’ll email you a link to sign in, no password.</p>
+    <label class="note-field" for="signin-email"><span>Email</span>
+      <input id="signin-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength={EMAIL_MAX} placeholder="you@company.com" required aria-required="true">
+    </label>
+    <p class="note-error" id="signin-error" role="alert" hidden></p>
+    <div class="note-choice">
+      <button class="feedback-send signin-send" type="submit">Email me a link <span aria-hidden="true">→</span></button>
+    </div>
+  </div>
+  <div class="signin-sent" id="signin-sent" hidden>
+    <p class="signin-lede" role="status">Check your email. We sent a sign-in link to <strong id="signin-to"></strong>. Open it on this device.</p>
+    <button class="text-btn" type="button" id="signin-again">Use a different email</button>
+  </div>
+</form>

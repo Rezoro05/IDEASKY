@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 /** Fake the outside world: the test build points at board.test and inbox.test (see build:test), and both are intercepted here. */
 export type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[]; categories?: string[] | null; kind?: "idea" | "dream" };
 export type CommentRow = Row & { idea_id: string; parent_id?: string | null };
-export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean };
+export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean; signInLinks?: { email: string; redirect: string }[]; signInStatus?: number; signOuts?: number };
 export async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [], mails: 0 }) {
   // The first-visit hint plays over the sky for ~10 s; most tests are not first visits (tests/e2e/hint.spec.ts shows it).
   if (!board.firstVisit) await page.addInitScript(() => { try { localStorage.setItem("skyofideas.hint.cage", "1"); } catch { /* none */ } });
@@ -13,6 +13,15 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
   await page.route("https://board.test/**", async (r: Route) => {
     if (board.down) return r.fulfill({ status: 500, body: "down" });
     const url = r.request().url(), method = r.request().method();
+    if (url.includes("/auth/v1/")) { // Supabase Auth: the magic link is "sent" (recorded), sign-out is counted
+      if (url.includes("/auth/v1/otp")) {
+        if (board.signInStatus && board.signInStatus !== 200) return r.fulfill({ status: board.signInStatus, body: "{}" });
+        (board.signInLinks ??= []).push({ email: r.request().postDataJSON().email, redirect: new URL(url).searchParams.get("redirect_to") ?? "" });
+        return r.fulfill({ json: {} });
+      }
+      if (url.includes("/auth/v1/logout")) { board.signOuts = (board.signOuts ?? 0) + 1; return r.fulfill({ status: 204, body: "" }); }
+      return r.fulfill({ status: 400, json: { error: "unexpected in tests" } });
+    }
     if (url.endsWith("/functions/v1/categorize")) { // the Edge Function that asks Jev
       const { id } = r.request().postDataJSON();
       (board.categorizeCalls ??= []).push(id);
@@ -113,3 +122,10 @@ export const gioRow = { id: "zzzzzz1", name: "Gio", message: "Night markets", cr
 export const dreamRow = (id: string, message: string, categories: string[] | null, hoursAgo = 1): Row =>
   ({ id, name: "Anonymous", message, created_at: new Date(Date.now() - hoursAgo * 3_600_000).toISOString(), kind: "dream", categories });
 export const withGio = (): Board => ({ rows: [{ ...gioRow }], posts: [], deletes: [], mails: 0 });
+
+/** What a sign-in link brings back in the address: a token shaped like Supabase's (its signature isn't checked by the page). */
+export function signInReturn(email: string, id = "user-1"): string {
+  const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const token = `${b64({ alg: "HS256" })}.${b64({ sub: id, email, exp: 4_000_000_000 })}.sig`;
+  return `#access_token=${token}&expires_in=3600&refresh_token=r-${id}&token_type=bearer&type=magiclink`;
+}

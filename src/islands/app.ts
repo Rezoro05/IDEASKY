@@ -32,6 +32,8 @@ import { startCageHint } from "./hint";
 import { startDictation } from "./dictation";
 import { browserSpeech } from "../boundaries/speech";
 import { noCategorizer, supabaseCategorizer } from "../boundaries/categorizer";
+import { memoryAuth, supabaseAuth, type Auth } from "../boundaries/auth";
+import { startAccount } from "./account";
 import { settingsSource, startScenes, type Scenes } from "./scene";
 import { DEFAULTS, mergeSettings, presetSettings } from "../lib/scene-settings";
 import { startStudio } from "./studio";
@@ -65,6 +67,12 @@ function chooseStores(): Stores {
     likes: supabaseLikes({ ...base, keys: likeKeys, likerId, pageIsLeaving: () => leaving }),
     commentLikes: supabaseCommentLikes({ ...base, keys: browserKeyStore(safeStorage(), COMMENT_LIKES_ITEM), likerId, pageIsLeaving: () => leaving }),
   };
+}
+
+/** Supabase sign-in when a board is configured; otherwise (local runs, the preview) a pretend sign-in that lasts the visit. */
+function chooseAuth(): Auth {
+  if (!PUBLIC_BOARD.url) return memoryAuth();
+  return supabaseAuth({ url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window), storage: safeStorage() });
 }
 
 /** The 3D backgrounds start once the picture is up and the page has had a moment; #studio opens their control center. */
@@ -175,6 +183,7 @@ export function startSite(): void {
   const dictation = startDictation({ speech: browserSpeech(), button: byId<HTMLButtonElement>("note-mic"), field: byId<HTMLTextAreaElement>("note-msg"), status: byId("note-mic-status"), lang: navigator.language || "en-US" });
   startComposer({ board, sky, sea, reducedMotion, inbox, dictation });
   const say = startToast();
+  startAccount({ auth: chooseAuth(), say });
   board.sync();
 
   /** A link to one idea (#idea-<id>) opens it once the board has loaded; a link to one that is gone says so. */
