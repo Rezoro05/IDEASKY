@@ -169,10 +169,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   touch-action: none; user-select: none; -webkit-user-select: none; will-change: transform; --fish-tint: var(--sea-soft); }
 .fish .body { position: absolute; left: calc(var(--s) / -2); top: calc(var(--s) / -2); width: var(--s); height: var(--s); cursor: pointer; }
 .fish svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.fish .pf { fill: var(--fish); stroke: var(--fish-edge); stroke-width: 1.3; stroke-linejoin: round; transition: fill .2s; }
-.fish .fish-fin { fill: var(--fish-tint); }
-.fish .fish-stripe { fill: none; stroke: var(--fish-tint); stroke-width: 2.4; stroke-linecap: round; }
-.fish .pf-shade { fill: var(--fish-edge); fill-opacity: .14; stroke: none; }
+.fish { --fold: var(--fish); --crease: var(--fish-edge); }
 .fish .pf-eye { fill: var(--fish-edge); }
 .fish-tail { transform-box: view-box; transform-origin: -15px 0; animation: tail-sway .8s ease-in-out infinite alternate; }
 @keyframes tail-sway { from { transform: rotate(-13deg); } to { transform: rotate(13deg); } }
@@ -180,7 +177,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .fish .tag { position: absolute; left: calc(var(--s) / 2 + 2px); top: -8px; padding: 3px 6px; border-radius: 3px; white-space: nowrap; pointer-events: none;
   background: color-mix(in srgb, var(--sea-deep) 45%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   font: 500 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--sea-soft); transition: color .2s; }
-.fish:hover .pf, .fish:focus-visible .pf { fill: var(--accent-sea); }
+.fish:hover, .fish:focus-visible { --fold: var(--accent-sea); }
 .fish:hover .tag, .fish:focus-visible .tag { color: var(--sea-text); }
 .fish:focus-visible .body { outline: 2px solid var(--sea-text); outline-offset: 6px; border-radius: 50%; }
 /* Birds and fish are held with a finger: no phone long-press menu, link preview or tap highlight on them (it showed as a frame). */
@@ -220,7 +217,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 /* Without stages the header above the text is empty: drop it, so the text sits right under the name */
 .letter-card.no-stages .letter-head, .letter-card.is-dream .letter-head { display: none; }
 .letter-card.no-stages .letter-content, .letter-card.is-dream .letter-content { margin-top: -6px; }
-.fish-flier .pf { fill: var(--fish, #FFFDF4); stroke: var(--accent); }
+.fish-flier { --fold: var(--fish, #FFFDF4); --crease: var(--fish-edge, #0B1E3A); --fish-tint: var(--sea-soft); }
 /* One tint per dream theme */
 .fish[data-school="flying"] { --fish-tint: #F2C14E; } .fish[data-school="falling"] { --fish-tint: #E07A5F; }
 .fish[data-school="chased"] { --fish-tint: #D1495B; } .fish[data-school="water"] { --fish-tint: #4CC9F0; }
@@ -299,7 +296,8 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   color: var(--ink); text-decoration: none; touch-action: none; user-select: none; -webkit-user-select: none; will-change: transform; }
 .plane .body { position: absolute; left: calc(var(--s) / -2); top: calc(var(--s) / -2); width: var(--s); height: var(--s); cursor: grab; }
 .plane svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.plane .pf { fill: var(--sky-plane); stroke: var(--sky-plane-edge); stroke-width: 1.3; stroke-linejoin: round; transition: fill .2s, stroke .2s; }
+.plane { --fold: var(--sky-plane); --crease: var(--sky-plane-edge); --edge: var(--sky-plane-edge); }
+.plane .pf { fill: var(--fold); stroke: var(--edge); stroke-width: 1.3; stroke-linejoin: round; transition: fill .2s, stroke .2s; } /* the airliner; folded shapes below */
 .pf-eye { fill: var(--sky-plane-edge); }
 .plane .pf-shade { fill: var(--sky-plane-edge); fill-opacity: .16; stroke: none; pointer-events: none; } /* shading and highlights lie over the body, so they keep their look when it turns accent-colored */
 .plane .pf-light { fill: #fff; fill-opacity: .75; stroke: none; pointer-events: none; }
@@ -308,10 +306,20 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   background: color-mix(in srgb, var(--sky-bottom) 60%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   font: 500 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--graphite); transition: color .2s; }
 .plane:hover .tag, .plane:focus-visible .tag, .plane.held .tag { color: var(--accent); }
-.plane:hover .pf, .plane:focus-visible .pf, .plane.held .pf { fill: var(--accent); stroke: var(--paper); }
-/* The bird (live ideas): wings are set by the sky every frame; the far one is darker; legs only on a perch; beak and eye keep their colour */
-.plane .bw-far .pf { fill: color-mix(in srgb, var(--sky-plane) 72%, var(--sky-plane-edge)); }
-.plane .pf-beak { fill: #E0A030; stroke: var(--sky-plane-edge); stroke-width: .8; stroke-linejoin: round; }
+.plane:hover, .plane:focus-visible, .plane.held { --fold: var(--accent); --edge: var(--paper); }
+/* Origami (bird, paper plane, fish, and the notes flying home): folded facets, no outlines. Each facet is the paper colour (--fold) shaded
+   toward the crease colour; the hover or held colour just changes --fold. A thin stroke in the facet's own colour closes the seams. */
+:is(.plane, .fish, .note-flier) .pf:is(.of1, .of2, .of3, .of4, .ot1, .ot2) { stroke-width: .5; stroke-linejoin: round; transition: fill .2s, stroke .2s; }
+:is(.plane, .fish, .note-flier) .pf.of1 { fill: var(--fold); stroke: var(--fold); }
+:is(.plane, .fish, .note-flier) .pf.of2 { fill: color-mix(in srgb, var(--fold) 90%, var(--crease)); stroke: color-mix(in srgb, var(--fold) 90%, var(--crease)); }
+:is(.plane, .fish, .note-flier) .pf.of3 { fill: color-mix(in srgb, var(--fold) 80%, var(--crease)); stroke: color-mix(in srgb, var(--fold) 80%, var(--crease)); }
+:is(.plane, .fish, .note-flier) .pf.of4 { fill: color-mix(in srgb, var(--fold) 66%, var(--crease)); stroke: color-mix(in srgb, var(--fold) 66%, var(--crease)); }
+:is(.plane, .fish, .note-flier) .pf.ot1 { fill: var(--fish-tint); stroke: var(--fish-tint); }
+:is(.plane, .fish, .note-flier) .pf.ot2 { fill: color-mix(in srgb, var(--fish-tint) 74%, var(--crease)); stroke: color-mix(in srgb, var(--fish-tint) 74%, var(--crease)); }
+/* The bird: wings are set by the sky every frame; the far one is darker; legs only on a perch; beak and eye keep their colour */
+.plane .bw-far, .note-flier .bw-far { --fold: color-mix(in srgb, var(--sky-plane) 78%, var(--sky-plane-edge)); }
+.plane:hover .bw-far, .plane:focus-visible .bw-far, .plane.held .bw-far { --fold: color-mix(in srgb, var(--accent) 78%, var(--sky-plane-edge)); }
+.pf-beak { fill: #E0A030; }
 .plane .bird-legs { fill: none; stroke: var(--sky-plane-edge); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity .2s; }
 .plane[data-state="perch"] .bird-legs, .plane.landing .bird-legs { opacity: 1; }
 .plane:focus-visible .body { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 50%; }
@@ -325,8 +333,9 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 
 .note-flier { position: fixed; left: 0; top: 0; z-index: 9; width: 64px; height: 64px; pointer-events: none; will-change: transform; }
 .note-flier svg { width: 100%; height: 100%; overflow: visible; }
-.note-flier .pf { fill: var(--sky-plane); stroke: var(--accent); stroke-width: 1.3; stroke-linejoin: round; }
-.note-flier .pf-eye { fill: var(--accent); }
+.note-flier { --fold: var(--sky-plane); --crease: var(--sky-plane-edge); }
+.note-flier .pf { fill: var(--fold); stroke: var(--accent); stroke-width: 1.3; stroke-linejoin: round; } /* the airliner, if one ever flies home */
+.note-flier .pf-eye { fill: var(--sky-plane-edge); }
 
 /* ============================================================
    Overlays: the backdrop, the toast, the loader
