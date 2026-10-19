@@ -150,8 +150,8 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .account-public:hover { border-color: var(--accent); }
 .account-public:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; }
 .account-public[hidden] { display: none; }
-[data-mode="mine"] .note-who { display: none; }
-[data-mode="mine"] #letter :is(.act-like, .act-comment, .act-share, .act-add, .thread, .updates) { display: none !important; }
+[data-mode="mine"] .note-email-field { display: none; } /* your own: the name field names the idea or dream itself */
+[data-mode="mine"] #letter :is(.act-like, .act-comment, .act-share, .thread) { display: none !important; }
 
 .signin-lede { margin: 0; font: 400 15px/1.5 var(--font-body); color: #3B4150; }
 .signin-ask, .signin-sent { display: flex; flex-direction: column; gap: 16px; }

@@ -8,9 +8,10 @@ import type { Board, Source } from "./board";
 import type { SeaBoard } from "./sea";
 import { HERO, SEA } from "../content/site";
 import { byId } from "./dom";
+import type { UpdateStore } from "../boundaries/updateStore";
 
-export type Sources = { ideas: Source; dreams: Source };
-export type ModeSwitch = { mode(): Mode };
+export type Sources = { ideas: Source; dreams: Source; /** Owners' updates on ideas. */ updates: Promise<UpdateStore> };
+export type ModeSwitch = { mode(): Mode; /** The sources shown now. */ current(): Sources };
 
 const MODE_ITEM = "skyofideas.mode";
 
@@ -61,5 +62,5 @@ export function startModeSwitch(opts: {
     apply(next);
     opts.say(next === "public" ? "Showing everyone’s ideas and dreams." : "Showing your own ideas and dreams. Only you can see them.");
   });
-  return { mode: () => mode };
+  return { mode: () => mode, current: () => (mode === "mine" && user ? sourcesFor(user) : opts.everyone) };
 }

@@ -6,6 +6,8 @@ import { isOneStep } from "../lib/stages";
 import type { Kind } from "../lib/categories";
 import type { IdeaStore } from "./ideaStore";
 import type { Categorizer } from "./categorizer";
+import type { UpdateStore } from "./updateStore";
+import { cleanUpdate, UPDATE_LIMITS, type Update } from "../lib/updates";
 
 export type PrivateDeps = {
   url: string; key: string; fetch: typeof fetch;
@@ -80,5 +82,39 @@ export function privateCategorizer(d: Omit<PrivateDeps, "kind">): Categorizer {
         return Array.isArray(body.categories) ? body.categories.filter((k): k is string => typeof k === "string") : null;
       } catch { return null; }
     },
+  };
+}
+
+/** Updates on your own ideas: the same panel as the public board's, kept in your own table (only you can read or change them). */
+export function privateUpdates(d: Omit<PrivateDeps, "kind">): UpdateStore {
+  const table = `${d.url}/rest/v1/private_updates`;
+  return {
+    async list(ideaId) {
+      try {
+        const headers = await authed(d);
+        if (!headers) return null;
+        const r = await d.fetch(`${table}?select=id,item_id,message,links,created_at&item_id=eq.${encodeURIComponent(ideaId)}&order=created_at.asc&limit=${UPDATE_LIMITS.perIdea}`, { headers });
+        if (!r.ok) return null;
+        const rows = (await r.json()) as { id: string; item_id: string; message: string; links: unknown; created_at: string }[];
+        return rows.map((row) => cleanUpdate({ id: row.id, ideaId: row.item_id, message: row.message, links: row.links, at: Date.parse(row.created_at) })).filter((u): u is Update => u !== null);
+      } catch { return null; }
+    },
+    async add(u) {
+      try {
+        const headers = await authed(d, { Prefer: "return=minimal" });
+        if (!headers) return false;
+        const r = await d.fetch(table, { method: "POST", headers, body: JSON.stringify({ id: u.id, item_id: u.ideaId, message: u.message, links: u.links }) });
+        return r.ok;
+      } catch { return false; }
+    },
+    async remove(u) {
+      try {
+        const headers = await authed(d, { Prefer: "return=representation" });
+        if (!headers) return false;
+        const r = await d.fetch(`${table}?id=eq.${u.id}`, { method: "DELETE", headers });
+        return r.ok && ((await r.json()) as unknown[]).length > 0;
+      } catch { return false; }
+    },
+    canManage: () => true, // your own ideas are yours to update
   };
 }

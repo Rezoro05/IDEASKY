@@ -38,13 +38,13 @@ test.describe("your own sky and sea", () => {
     await expect(page.locator(".plane")).toHaveCount(0);
   });
 
-  test("an idea shared in your own sky is private: saved to your board only, not emailed, no name asked; it gets its category", async ({ page }) => {
+  test("an idea shared in your own sky is private: saved to your board only, not emailed, no email asked; it gets its category", async ({ page }) => {
     const board = await fakeServices(page, withPublic());
     board.categorize = ["science"];
     await signIn(page);
     await expect(page.locator("html")).toHaveAttribute("data-mode", "mine");
     await page.locator("#idea-btn").click(); await settled(page);
-    await expect(page.locator("#note-name")).toBeHidden();
+    await expect(page.locator("#note-name-label")).toHaveText("Name your idea"); // it names the idea; no one asks who you are
     await expect(page.locator("#note-email")).toBeHidden();
     await page.locator("#note-msg").fill("A private telescope diary");
     await page.locator(".note-send").click();
@@ -101,5 +101,63 @@ test.describe("your own sky and sea", () => {
     await expect(page.locator("html")).toHaveAttribute("data-mode", "public");
     await expect(publicBtn(page)).toBeHidden();
     await expect(page.locator(".plane")).toHaveCount(1);
+  });
+
+  test("you name your own ideas and dreams; the name labels the bird and heads the letter", async ({ page }) => {
+    const board = await fakeServices(page, withPublic());
+    await signIn(page);
+    await expect(page.locator("html")).toHaveAttribute("data-mode", "mine");
+    await page.locator("#idea-btn").click(); await settled(page);
+    await expect(page.locator("#note-name-label")).toHaveText("Name your idea");
+    await expect(page.locator("#note-email")).toBeHidden();
+    await page.locator("#note-name").fill("Telescope diary");
+    await page.locator("#note-msg").fill("Write down what I see each night");
+    await page.locator(".note-send").click();
+    const bird = page.locator(".plane");
+    await expect(bird.locator(".tag")).toHaveText("Telescope diary", { timeout: 8000 });
+    await expect.poll(() => board.privateItems?.[0]?.name).toBe("Telescope diary");
+    await page.reload();
+    await expect(page.locator(".plane .tag")).toHaveText("Telescope diary");
+    await page.locator(".plane").focus(); await page.keyboard.press("Enter");
+    await expect(page.locator("#letter-from")).toHaveText("Telescope diary");
+    await expect(page.locator("#letter-date")).not.toContainText("Telescope diary"); // only the date under it
+    await page.keyboard.press("Escape"); await expect(page.locator("#letter")).toBeHidden();
+    await publicBtn(page).click(); // the public note asks who you are again
+    await page.locator("#idea-btn").click(); await settled(page);
+    await expect(page.locator("#note-name-label")).toHaveText("Name");
+    await expect(page.locator("#note-email")).toBeVisible();
+  });
+
+  test("your own ideas have stages: Idea is a bird, In Progress a paper plane, Live an airplane; the public sky keeps its build's look", async ({ page }) => {
+    const board = await fakeServices(page, withPublic());
+    board.privateItems = [{ id: "mine0001", owner: "user-1", kind: "idea", name: "Bike map", message: "Riders mark potholes", links: [], stage: "idea", categories: ["city-places"], created_at: "2026-10-19T10:00:00Z" }];
+    await signIn(page);
+    const plane = page.locator('.plane[data-slug="mine0001"]');
+    await expect(plane).toHaveAttribute("data-stage", "idea");
+    await plane.focus(); await page.keyboard.press("Enter");
+    await expect(page.locator("#stage-track")).toBeVisible();
+    await page.locator('#stage-track label[data-stage="implementation"]').click();
+    await expect(plane).toHaveAttribute("data-stage", "implementation");
+    expect(board.privateItems![0]!.stage).toBe("implementation");
+    await page.locator('#stage-track label[data-stage="live"]').click();
+    await expect(plane).toHaveAttribute("data-stage", "live");
+    expect(board.privateItems![0]!.stage).toBe("live");
+  });
+
+  test("you post updates on your own ideas, kept private; dreams have none", async ({ page }) => {
+    const board = await fakeServices(page, withPublic());
+    board.privateItems = [{ id: "mine0001", owner: "user-1", kind: "idea", name: "Bike map", message: "Riders mark potholes", links: [], stage: "idea", categories: ["city-places"], created_at: "2026-10-19T10:00:00Z" }];
+    await signIn(page);
+    await page.locator('.plane[data-slug="mine0001"]').focus(); await page.keyboard.press("Enter");
+    await page.locator("#add-update").click();
+    await page.locator("#update-msg").fill("Mapped 20 streets");
+    await page.locator(".update-send").click();
+    await expect(page.locator("#updates-list li")).toHaveCount(1);
+    await expect(page.locator("#updates-list")).toContainText("Mapped 20 streets");
+    expect(board.privateUpdates).toMatchObject([{ item_id: "mine0001", owner: "user-1", message: "Mapped 20 streets" }]);
+    await page.keyboard.press("Escape");
+    await page.reload();
+    await page.locator('.plane[data-slug="mine0001"]').focus(); await page.keyboard.press("Enter");
+    await expect(page.locator("#updates-list")).toContainText("Mapped 20 streets");
   });
 });

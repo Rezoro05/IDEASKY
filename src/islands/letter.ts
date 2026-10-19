@@ -33,7 +33,12 @@ export function startLetter(opts: {
   sea?: SeaBoard | null;
   ideaOf(id: string): Idea | undefined; nameOf(id: string): string;
   hooks?: LetterHooks;
+  /** Whether ideas show stages now (your own sky does). */
+  stagesShown?: () => boolean;
+  /** Your own: the name is the title above, so the byline is just the date. */
+  isPrivate?: () => boolean;
 }): Letter {
+  const stagesShown = opts.stagesShown ?? (() => SHOW_STAGES), isPrivate = opts.isPrivate ?? (() => false);
   const { sky } = opts;
   const letter = byId("letter"), card = letter.querySelector<HTMLElement>(".letter-card")!;
   const links = byId<HTMLUListElement>("letter-links");
@@ -45,9 +50,9 @@ export function startLetter(opts: {
     shown = idea; returnFocus = document.activeElement; state = "open"; opening++;
     card.classList.remove("folding");
     card.classList.toggle("is-dream", idea.kind === "dream"); // no stages, no updates
-    card.classList.toggle("no-stages", !SHOW_STAGES); // the public board hides stages: no stage bar
+    card.classList.toggle("no-stages", !stagesShown()); // the public board hides stages: no stage bar
     byId("letter-from").textContent = opts.nameOf(idea.id);
-    byId("letter-date").textContent = letterDateLine(idea, dateOf);
+    byId("letter-date").textContent = letterDateLine(isPrivate() ? { ...idea, name: "" } : idea, dateOf);
     byId("letter-body").textContent = idea.message;
     links.hidden = idea.links.length === 0;
     links.replaceChildren(...linkItems(idea.links));
@@ -91,7 +96,7 @@ export function startLetter(opts: {
       let lastHome = home;
       close();
       flyAcrossPage({
-        from, durationMs: RETURN_FLIGHT_MS, scaleAt: (u) => 1 - 0.45 * u, stage: shownStage((opts.ideaOf(idea.id) ?? idea).stage, SHOW_STAGES),
+        from, durationMs: RETURN_FLIGHT_MS, scaleAt: (u) => 1 - 0.45 * u, stage: shownStage((opts.ideaOf(idea.id) ?? idea).stage, stagesShown()),
         ...(dream ? { fish: FISH_SVG } : {}),
         target: () => (lastHome = homeOf(idea.id) ?? lastHome),
       });

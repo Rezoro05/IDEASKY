@@ -23,16 +23,18 @@ const DREAM_NOT_SAVED = "The sea couldn’t keep your dream just now, so for now
 
 /** The same paper for both: the Idea Note (sky) and the Dream Note (sea). Only the words differ. */
 type Mode = "idea" | "dream";
-const WORDS: Record<Mode, { title: string; field: string; placeholder: string; mic: string; empty: string }> = {
-  idea: { title: "Share your idea", field: "The idea", placeholder: "Share anything on your mind", mic: "Speak your idea", empty: "Write your idea first." },
-  dream: { title: "Share your dream", field: "The dream", placeholder: "Tell a dream you had", mic: "Speak your dream", empty: "Write your dream first." },
+const WORDS: Record<Mode, { title: string; field: string; placeholder: string; mic: string; empty: string; ownName: string; ownNamePlaceholder: string }> = {
+  idea: { title: "Share your idea", field: "The idea", placeholder: "Share anything on your mind", mic: "Speak your idea", empty: "Write your idea first.", ownName: "Name your idea", ownNamePlaceholder: "Telescope diary" },
+  dream: { title: "Share your dream", field: "The dream", placeholder: "Tell a dream you had", mic: "Speak your dream", empty: "Write your dream first.", ownName: "Name your dream", ownNamePlaceholder: "Flying over the school" },
 };
 
 export function startComposer(opts: { board: Board; sky: Sky | null; sea?: SeaBoard; inbox: Inbox; reducedMotion: boolean; dictation?: Dictation; now?: () => number;
-  /** In your own sky and sea: what you share is private, so it isn't emailed to the site's owner and has no name. */
+  /** In your own sky and sea: what you share is private, so it isn't emailed to the site's owner; its name field names it. */
   isPrivate?: () => boolean }): void {
   const { board, sky, inbox } = opts;
   const isPrivate = opts.isPrivate ?? (() => false);
+  /** In your own sky: the name typed for the idea or dream ("" = none: it is called Idea1, Dream1…). */
+  const ownName = () => field("name").value.trim().slice(0, 40);
   const dictation = opts.dictation ?? { stop() {}, reset() {} };
   const now = opts.now ?? Date.now;
   const form = byId<HTMLFormElement>("note-form"), err = byId("note-error");
@@ -48,6 +50,9 @@ export function startComposer(opts: { board: Board; sky: Sky | null; sea?: SeaBo
     byId("note-msg-label").textContent = w.field;
     (field("message") as HTMLTextAreaElement).placeholder = w.placeholder;
     if (mic) { mic.dataset.idle = w.mic; mic.querySelector(".mic-label")!.textContent = w.mic; }
+    // Your own: the name field names the idea or dream (it labels its bird or fish); public: it is who wrote it.
+    byId("note-name-label").textContent = isPrivate() ? w.ownName : "Name";
+    (field("name") as HTMLInputElement).placeholder = isPrivate() ? w.ownNamePlaceholder : "Steve Gates";
   }
   function openCompose(m: Mode = "idea"): void {
     mode = m; opener = m === "dream" && dreamBtn ? dreamBtn : ideaBtn;
@@ -90,8 +95,8 @@ export function startComposer(opts: { board: Board; sky: Sky | null; sea?: SeaBo
       return;
     }
     err.hidden = true;
-    if (mode === "dream" && opts.sea) { sendDream(opts.sea, { id: newRecordId(randomBytes(8)), ...check.idea, ...(isPrivate() ? { name: "" } : {}), stage: "idea", at: now(), kind: "dream" }, check.email); return; }
-    const idea: Idea = { id: newRecordId(randomBytes(8)), ...check.idea, ...(isPrivate() ? { name: "" } : {}), stage: "idea", at: now() };
+    if (mode === "dream" && opts.sea) { sendDream(opts.sea, { id: newRecordId(randomBytes(8)), ...check.idea, ...(isPrivate() ? { name: ownName() } : {}), stage: "idea", at: now(), kind: "dream" }, check.email); return; }
+    const idea: Idea = { id: newRecordId(randomBytes(8)), ...check.idea, ...(isPrivate() ? { name: ownName() } : {}), stage: "idea", at: now() };
     if (!isPrivate()) inbox.send(idea, check.email, location.href);
     if (opts.reducedMotion || !sky) {
       const saving = board.post(idea);

@@ -14,7 +14,7 @@ const UNAVAILABLE = "Updates couldn’t load right now.";
 const SEND_FAILED = "Couldn’t post your update. Try again in a moment.";
 const REMOVE_FAILED = "Couldn’t remove it. Try again later.";
 
-export function startUpdates(opts: { store: Promise<UpdateStore>; now?: () => number; /** The update form was just opened by its icon. */ opened?: () => void }): Updates {
+export function startUpdates(opts: { /** Where updates live now (public, or your own). */ store: () => Promise<UpdateStore>; now?: () => number; /** The update form was just opened by its icon. */ opened?: () => void }): Updates {
   const now = opts.now ?? Date.now;
   const section = byId("updates"), list = byId<HTMLOListElement>("updates-list"), count = byId("updates-count"), status = byId("updates-status");
   const addButton = byId<HTMLButtonElement>("add-update"), form = byId<HTMLFormElement>("update-form"), message = byId<HTMLTextAreaElement>("update-msg");
@@ -66,7 +66,7 @@ export function startUpdates(opts: { store: Promise<UpdateStore>; now?: () => nu
     const mine = ++token;
     ideaId = id; updates = []; owner = false;
     list.replaceChildren(); setStatus(null); closeForm();
-    store = await opts.store;
+    store = await opts.store();
     if (mine !== token) return;
     owner = store.canManage(id);
     const found = await store.list(id);

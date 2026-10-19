@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 /** Fake the outside world: the test build points at board.test and inbox.test (see build:test), and both are intercepted here. */
 export type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[]; categories?: string[] | null; kind?: "idea" | "dream" };
 export type CommentRow = Row & { idea_id: string; parent_id?: string | null };
-export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean; signInLinks?: { email: string; redirect: string }[]; signInStatus?: number; signOuts?: number; google?: boolean; googleTrips?: string[]; privateItems?: PrivateRow[]; privateRequests?: { method: string; owner: string | null }[] };
+export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean; signInLinks?: { email: string; redirect: string }[]; signInStatus?: number; signOuts?: number; google?: boolean; googleTrips?: string[]; privateItems?: PrivateRow[]; privateRequests?: { method: string; owner: string | null }[]; privateUpdates?: { id: string; item_id: string; owner: string; message: string; links: unknown[]; created_at: string }[] };
 /** A row of the private table as the database keeps it: the owner is whoever was signed in when it was added. */
 export type PrivateRow = { id: string; owner: string; kind: "idea" | "dream"; name: string; message: string; links: unknown[]; stage: string; categories: string[] | null; created_at: string };
 export async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [], mails: 0 }) {
@@ -34,6 +34,25 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
         board.privateItems = items.filter((x) => !(x.id === id && x.owner === owner));
         return r.fulfill({ json: gone });
       }
+      if (method === "PATCH") {
+        const row = items.find((x) => x.id === id && x.owner === owner);
+        if (row) Object.assign(row, r.request().postDataJSON());
+        return r.fulfill({ json: row ? [row] : [] });
+      }
+      return r.fulfill({ status: 405, body: "" });
+    }
+    if (url.includes("/rest/v1/private_updates")) { // your own ideas' updates: owner-only, as the database
+      const owner = ownerOf(r.request().headers()["authorization"] ?? "");
+      if (!owner) return r.fulfill({ status: 401, json: { message: "JWT required" } });
+      const ups = (board.privateUpdates ??= []), q = new URL(url).searchParams;
+      if (method === "GET") { const item = q.get("item_id")?.replace(/^eq\./, ""); return r.fulfill({ json: ups.filter((u) => u.owner === owner && u.item_id === item) }); }
+      if (method === "POST") {
+        const b = r.request().postDataJSON();
+        if (!board.privateItems?.some((x) => x.id === b.item_id && x.owner === owner)) return r.fulfill({ status: 403, json: { message: "not yours" } });
+        ups.push({ ...b, owner, created_at: new Date().toISOString() });
+        return r.fulfill({ status: 201, body: "" });
+      }
+      if (method === "DELETE") { const id = q.get("id")?.replace(/^eq\./, ""); const gone = ups.filter((u) => u.id === id && u.owner === owner); board.privateUpdates = ups.filter((u) => !(u.id === id && u.owner === owner)); return r.fulfill({ json: gone }); }
       return r.fulfill({ status: 405, body: "" });
     }
     if (url.includes("/auth/v1/")) { // Supabase Auth: the magic link is "sent" (recorded), sign-out is counted

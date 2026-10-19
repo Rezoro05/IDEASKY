@@ -1,5 +1,5 @@
 /** The public idea board on the page: keeps the ideas, flies the newest in the sky, and lists them when motion is reduced. */
-import { ideaName, ideaNumbers, newestIdeas, previewLine, IDEA_LIMITS, type Idea } from "../lib/ideas";
+import { ANONYMOUS, ideaName, ideaNumbers, newestIdeas, previewLine, IDEA_LIMITS, type Idea } from "../lib/ideas";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { Categorizer } from "../boundaries/categorizer";
 import { needsSorting } from "../lib/categories";
@@ -28,6 +28,8 @@ export type Board = {
   use(source: Source): void;
   /** The store shown now. */
   store(): Promise<IdeaStore>;
+  /** Whether ideas show their stages now (your own sky does; the public build may not). */
+  stagesShown(): boolean;
 };
 
 const NEW_IDEA_SPEED = 40;
@@ -35,7 +37,17 @@ const NEW_IDEA_SPEED = 40;
 const RESORT_PER_LOAD = 6;
 
 /** Where the board's ideas come from: the public store, or the signed-in visitor's private one; each with its own sorter. */
-export type Source = { store: Promise<IdeaStore>; categorizer?: Categorizer };
+export type Source = {
+  store: Promise<IdeaStore>; categorizer?: Categorizer;
+  /** Your own: each idea flies as its stage's form (bird, paper plane, airplane), whatever the public build shows. */
+  stages?: boolean;
+  /** Your own: an idea is labelled with the name you gave it (Idea1… when none). */
+  named?: boolean;
+};
+
+/** What a bird or fish is called: the name you gave it in your own sky and sea, else its number (Idea1, Dream1…). */
+export const labelOf = (record: Idea, numbered: string, named: boolean | undefined): string =>
+  named && record.name && record.name !== ANONYMOUS ? record.name : numbered;
 
 export function startBoard(opts: {
   sky: Sky | null; store: Promise<IdeaStore>; random?: () => number; openIdea: (id: string, origin: Vec) => void;
@@ -70,7 +82,8 @@ export function startBoard(opts: {
     for (const n of due) { asked.add(n.id); sortIntoCategories(n.id); }
   }
 
-  const nameOf = (id: string) => ideaName(ideaNumbers(all.values()).get(id));
+  const nameOf = (id: string) => { const n = all.get(id); const numbered = ideaName(ideaNumbers(all.values()).get(id)); return n ? labelOf(n, numbered, source.named) : numbered; };
+  const stageOf = (n: Idea) => shownStage(n.stage, source.stages ?? SHOW_STAGES);
 
   /** An idea's flock: its most likely category (Jev lists them most likely first), as a dream's school is its main theme; none yet = a loner. */
   const flockOf = (idea: Idea): string => idea.categories?.[0] ?? "";
@@ -83,12 +96,12 @@ export function startBoard(opts: {
     for (const id of sky.slugs()) if (!keep.has(id)) sky.remove(id);
     const b = sky.bounds(), nums = ideaNumbers(all.values());
     for (const n of shown) {
-      const name = ideaName(nums.get(n.id));
-      if (sky.has(n.id)) { sky.retag(n.id, name, `${name}: open the idea`); sky.reform(n.id, shownStage(n.stage, SHOW_STAGES)); sky.flock(n.id, flockOf(n)); continue; }
+      const name = labelOf(n, ideaName(nums.get(n.id)), source.named);
+      if (sky.has(n.id)) { sky.retag(n.id, name, `${name}: open the idea`); sky.reform(n.id, stageOf(n)); sky.flock(n.id, flockOf(n)); continue; }
       if (inFlight.has(n.id)) continue;
       const angle = rand() * Math.PI * 2;
       sky.add(n.id, {
-        tag: name, label: `${name}: open the idea`, stage: shownStage(n.stage, SHOW_STAGES), flock: flockOf(n),
+        tag: name, label: `${name}: open the idea`, stage: stageOf(n), flock: flockOf(n),
         from: v(80 + rand() * Math.max(1, b.width - 160), b.height * 0.45 + rand() * Math.max(1, b.height * 0.5 - 60)),
         velocity: v(Math.cos(angle) * NEW_IDEA_SPEED, Math.sin(angle) * NEW_IDEA_SPEED),
       });
@@ -145,6 +158,7 @@ export function startBoard(opts: {
     sync,
     loaded,
     store: () => source.store,
+    stagesShown: () => source.stages ?? SHOW_STAGES,
     use(next) {
       source = next;
       all = new Map(); unsaved.clear(); inFlight.clear(); asked.clear();

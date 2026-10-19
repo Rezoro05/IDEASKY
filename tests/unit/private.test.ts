@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { privateCategorizer, supabasePrivateStore } from "../../src/boundaries/privateStore";
+import { privateCategorizer, privateUpdates, supabasePrivateStore } from "../../src/boundaries/privateStore";
+import { labelOf } from "../../src/islands/board";
 import { modeAfterSignIn, startingMode } from "../../src/lib/mode";
 import type { Idea } from "../../src/lib/ideas";
 
@@ -59,5 +60,34 @@ describe("public or your own", () => {
     expect(startingMode({ signedIn: true, remembered: "public", openingPublicIdea: false })).toBe("public");
     expect(startingMode({ signedIn: true, remembered: "mine", openingPublicIdea: true })).toBe("public");
     expect([modeAfterSignIn(true), modeAfterSignIn(false)]).toEqual(["mine", "public"]);
+  });
+});
+
+describe("updates on your own ideas", () => {
+  const u = { id: "upd00001", ideaId: "abcdef12", message: "Mapped 20 streets", links: [], at: 0 };
+  it("lists an idea's updates with your sign-in, oldest first", async () => {
+    const { f, calls } = fakeFetch(() => new Response(JSON.stringify([{ id: "upd00001", item_id: "abcdef12", message: "Mapped 20 streets", links: [], created_at: "2026-10-19T10:00:00Z" }])));
+    const list = await privateUpdates(deps(f)).list("abcdef12");
+    expect(list?.map((x) => x.message)).toEqual(["Mapped 20 streets"]);
+    expect(calls[0]!.url).toBe("https://board.test/rest/v1/private_updates?select=id,item_id,message,links,created_at&item_id=eq.abcdef12&order=created_at.asc&limit=50");
+    expect(header(calls[0]!, "Authorization")).toBe("Bearer tok");
+  });
+  it("adds on the idea, removes only what was removed, and every update on your own idea is yours", async () => {
+    const add = fakeFetch(() => new Response("", { status: 201 }));
+    expect(await privateUpdates(deps(add.f)).add(u)).toBe(true);
+    expect(JSON.parse(add.calls[0]!.init.body as string)).toEqual({ id: "upd00001", item_id: "abcdef12", message: "Mapped 20 streets", links: [] });
+    expect(await privateUpdates(deps(fakeFetch(() => new Response("[]")).f)).remove(u)).toBe(false);
+    expect(privateUpdates(deps(add.f)).canManage("anything")).toBe(true);
+    expect(await privateUpdates(deps(add.f, null)).list("abcdef12")).toBeNull();
+  });
+});
+
+describe("names", () => {
+  const idea: Idea = { id: "abcdef12", name: "Telescope diary", message: "m", stage: "idea", at: 0, links: [] };
+  it("your own go by the name you gave them; otherwise, and on the public board, by their number", () => {
+    expect(labelOf(idea, "Idea3", true)).toBe("Telescope diary");
+    expect(labelOf({ ...idea, name: "Anonymous" }, "Idea3", true)).toBe("Idea3");
+    expect(labelOf({ ...idea, name: "" }, "Idea3", true)).toBe("Idea3");
+    expect(labelOf(idea, "Idea3", false)).toBe("Idea3"); // public: the name is who wrote it, not the idea's
   });
 });

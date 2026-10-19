@@ -8,7 +8,7 @@ import type { Bounds } from "../lib/sim";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { Categorizer } from "../boundaries/categorizer";
 import { needsSorting } from "../lib/categories";
-import type { Source } from "./board";
+import { labelOf, type Source } from "./board";
 import { BOLT_SCALE, DART_SPEED, boltAway, dartAway, fishDrop, startledBy } from "../lib/net";
 import { nearestWithin, reachFor, slackFor, type Rect } from "../lib/cage";
 import { v, type Vec } from "../lib/vec";
@@ -69,7 +69,7 @@ export function startSea(opts: {
   let markLoaded = () => {};
   const loaded = new Promise<void>((resolve) => { markLoaded = resolve; });
 
-  const nameOf = (id: string) => dreamName(ideaNumbers(dreams.values()).get(id));
+  const nameOf = (id: string) => { const d = dreams.get(id); const numbered = dreamName(ideaNumbers(dreams.values()).get(id)); return d ? labelOf(d, numbered, source.named) : numbered; };
 
   function makeFish(dream: Idea, name: string): HTMLAnchorElement {
     const a = document.createElement("a");
@@ -101,7 +101,7 @@ export function startSea(opts: {
     for (const [id, el] of els) if (!keep.has(id)) { el.remove(); els.delete(id); facing.delete(id); }
     fish = fish.filter((f) => keep.has(f.slug));
     for (const d of shown) {
-      const name = dreamName(nums.get(d.id)), school = schoolOf(d), el = els.get(d.id);
+      const name = labelOf(d, dreamName(nums.get(d.id)), source.named), school = schoolOf(d), el = els.get(d.id);
       if (el) { el.dataset.school = school; el.querySelector(".tag")!.textContent = name; el.setAttribute("aria-label", `${name}: open the dream`); }
       else els.set(d.id, makeFish(d, name));
       const i = fish.findIndex((f) => f.slug === d.id);
