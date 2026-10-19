@@ -4,18 +4,18 @@ import type { Stage } from "./stages";
 
 const svg = (body: string): string => `<svg viewBox="-30 -30 60 60" aria-hidden="true">${body}</svg>`;
 
-/** In Progress: a folded paper plane, its facets lit like paper (of1 lightest … of4 darkest; ot = the flock's tint; coloured in site.css). */
+/** In Progress: a folded paper plane, its near wing in the flock's colour (owner, 2026-10-19: one wing), the rest lit like paper (of1 lightest … of4 darkest; ot = the flock's tint; coloured in site.css). */
 const PAPER_PLANE = svg(`
   <polygon class="pf of1" points="26,-2.2 -22.6,-18.6 -18.1,-6.3"></polygon>
   <polygon class="pf of3" points="26,-2.2 -18.1,-6.3 -28,9.5 -14.8,2.4"></polygon>
   <polygon class="pf ot2" points="-28,9.5 -14.8,2.4 -13.8,8.7"></polygon>
-  <polygon class="pf of2" points="26,-2.2 -14.8,2.4 -9.2,18.6"></polygon>`);
+  <polygon class="pf ot1" points="26,-2.2 -14.8,2.4 -9.2,18.6"></polygon>`);
 
 /** Live: an airliner seen from above, folded like the bird and the paper plane: swept wings and tailplanes lit on the near side,
- *  shaded on the far side, a fuselage creased along its length, engine pods, and the flock's tint along the tail. */
+ *  shaded on the far side, a fuselage creased along its length, engine pods; one wing and the tail in the flock's colour (owner, 2026-10-19). */
 const AIRPLANE = svg(`
-  <polygon class="pf of3" points="8,2.5 -9,25 -14,25 -5,2.5"></polygon>
-  <polygon class="pf of4" points="-1,2.5 -11.5,25 -14,25 -5,2.5"></polygon>
+  <polygon class="pf ot1" points="8,2.5 -9,25 -14,25 -5,2.5"></polygon>
+  <polygon class="pf ot2" points="-1,2.5 -11.5,25 -14,25 -5,2.5"></polygon>
   <polygon class="pf of3" points="-17,2 -25,11 -28.5,11 -24,2"></polygon>
   <polygon class="pf of4" points="0,12 -7,10.5 -7,14"></polygon>
   <polygon class="pf of1" points="8,-2.5 -9,-25 -14,-25 -5,-2.5"></polygon>
