@@ -17,6 +17,7 @@ test.describe("your own sky and sea", () => {
     await expect(page.locator("#board-switch")).toBeVisible(); // both words, always
     await expect(onPublic(page)).toBeChecked();
     await expect(page.locator("html")).toHaveAttribute("data-mode", "public");
+    await expect(page.locator("#board-switch label")).toHaveText(["Public", "Private"]); // Public first
   });
 
   test("signed out, choosing Private asks you to sign in; signing in then opens your own", async ({ page }) => {

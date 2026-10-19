@@ -33,7 +33,7 @@ import { startDictation } from "./dictation";
 import { browserSpeech } from "../boundaries/speech";
 import { noCategorizer, supabaseCategorizer } from "../boundaries/categorizer";
 import { memoryAuth, supabaseAuth, type Auth } from "../boundaries/auth";
-import { startAccount } from "./account";
+import { startAccount, type Account } from "./account";
 import { startModeSwitch, type Sources } from "./mode-switch";
 import { startGoPublic, type GoPublic } from "./go-public";
 import { memoryPrivateStore, privateCategorizer, privateUpdates, supabasePrivateStore } from "../boundaries/privateStore";
@@ -218,7 +218,7 @@ export function startSite(): void {
     ownedBy: ownSources(auth),
     openingPublicIdea: !!linkedIdeaId(location.hash),
     switching: () => letter.dismiss(),
-    askToSignIn: () => document.getElementById("account-signin")?.click(),
+    askToSignIn: () => account.open(),
   });
   isMine = () => modes.mode() === "mine";
   goPublic = startGoPublic({
@@ -228,7 +228,7 @@ export function startSite(): void {
     changed: (item) => { if (item.kind === "dream") sea.update(item); else board.update(item); letter.refresh(item); },
   });
   currentUpdates = () => modes.current().updates;
-  startAccount({ auth, say });
+  const account: Account = startAccount({ auth, say });
   board.sync();
 
   /** A link to one idea (#idea-<id>) opens it once the board has loaded; a link to one that is gone says so. */

@@ -1,4 +1,5 @@
-/** The account, on the page: the "Sign in" link or the round initial (top right), its menu, and the sign-in note.
+/** The account, on the page: the round initial (top right, once signed in), its menu, and the sign-in note.
+ *  There is no Sign in button: choosing Private on the switch while signed out opens the note (`open`).
  *  The note: Continue with Google (leaves for Google, comes back signed in), or by email: asking ⇄ invalid → sending → sent (check your email)
  *  | asking with an error (text kept). In memory (local runs, the preview) both sign in at once. A sign-in link coming back (#access_token=… or #error=…) is taken on load and cleared from the address. */
 import { authReturn, checkEmail, initialOf, returnAddress, type User } from "../lib/account";
@@ -13,12 +14,16 @@ const SAYS = {
   signedOut: "Signed out.",
 };
 
-export function startAccount(opts: { auth: Auth; say: (text: string) => void }): void {
+export type Account = { /** Open the sign-in note. */ open(): void };
+
+export function startAccount(opts: { auth: Auth; say: (text: string) => void }): Account {
   const { auth, say } = opts;
-  const signinBtn = byId<HTMLButtonElement>("account-signin"), me = byId<HTMLButtonElement>("account-me"), menu = byId("account-menu");
+  const me = byId<HTMLButtonElement>("account-me"), menu = byId("account-menu");
   const overlay = byId("signin"), form = byId<HTMLFormElement>("signin-form"), email = byId<HTMLInputElement>("signin-email");
   const err = byId("signin-error"), ask = byId("signin-ask"), sent = byId("signin-sent"), send = form.querySelector<HTMLButtonElement>(".signin-send")!;
   let attempt = 0;
+  /** Where focus goes back to while signed out: the board you are on, on the switch. */
+  const switchFocus = () => document.querySelector<HTMLInputElement>("#board-switch input:checked");
 
   // A sign-in link has just brought the visitor back: take the session, then take it out of the address.
   const back = authReturn(location.hash);
@@ -30,7 +35,7 @@ export function startAccount(opts: { auth: Auth; say: (text: string) => void }):
   }
 
   function show(user: User | null): void {
-    signinBtn.hidden = !!user; me.hidden = !user;
+    me.hidden = !user;
     closeMenu(false);
     if (!user) return;
     byId("account-initial").textContent = initialOf(user.email);
@@ -51,7 +56,7 @@ export function startAccount(opts: { auth: Auth; say: (text: string) => void }):
     if (opening) menu.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
   });
   document.addEventListener("pointerdown", (e) => { if (!menu.hidden && !(e.target as Element).closest("#account")) closeMenu(false); }, true);
-  byId("account-signout").addEventListener("click", async () => { closeMenu(false); await auth.signOut(); say(SAYS.signedOut); signinBtn.focus({ preventScroll: true }); });
+  byId("account-signout").addEventListener("click", async () => { closeMenu(false); await auth.signOut(); say(SAYS.signedOut); switchFocus()?.focus({ preventScroll: true }); });
 
   // The sign-in note
   const google = byId<HTMLButtonElement>("signin-google");
@@ -74,10 +79,9 @@ export function startAccount(opts: { auth: Auth; say: (text: string) => void }):
     cancelPendingOpen(overlay);
     overlay.classList.remove("open"); overlay.hidden = true;
     form.reset(); asking();
-    if (returnFocus) (signinBtn.hidden ? me : signinBtn).focus({ preventScroll: true });
+    if (returnFocus) (me.hidden ? switchFocus() : me)?.focus({ preventScroll: true });
   }
   const isOpen = () => !overlay.hidden;
-  signinBtn.addEventListener("click", open);
   byId("signin-close").addEventListener("click", () => close(true));
   byId("signin-again").addEventListener("click", () => { asking(); email.focus(); email.select(); });
   overlay.addEventListener("click", (e) => { if (e.target === overlay) close(true); });
@@ -103,4 +107,5 @@ export function startAccount(opts: { auth: Auth; say: (text: string) => void }):
     err.textContent = result === "invalid" ? SAYS.invalid : result === "too-many" ? SAYS.tooMany : SAYS.failed;
     err.hidden = false;
   });
+  return { open };
 }
