@@ -1,7 +1,7 @@
 /** The signed-in visitor's own ideas and dreams (their private sky and sea), behind the same IdeaStore interface as the public board.
  *  Every request carries the visitor's sign-in; the database lets each owner see and change only their own rows (supabase/09).
  *  Never throws: failures come back as `false` or `null`, as in every store. */
-import { cleanIdea, type Idea } from "../lib/ideas";
+import { cleanIdea, isRecordId, type Idea } from "../lib/ideas";
 import { isOneStep } from "../lib/stages";
 import type { Kind } from "../lib/categories";
 import type { IdeaStore } from "./ideaStore";
@@ -21,20 +21,23 @@ async function authed(d: Pick<PrivateDeps, "key" | "token">, extra: Record<strin
   return token ? { apikey: d.key, Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...extra } : null;
 }
 
-export function supabasePrivateStore(d: PrivateDeps): IdeaStore {
+/** Your own store can also remember the public copy of an item you shared (null = taken down). */
+export type PrivateStore = IdeaStore & { markShared(id: string, publicId: string | null): Promise<boolean> };
+
+export function supabasePrivateStore(d: PrivateDeps): PrivateStore {
   const table = `${d.url}/rest/v1/private_items`;
   return {
     async subscribe(onIdeas) {
       try {
         const headers = await authed(d);
         if (!headers) return false;
-        const r = await d.fetch(`${table}?select=id,name,message,stage,links,categories,created_at&kind=eq.${d.kind}&order=created_at.desc&limit=200`, { headers });
+        const r = await d.fetch(`${table}?select=id,name,message,stage,links,categories,public_id,created_at&kind=eq.${d.kind}&order=created_at.desc&limit=200`, { headers });
         if (!r.ok) return false;
-        const rows = (await r.json()) as { id: string; name: string; message: string; stage: unknown; links: unknown; categories?: unknown; created_at: string }[];
+        const rows = (await r.json()) as { id: string; name: string; message: string; stage: unknown; links: unknown; categories?: unknown; public_id?: unknown; created_at: string }[];
         const out = new Map<string, Idea>();
         for (const row of rows) {
           const idea = cleanIdea({ id: row.id, name: row.name, message: row.message, stage: row.stage, links: row.links, categories: row.categories, at: Date.parse(row.created_at) }, d.kind);
-          if (idea) out.set(idea.id, idea);
+          if (idea) out.set(idea.id, isRecordId(row.public_id) ? { ...idea, publicId: row.public_id } : idea);
         }
         onIdeas(out);
         return true;
@@ -66,6 +69,28 @@ export function supabasePrivateStore(d: PrivateDeps): IdeaStore {
       } catch { return false; }
     },
     ownsKey: () => true, // everything in your own sky is yours
+    async markShared(id, publicId) {
+      try {
+        const headers = await authed(d, { Prefer: "return=representation" });
+        if (!headers) return false;
+        const r = await d.fetch(`${table}?id=eq.${id}`, { method: "PATCH", headers, body: JSON.stringify({ public_id: publicId }) });
+        return r.ok && ((await r.json()) as unknown[]).length > 0;
+      } catch { return false; }
+    },
+  };
+}
+
+/** Your own, in memory (local runs, the preview): the same, for the visit. */
+export function memoryPrivateStore(store: IdeaStore & { ideas: Map<string, Idea> }): PrivateStore {
+  return {
+    ...store,
+    async markShared(id, publicId) {
+      const kept = store.ideas.get(id);
+      if (!kept) return false;
+      const { publicId: _old, ...rest } = kept;
+      store.ideas.set(id, publicId ? { ...rest, publicId } : rest);
+      return true;
+    },
   };
 }
 

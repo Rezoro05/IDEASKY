@@ -6,6 +6,8 @@ import { LISTS, cleanCategories, type Kind } from "./categories";
 export type Idea = { id: string; name: string; message: string; at: number; stage: Stage; links: Link[];
   /** Set by Jev after posting: up to three category keys ([] = none fit). Absent until the idea is sorted. */
   categories?: readonly string[];
+  /** Your own (private) idea or dream: the id of its copy on the public board, once you shared it. */
+  publicId?: string;
   /** "dream" for a dream in the Sea of Dreams; absent for an idea. */
   kind?: "dream" };
 export type Draft = { name: string; email: string; message: string; trap: string; linkRows: readonly LinkRow[] };

@@ -150,6 +150,14 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .account-public:hover { border-color: var(--accent); }
 .account-public:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; }
 .account-public[hidden] { display: none; }
+/* Sharing your own on the public board: the globe (filled once shared) and its question, under the icon line like the bin's */
+.act-public.is-on svg { fill: color-mix(in srgb, var(--tone-cobalt) 18%, transparent); stroke: var(--tone-cobalt); }
+.go-public[hidden], .go-public-ask[hidden], .go-public-done[hidden] { display: none; }
+.go-public-ask { flex-direction: column; align-items: stretch; gap: 12px; text-align: left; }
+.go-public-ask .note-field { width: 100%; align-self: stretch; }
+.go-public-ask p { margin: 0; }
+.go-public-choice { display: flex; align-items: center; justify-content: flex-start; gap: 14px; }
+.go-public-done { margin: 6px 0 0; font: 400 14px/1.5 var(--font-body); color: #3B4150; }
 [data-mode="mine"] .note-email-field { display: none; } /* your own: the name field names the idea or dream itself */
 [data-mode="mine"] #letter :is(.act-like, .act-comment, .act-share, .thread) { display: none !important; }
 

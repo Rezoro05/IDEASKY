@@ -160,4 +160,56 @@ test.describe("your own sky and sea", () => {
     await page.locator('.plane[data-slug="mine0001"]').focus(); await page.keyboard.press("Enter");
     await expect(page.locator("#updates-list")).toContainText("Mapped 20 streets");
   });
+
+  test("one button shares your own idea on the public board (a copy; yours stays), and takes it down again", async ({ page }) => {
+    const board = await fakeServices(page, withPublic());
+    board.privateItems = [{ id: "mine0001", owner: "user-1", kind: "idea", name: "Bike map", message: "Riders mark potholes", links: [{ title: "", url: "https://map.test" }], stage: "implementation", categories: ["city-places"], created_at: "2026-10-19T10:00:00Z" }];
+    await signIn(page);
+    await page.locator('.plane[data-slug="mine0001"]').focus(); await page.keyboard.press("Enter");
+    const globe = page.locator("#go-public-btn");
+    await expect(globe).toBeVisible();
+    await globe.click();
+    await expect(page.locator("#go-public-q")).toContainText("Anyone will be able to read it");
+    await page.locator("#go-public-name").fill("Rez");
+    await page.locator("#go-public-yes").click();
+    await expect(page.locator("#go-public-done")).toBeVisible();
+    await expect(page.locator("#toast")).toHaveText("Shared in the public sky. Anyone can catch it now.");
+    expect(board.posts).toHaveLength(1);
+    const post = board.posts[0] as { id: string; name: string; message: string };
+    expect(post).toMatchObject({ name: "Rez", message: "Riders mark potholes" });
+    expect(post.id).not.toBe("mine0001"); // a copy with its own id
+    expect(board.mails).toBe(1); // like any public post
+    expect(board.privateItems![0]).toMatchObject({ public_id: post.id, stage: "implementation" }); // yours stays, and remembers it
+    await page.keyboard.press("Escape"); await expect(page.locator("#letter")).toBeHidden();
+    await publicBtn(page).click();
+    await expect(page.locator(`.plane[data-slug="${post.id}"]`)).toHaveCount(1); // in the public sky now
+    await publicBtn(page).click();
+    await page.locator('.plane[data-slug="mine0001"]').focus(); await page.keyboard.press("Enter");
+    await expect(page.locator("#go-public-done")).toBeVisible(); // still shown as shared after switching back
+    await page.locator("#go-public-down").click();
+    await expect(page.locator("#toast")).toHaveText("Taken down from the public board.");
+    expect(board.deletes).toEqual([{ p_id: post.id, p_key: expect.any(String) }]);
+    expect(board.privateItems![0]!.public_id).toBeNull();
+    await expect(page.locator("#go-public-done")).toBeHidden();
+  });
+
+  test("the share button is only in your own sky; a public idea's letter never shows it", async ({ page }) => {
+    await fakeServices(page, withPublic());
+    await page.goto("/");
+    await page.locator(".plane").first().focus(); await page.keyboard.press("Enter");
+    await expect(page.locator("#letter")).toBeVisible();
+    await expect(page.locator("#go-public-btn")).toBeHidden();
+  });
+
+  test("a dream shares into the public sea", async ({ page }) => {
+    const board = await fakeServices(page, withPublic());
+    board.privateItems = [{ id: "mine0002", owner: "user-1", kind: "dream", name: "School", message: "I was flying over my old school", links: [], stage: "idea", categories: ["flying"], created_at: "2026-10-19T10:00:00Z" }];
+    await page.goto("/" + signInReturn("rez@example.com") );
+    await page.locator("#dive-btn").click();
+    await page.locator('.fish[data-slug="mine0002"]').focus(); await page.keyboard.press("Enter");
+    await page.locator("#go-public-btn").click();
+    await page.locator("#go-public-yes").click();
+    await expect(page.locator("#toast")).toHaveText("Shared in the public sea. Anyone can open it now.");
+    expect(board.posts[0]).toMatchObject({ kind: "dream", name: "Anonymous", message: "I was flying over my old school" });
+  });
 });

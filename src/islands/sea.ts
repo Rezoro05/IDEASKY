@@ -33,6 +33,8 @@ export type SeaBoard = {
   landed(id: string): void;
   /** Its author removed it. */
   forget(id: string): void;
+  /** A dream changed (shared on the public board, or taken down): keep it. */
+  update(dream: Idea): void;
   /** Where a fish is on screen now (its centre), or null. */
   screenPointOf(id: string): Vec | null;
   /** Resolves once the sea has its first list of dreams. */
@@ -274,6 +276,7 @@ export function startSea(opts: {
       if (saved && g === gen) { unsaved.delete(dream.id); sortIntoThemes(dream.id); }
       return saved;
     },
+    update(dream) { if (dreams.has(dream.id)) { dreams.set(dream.id, dream); sync(); } },
     landed(id) { arriving.delete(id); els.get(id)?.classList.remove("arriving"); },
     forget(id) { dreams.delete(id); unsaved.delete(id); if (netted?.slug === id) netted = null; if (held?.slug === id) { held = null; sea.classList.remove("holding-fish"); } sync(); },
     screenPointOf(id) { const body = els.get(id)?.querySelector(".body"); return body ? centreOf(body) : null; },

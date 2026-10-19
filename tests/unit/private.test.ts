@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { privateCategorizer, privateUpdates, supabasePrivateStore } from "../../src/boundaries/privateStore";
+import { memoryPrivateStore, privateCategorizer, privateUpdates, supabasePrivateStore } from "../../src/boundaries/privateStore";
+import { memoryStore } from "../../src/boundaries/ideaStore";
 import { labelOf } from "../../src/islands/board";
 import { modeAfterSignIn, startingMode } from "../../src/lib/mode";
 import type { Idea } from "../../src/lib/ideas";
@@ -18,7 +19,7 @@ describe("your own ideas and dreams (private store)", () => {
     const { f, calls } = fakeFetch(() => new Response(JSON.stringify([{ id: "abcdef12", name: "", message: "My own idea", stage: "idea", links: [], categories: ["tech"], created_at: "2026-10-19T10:00:00Z" }])));
     let got: Map<string, Idea> | null = null;
     expect(await supabasePrivateStore(deps(f)).subscribe((m) => { got = m; })).toBe(true);
-    expect(calls[0]!.url).toBe("https://board.test/rest/v1/private_items?select=id,name,message,stage,links,categories,created_at&kind=eq.idea&order=created_at.desc&limit=200");
+    expect(calls[0]!.url).toBe("https://board.test/rest/v1/private_items?select=id,name,message,stage,links,categories,public_id,created_at&kind=eq.idea&order=created_at.desc&limit=200");
     expect(header(calls[0]!, "Authorization")).toBe("Bearer tok");
     expect(header(calls[0]!, "apikey")).toBe("pk");
     expect(got!.get("abcdef12")?.categories).toEqual(["tech"]);
@@ -89,5 +90,32 @@ describe("names", () => {
     expect(labelOf({ ...idea, name: "Anonymous" }, "Idea3", true)).toBe("Idea3");
     expect(labelOf({ ...idea, name: "" }, "Idea3", true)).toBe("Idea3");
     expect(labelOf(idea, "Idea3", false)).toBe("Idea3"); // public: the name is who wrote it, not the idea's
+  });
+});
+
+describe("shared on the public board", () => {
+  it("reads the public copy's id with your own item, and remembers or forgets it", async () => {
+    const read = fakeFetch(() => new Response(JSON.stringify([{ id: "abcdef12", name: "", message: "m", stage: "idea", links: [], categories: null, public_id: "pub00001", created_at: "2026-10-19T10:00:00Z" }])));
+    let got: Map<string, Idea> | null = null;
+    await supabasePrivateStore(deps(read.f)).subscribe((m) => { got = m; });
+    expect(got!.get("abcdef12")?.publicId).toBe("pub00001");
+    const mark = fakeFetch(() => new Response(JSON.stringify([{ id: "abcdef12" }])));
+    expect(await supabasePrivateStore(deps(mark.f)).markShared("abcdef12", "pub00001")).toBe(true);
+    expect(mark.calls[0]!.url).toBe("https://board.test/rest/v1/private_items?id=eq.abcdef12");
+    expect(JSON.parse(mark.calls[0]!.init.body as string)).toEqual({ public_id: "pub00001" });
+    expect(await supabasePrivateStore(deps(mark.f)).markShared("abcdef12", null)).toBe(true);
+    expect(JSON.parse(mark.calls[1]!.init.body as string)).toEqual({ public_id: null });
+    expect(await supabasePrivateStore(deps(fakeFetch(() => new Response("[]")).f)).markShared("abcdef12", "pub00001")).toBe(false);
+  });
+  it("in memory too", async () => {
+    const store = memoryPrivateStore(memoryStore([idea]));
+    expect(await store.markShared("abcdef12", "pub00001")).toBe(true);
+    let got: Map<string, Idea> | null = null;
+    await store.subscribe((m) => { got = m; });
+    expect(got!.get("abcdef12")?.publicId).toBe("pub00001");
+    await store.markShared("abcdef12", null);
+    await store.subscribe((m) => { got = m; });
+    expect(got!.get("abcdef12")?.publicId).toBeUndefined();
+    expect(await store.markShared("nothere1", "x")).toBe(false);
   });
 });

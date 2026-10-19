@@ -35,7 +35,8 @@ import { noCategorizer, supabaseCategorizer } from "../boundaries/categorizer";
 import { memoryAuth, supabaseAuth, type Auth } from "../boundaries/auth";
 import { startAccount } from "./account";
 import { startModeSwitch, type Sources } from "./mode-switch";
-import { privateCategorizer, privateUpdates, supabasePrivateStore } from "../boundaries/privateStore";
+import { startGoPublic, type GoPublic } from "./go-public";
+import { memoryPrivateStore, privateCategorizer, privateUpdates, supabasePrivateStore } from "../boundaries/privateStore";
 import type { User } from "../lib/account";
 import { settingsSource, startScenes, type Scenes } from "./scene";
 import { DEFAULTS, mergeSettings, presetSettings } from "../lib/scene-settings";
@@ -82,7 +83,7 @@ function chooseAuth(): Auth {
 function ownSources(auth: Auth): (user: User) => Sources {
   return () => {
     const own = { stages: true, named: true }; // your own ideas show their stages, and go by the names you give them
-    if (!PUBLIC_BOARD.url) return { ideas: { store: Promise.resolve(memoryStore()), ...own }, dreams: { store: Promise.resolve(memoryStore()), ...own }, updates: Promise.resolve(memoryUpdates(() => true)) };
+    if (!PUBLIC_BOARD.url) return { ideas: { store: Promise.resolve(memoryPrivateStore(memoryStore())), ...own }, dreams: { store: Promise.resolve(memoryPrivateStore(memoryStore())), ...own }, updates: Promise.resolve(memoryUpdates(() => true)) };
     const base = { url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window), token: () => auth.token() };
     const categorizer = privateCategorizer(base);
     return {
@@ -156,6 +157,7 @@ export function startSite(): void {
   const stores = Promise.resolve(chooseStores());
   let isMine = () => false; // set once the mode switch starts (below)
   let currentUpdates = () => stores.then((s) => s.updates);
+  let goPublic: GoPublic = { open() {}, close() {} }; // set once the mode switch starts (below)
   const categorizer = PUBLIC_BOARD.url ? supabaseCategorizer({ url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window) }) : noCategorizer;
   const sea = startSea({
     field: byId("sea-field"), surface: byId("sea"), net: byId("fish-net"), list: profile === "none" ? byId<HTMLUListElement>("dreams-list") : null,
@@ -191,14 +193,15 @@ export function startSite(): void {
     hooks: {
       opened: (idea) => {
         if (isMine()) { // your own: no likes, comments or sharing; only you see it. Ideas have their stages and your updates
-          removal.open(idea);
+          removal.open(idea); goPublic.open(idea);
           if (idea.kind === "dream") { stage.close(); updates.close(); } else { stage.open(idea); updates.open(idea.id); }
           return;
         }
+        goPublic.close();
         thread.open(idea.id); likes.open(idea.id); removal.open(idea); share.open(idea.id);
         if (idea.kind === "dream") { stage.close(); updates.close(); } else { stage.open(idea); updates.open(idea.id); }
       },
-      closed: () => { thread.close(); likes.close(); stage.close(); updates.close(); removal.close(); share.close(); forgetLink(); },
+      closed: () => { thread.close(); likes.close(); stage.close(); updates.close(); removal.close(); share.close(); goPublic.close(); forgetLink(); },
     },
   });
   ideaMoved = (idea) => { board.update(idea); letter.refresh(idea); };
@@ -217,6 +220,12 @@ export function startSite(): void {
     switching: () => letter.dismiss(),
   });
   isMine = () => modes.mode() === "mine";
+  goPublic = startGoPublic({
+    isMine, inbox, say,
+    ownStore: (item) => (item.kind === "dream" ? sea.store() : board.store()),
+    publicStore: (item) => stores.then((s) => (item.kind === "dream" ? s.dreams : s.ideas)),
+    changed: (item) => { if (item.kind === "dream") sea.update(item); else board.update(item); letter.refresh(item); },
+  });
   currentUpdates = () => modes.current().updates;
   startAccount({ auth, say });
   board.sync();
