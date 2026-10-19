@@ -38,8 +38,8 @@ export type Kind = "idea" | "dream";
 export const LISTS: Record<Kind, readonly Category[]> = { idea: IDEA_CATEGORIES, dream: DREAM_THEMES };
 export const kindOf = (raw: unknown): Kind => (raw === "dream" ? "dream" : "idea");
 
-/** How Jev's yes/no answers become categories: up to `max` with probability at least `fits`. Nothing reaching it means no category
- *  (owner's choice: no "best guess", which tagged gibberish). */
+/** How Jev's yes/no answers become categories: up to `max` with probability at least `fits`. When nothing reaches it, the single most
+ *  likely one, so every idea and dream joins a flock or a school (owner, 2026-10-19; this replaces "no best guess"). */
 export const PICK = { max: 3, fits: 0.5 } as const;
 
 /** One yes/no question per category, all asked in one Jev call. Question ids are the category keys (Jev never sees them). */
@@ -54,13 +54,16 @@ export function categoryQuestions(list: readonly Category[], kind: Kind = "idea"
 
 /** Jev's answers (probability per category key) → the categories to keep, most likely first. Unknown keys and non-numbers are ignored. */
 export function pickCategories(list: readonly Category[], probabilities: Readonly<Record<string, unknown>>, rule: { max: number; fits: number } = PICK): string[] {
-  return list
+  const ranked = list
     .map((c) => ({ key: c.key, p: probabilities[c.key] }))
-    .filter((s): s is { key: string; p: number } => typeof s.p === "number" && Number.isFinite(s.p) && s.p >= rule.fits)
-    .sort((a, b) => b.p - a.p)
-    .slice(0, rule.max)
-    .map((s) => s.key);
+    .filter((s): s is { key: string; p: number } => typeof s.p === "number" && Number.isFinite(s.p))
+    .sort((a, b) => b.p - a.p);
+  const fitting = ranked.filter((s) => s.p >= rule.fits).slice(0, rule.max);
+  return (fitting.length ? fitting : ranked.slice(0, 1)).map((s) => s.key); // nothing fits well: its best match
 }
+
+/** Whether a record still needs sorting: never sorted (null), or sorted under the old rule with nothing kept ([]). */
+export const needsSorting = (categories: readonly string[] | null | undefined): boolean => !categories || categories.length === 0;
 
 /** Stored categories (untrusted) → known keys only, at most `max`, no repeats. */
 export function cleanCategories(list: readonly Category[], raw: unknown, max: number = PICK.max): string[] | undefined {

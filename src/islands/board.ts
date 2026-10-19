@@ -2,6 +2,10 @@
 import { ideaName, ideaNumbers, newestIdeas, previewLine, IDEA_LIMITS, type Idea } from "../lib/ideas";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { Categorizer } from "../boundaries/categorizer";
+import { needsSorting } from "../lib/categories";
+
+/** At most this many old ideas are sent for sorting per load, so a visit never sends a burst. */
+const RESORT_PER_LOAD = 6;
 import { v, type Vec } from "../lib/vec";
 import { shownStage } from "../lib/stages";
 import { SHOW_STAGES } from "../content/site";
@@ -43,7 +47,15 @@ export function startBoard(opts: {
     all = ideas;
     sync();
     markLoaded();
+    sortTheUnsorted();
   }));
+
+  /** Ideas shown without categories (never sorted, or sorted with none under the old rule) are sorted now, once per visit, a few at a time. */
+  const asked = new Set<string>();
+  function sortTheUnsorted(): void {
+    const due = newestIdeas(all.values(), IDEA_LIMITS.inSky).filter((n) => needsSorting(n.categories) && !unsaved.has(n.id) && !asked.has(n.id)).slice(0, RESORT_PER_LOAD);
+    for (const n of due) { asked.add(n.id); sortIntoCategories(n.id); }
+  }
 
   const nameOf = (id: string) => ideaName(ideaNumbers(all.values()).get(id));
 
@@ -91,6 +103,7 @@ export function startBoard(opts: {
   });
 
   function sortIntoCategories(id: string): void {
+    asked.add(id);
     opts.categorizer?.categorize(id).then((categories) => {
       const idea = all.get(id);
       if (!categories || !idea) return;

@@ -1,7 +1,8 @@
 /** What the `categorize` function does, with the outside world (database, Jev) passed in, so it can be tested without either.
- *  Rules: the text comes from the database, never from the caller; an idea is sorted once ([] means "checked, nothing fits");
+ *  Rules: the text comes from the database, never from the caller; an idea is sorted once, into at least one category
+ *  ([] was "checked, nothing fits" under the old rule: those are sorted again);
  *  anything that goes wrong answers `categories: null` and leaves the idea as it was. Import-free apart from the shared list. */
-import { categoryQuestions, kindOf, pickCategories, type Category, type Kind } from "./categories.ts";
+import { categoryQuestions, kindOf, needsSorting, pickCategories, type Category, type Kind } from "./categories.ts";
 
 /** `kind` picks the list: idea categories or dream themes (missing = idea, for rows from before dreams). */
 export type Stored = { message: string; categories: unknown; kind?: unknown };
@@ -10,7 +11,7 @@ export type CategorizeDeps = {
   load(id: string): Promise<Stored | null | "error">;
   /** Jev's answers for these yes/no questions about `state` (question key → probability), or null if Jev can't be reached. */
   ask(state: string, questions: ReturnType<typeof categoryQuestions>): Promise<Record<string, unknown> | null>;
-  /** Saves the categories if the record has none yet. False if the database refused. */
+  /** Saves the categories if the record has none yet (null or []). False if the database refused. */
   save(id: string, categories: string[]): Promise<boolean>;
 };
 /** `failed` names the step that went wrong (for the function's logs and the response), never any secret. */
@@ -24,11 +25,13 @@ export async function categorize(body: unknown, lists: Record<Kind, readonly Cat
   const stored = await deps.load(id);
   if (stored === "error") return { status: 502, categories: null, failed: "read" };
   if (stored === null) return { status: 404, categories: null };
-  if (Array.isArray(stored.categories)) return { status: 200, categories: stored.categories.filter((k): k is string => typeof k === "string") }; // sorted already: no second Jev call
+  const already = Array.isArray(stored.categories) ? stored.categories.filter((k): k is string => typeof k === "string") : null;
+  if (!needsSorting(already)) return { status: 200, categories: already }; // sorted already: no second Jev call
   const kind = kindOf(stored.kind), list = lists[kind];
   const answers = await deps.ask(stored.message, categoryQuestions(list, kind));
   if (!answers) return { status: 502, categories: null, failed: "jev" };
   const categories = pickCategories(list, answers);
+  if (!categories.length) return { status: 502, categories: null, failed: "jev" }; // no usable answers at all: try again another time
   if (!(await deps.save(id, categories))) return { status: 502, categories: null, failed: "save" };
   return { status: 200, categories };
 }

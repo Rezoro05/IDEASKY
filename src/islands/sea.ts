@@ -7,6 +7,10 @@ import { FISH_SVG } from "../lib/fish-art";
 import type { Bounds } from "../lib/sim";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { Categorizer } from "../boundaries/categorizer";
+import { needsSorting } from "../lib/categories";
+
+/** At most this many old dreams are sent for sorting per load, so a visit never sends a burst. */
+const RESORT_PER_LOAD = 6;
 import { BOLT_SCALE, DART_SPEED, boltAway, dartAway, fishDrop, startledBy } from "../lib/net";
 import { nearestWithin, reachFor, slackFor, type Rect } from "../lib/cage";
 import { v, type Vec } from "../lib/vec";
@@ -104,8 +108,16 @@ export function startSea(opts: {
   opts.store.then((s) => s.subscribe((all) => {
     for (const id of unsaved) { const d = dreams.get(id); if (d) all.set(id, d); } // keep this visit's unsaved dreams
     dreams = all; sync(); markLoaded();
+    sortTheUnsorted();
   }));
+  /** Dreams shown without themes (never sorted, or sorted with none under the old rule) are sorted now, once per visit, a few at a time. */
+  const asked = new Set<string>();
+  function sortTheUnsorted(): void {
+    const due = newestIdeas(dreams.values(), DREAMS_IN_SEA).filter((d) => needsSorting(d.categories) && !unsaved.has(d.id) && !asked.has(d.id)).slice(0, RESORT_PER_LOAD);
+    for (const d of due) sortIntoThemes(d.id);
+  }
   function sortIntoThemes(id: string): void {
+    asked.add(id);
     opts.categorizer?.categorize(id).then((categories) => {
       const d = dreams.get(id);
       if (!categories || !d) return;

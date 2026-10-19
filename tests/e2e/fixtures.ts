@@ -33,7 +33,7 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
       (board.categorizeCalls ??= []).push(id);
       if (board.categorizeDown) return r.fulfill({ status: 502, json: { categories: null } });
       const categories = board.categorize ?? ["tech"], row = board.rows.find((x) => x.id === id);
-      if (row) row.categories ??= categories;
+      if (row && (!row.categories || row.categories.length === 0)) row.categories = categories; // as the function: [] (old rule) is sorted again
       return r.fulfill({ json: { categories: row?.categories ?? categories } });
     }
     if (url.includes("/rest/v1/comment_likes") || url.includes("unlike_comment")) {

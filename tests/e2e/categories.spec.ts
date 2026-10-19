@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { fakeServices, gioRow, settled, watchErrors } from "./fixtures";
+import { dreamRow, fakeServices, gioRow, settled, watchErrors } from "./fixtures";
 
 test.describe("categories (set by Jev)", () => {
   test("an open idea shows its category tags", async ({ page }) => {
@@ -16,7 +16,8 @@ test.describe("categories (set by Jev)", () => {
   });
 
   test("a bird takes its main category's tint, as a fish takes its school's; one not sorted yet stays plain", async ({ page }) => {
-    await fakeServices(page, { rows: [{ ...gioRow, categories: ["tech", "science"] }, { ...gioRow, id: "plain1", categories: [] }], posts: [], deletes: [], mails: 0 });
+    const board = await fakeServices(page, { rows: [{ ...gioRow, categories: ["tech", "science"] }, { ...gioRow, id: "plain1", categories: [] }], posts: [], deletes: [], mails: 0 });
+    board.categorizeDown = true; // so plain1 stays unsorted
     await page.goto("/");
     await expect(page.locator(".plane")).toHaveCount(2);
     const tech = page.locator(`.plane[data-slug="${gioRow.id}"]`), plain = page.locator('.plane[data-slug="plain1"]');
@@ -27,8 +28,20 @@ test.describe("categories (set by Jev)", () => {
     expect(await tailOf(plain)).not.toBe("rgb(140, 108, 240)");
   });
 
-  test("an idea not sorted yet, or that fits nothing, shows no tags", async ({ page }) => {
-    await fakeServices(page, { rows: [{ ...gioRow, categories: [] }], posts: [], deletes: [], mails: 0 });
+  test("ideas and dreams left without categories are sorted when shown, once, and join their flock and school", async ({ page }) => {
+    const board = await fakeServices(page, { rows: [{ ...gioRow, categories: [] }, { ...gioRow, id: "sorted1", categories: ["health"] }, dreamRow("dream0001", "I was flying", null)], posts: [], deletes: [], mails: 0 });
+    board.categorize = ["play-games"];
+    await page.goto("/");
+    await expect(page.locator(`.plane[data-slug="${gioRow.id}"]`)).toHaveAttribute("data-flock", "play-games");
+    await expect(page.locator('.fish[data-slug="dream0001"]')).toHaveAttribute("data-school", "play-games");
+    expect([...(board.categorizeCalls ?? [])].sort()).toEqual(["dream0001", gioRow.id].sort()); // the sorted one is left alone
+    await page.locator(`.plane[data-slug="${gioRow.id}"]`).focus(); await page.keyboard.press("Enter");
+    await expect(page.locator("#letter-cats li")).toHaveText(["Play & Games"]);
+  });
+
+  test("an idea that can't be sorted yet shows no tags", async ({ page }) => {
+    const board = await fakeServices(page, { rows: [{ ...gioRow, categories: [] }], posts: [], deletes: [], mails: 0 });
+    board.categorizeDown = true;
     await page.goto("/");
     await page.locator(".plane").focus(); await page.keyboard.press("Enter");
     await expect(page.locator("#letter")).toBeVisible();

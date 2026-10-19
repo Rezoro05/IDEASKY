@@ -108,7 +108,8 @@ test.describe("fish (dreams)", () => {
   });
 
   test("dreams swim in the sea as fish, named Dream1…, in schools by their main theme; ideas stay in the sky", async ({ page }) => {
-    await fakeServices(page, dreams());
+    const board = await fakeServices(page, dreams());
+    board.categorizeDown = true; // so the unsorted one stays a loner here
     await page.goto("/#sea");
     const fish = page.locator(".fish");
     await expect(fish).toHaveCount(4);

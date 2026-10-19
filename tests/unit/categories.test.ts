@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { DREAM_THEMES, IDEA_CATEGORIES, LISTS, PICK, categoryLabel, categoryQuestions, cleanCategories, kindOf, pickCategories } from "../../src/lib/categories";
+import { DREAM_THEMES, IDEA_CATEGORIES, LISTS, PICK, categoryLabel, categoryQuestions, cleanCategories, kindOf, needsSorting, pickCategories } from "../../src/lib/categories";
 import { categorize, noulAnswers, type CategorizeDeps, type Stored } from "../../supabase/functions/_shared/categorize";
 import { supabaseCategorizer } from "../../src/boundaries/categorizer";
 import { cleanIdea } from "../../src/lib/ideas";
@@ -38,8 +38,13 @@ describe("pickCategories", () => {
   it("keeps up to three that fit, most likely first", () => {
     expect(pick({ tech: 0.6, health: 0.9, science: 0.7, learning: 0.55, business: 0.1 })).toEqual(["health", "science", "tech"]);
   });
-  it("keeps nothing when nothing clearly fits (no best guess: it tagged gibberish)", () => {
-    expect(pick({ tech: 0.49, health: 0.35 })).toEqual([]);
+  it("when nothing clearly fits, keeps its best match, so every idea joins a flock (owner, 2026-10-19)", () => {
+    expect(pick({ tech: 0.49, health: 0.35 })).toEqual(["tech"]);
+    expect(pick({ tech: 0.02, health: 0.03 })).toEqual(["health"]);
+    expect(pick({})).toEqual([]); // no answers at all: nothing to go on
+  });
+  it("needs sorting: never sorted, or sorted with nothing kept under the old rule", () => {
+    expect([needsSorting(undefined), needsSorting(null), needsSorting([]), needsSorting(["tech"])]).toEqual([true, true, true, false]);
   });
   it("ignores keys it doesn't know and answers that aren't numbers", () => {
     expect(pick({ dreams: 0.99, tech: "yes", health: 0.8 })).toEqual(["health"]);
@@ -91,10 +96,23 @@ describe("the categorize function", () => {
     expect(await run({ id: "abcdef1" }, f)).toEqual({ status: 200, categories: ["health"] });
     expect(f.calls.ask).toEqual([]);
   });
-  it("saves an empty list when nothing fits, so it isn't asked again", async () => {
+  it("nothing fits well: saves its best match", async () => {
     const f = fakes({ message: "m", categories: null }, { tech: 0.1 });
-    expect(await run({ id: "abcdef1" }, f)).toEqual({ status: 200, categories: [] });
-    expect(f.calls.save).toEqual([["abcdef1", []]]);
+    expect(await run({ id: "abcdef1" }, f)).toEqual({ status: 200, categories: ["tech"] });
+    expect(f.calls.save).toEqual([["abcdef1", ["tech"]]]);
+  });
+  it("an idea left with none under the old rule ([]) is sorted again; one with categories is not", async () => {
+    const empty = fakes({ message: "random stuff", categories: [] }, { "play-games": 0.3 });
+    expect(await run({ id: "abcdef1" }, empty)).toEqual({ status: 200, categories: ["play-games"] });
+    expect(empty.calls.ask).toEqual(["random stuff"]);
+    const sorted = fakes({ message: "m", categories: ["tech"] });
+    expect(await run({ id: "abcdef1" }, sorted)).toEqual({ status: 200, categories: ["tech"] });
+    expect(sorted.calls.ask).toEqual([]);
+  });
+  it("Jev answering nothing usable saves nothing, so it can be asked again later", async () => {
+    const f = fakes({ message: "m", categories: null }, { unknown: 0.9 });
+    expect(await run({ id: "abcdef1" }, f)).toEqual({ status: 502, categories: null, failed: "jev" });
+    expect(f.calls.save).toEqual([]);
   });
   it("refuses a bad id without touching the database or Jev", async () => {
     const f = fakes({ message: "m", categories: null });

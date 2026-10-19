@@ -39,7 +39,7 @@ function deps(): CategorizeDeps {
     },
     async save(id, categories) {
       try {
-        const r = await fetch(`${url}/rest/v1/ideas?id=eq.${id}&categories=is.null`, {
+        const r = await fetch(`${url}/rest/v1/ideas?id=eq.${id}&or=(categories.is.null,categories.eq.%7B%7D)`, { // not sorted yet, or [] from the old rule
           method: "PATCH", headers: { ...headers, Prefer: "return=minimal" }, body: JSON.stringify({ categories }),
         });
         if (!r.ok) await logFailure("saving the categories", r);
