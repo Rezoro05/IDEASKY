@@ -1,0 +1,63 @@
+import { describe, it, expect } from "vitest";
+import { privateCategorizer, supabasePrivateStore } from "../../src/boundaries/privateStore";
+import { modeAfterSignIn, startingMode } from "../../src/lib/mode";
+import type { Idea } from "../../src/lib/ideas";
+
+type Call = { url: string; init: RequestInit };
+function fakeFetch(answer: (url: string, init: RequestInit) => Response) {
+  const calls: Call[] = [];
+  return { calls, f: (async (url: string, init: RequestInit) => { calls.push({ url, init }); return answer(url, init); }) as unknown as typeof fetch };
+}
+const idea: Idea = { id: "abcdef12", name: "", message: "My own idea", stage: "idea", at: 0, links: [] };
+const deps = (f: typeof fetch, token: string | null = "tok") => ({ url: "https://board.test", key: "pk", fetch: f, token: async () => token, kind: "idea" as const });
+const header = (c: Call, name: string) => (c.init.headers as Record<string, string>)[name];
+
+describe("your own ideas and dreams (private store)", () => {
+  it("reads only your kind, with your sign-in, newest first", async () => {
+    const { f, calls } = fakeFetch(() => new Response(JSON.stringify([{ id: "abcdef12", name: "", message: "My own idea", stage: "idea", links: [], categories: ["tech"], created_at: "2026-10-19T10:00:00Z" }])));
+    let got: Map<string, Idea> | null = null;
+    expect(await supabasePrivateStore(deps(f)).subscribe((m) => { got = m; })).toBe(true);
+    expect(calls[0]!.url).toBe("https://board.test/rest/v1/private_items?select=id,name,message,stage,links,categories,created_at&kind=eq.idea&order=created_at.desc&limit=200");
+    expect(header(calls[0]!, "Authorization")).toBe("Bearer tok");
+    expect(header(calls[0]!, "apikey")).toBe("pk");
+    expect(got!.get("abcdef12")?.categories).toEqual(["tech"]);
+  });
+  it("signed out: nothing is asked and nothing is saved", async () => {
+    const { f, calls } = fakeFetch(() => new Response("[]"));
+    const store = supabasePrivateStore(deps(f, null));
+    expect(await store.subscribe(() => {})).toBe(false);
+    expect(await store.add(idea)).toBe(false);
+    expect(calls).toHaveLength(0);
+  });
+  it("adds with its kind and no owner field (the database sets you as the owner)", async () => {
+    const { f, calls } = fakeFetch(() => new Response("", { status: 201 }));
+    expect(await supabasePrivateStore({ ...deps(f), kind: "dream" }).add(idea)).toBe(true);
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({ id: "abcdef12", kind: "dream", name: "", message: "My own idea", links: [] });
+  });
+  it("removes only what was really removed (nothing removed = not yours, or gone)", async () => {
+    expect(await supabasePrivateStore(deps(fakeFetch(() => new Response(JSON.stringify([{ id: "abcdef12" }]))).f)).remove(idea)).toBe(true);
+    expect(await supabasePrivateStore(deps(fakeFetch(() => new Response("[]")).f)).remove(idea)).toBe(false);
+    expect(await supabasePrivateStore(deps(fakeFetch(() => { throw new Error("offline"); }).f)).remove(idea)).toBe(false);
+  });
+  it("everything in your own sky is yours", () => {
+    expect(supabasePrivateStore(deps(fakeFetch(() => new Response("")).f)).ownsKey("anything")).toBe(true);
+  });
+  it("sorting a private item sends your sign-in and says it's private", async () => {
+    const { f, calls } = fakeFetch(() => new Response(JSON.stringify({ categories: ["health"] })));
+    expect(await privateCategorizer(deps(f)).categorize("abcdef12")).toEqual(["health"]);
+    expect(calls[0]!.url).toBe("https://board.test/functions/v1/categorize");
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({ id: "abcdef12", private: true });
+    expect(header(calls[0]!, "Authorization")).toBe("Bearer tok");
+    expect(await privateCategorizer(deps(f, null)).categorize("abcdef12")).toBeNull();
+  });
+});
+
+describe("public or your own", () => {
+  it("signed out is always public; signing in opens your own, unless you chose public before or a public idea's link is opening", () => {
+    expect(startingMode({ signedIn: false, remembered: "mine", openingPublicIdea: false })).toBe("public");
+    expect(startingMode({ signedIn: true, remembered: null, openingPublicIdea: false })).toBe("mine");
+    expect(startingMode({ signedIn: true, remembered: "public", openingPublicIdea: false })).toBe("public");
+    expect(startingMode({ signedIn: true, remembered: "mine", openingPublicIdea: true })).toBe("public");
+    expect([modeAfterSignIn(true), modeAfterSignIn(false)]).toEqual(["mine", "public"]);
+  });
+});

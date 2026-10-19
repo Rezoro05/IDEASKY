@@ -140,6 +140,19 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .account-email { margin: 0 0 4px; padding-bottom: 8px; border-bottom: 1px solid #ECEEF2; font: 400 12px/1.4 var(--font-mono); color: #6B7280; overflow-wrap: anywhere; }
 .account-menu button { align-self: flex-start; padding: 2px 0; border: 0; background: none; cursor: pointer; font: 500 14px/1.4 var(--font-body); color: #14171B; }
 .account-menu button:hover, .account-menu button:focus-visible { outline: none; color: var(--tone-cobalt); text-decoration: underline; }
+/* Your own sky and sea (islands/mode-switch). The "Public" button sits left of the initial; pressed, it shows everyone's.
+   In your own, what is shared is private: no name or email on the note, and no likes, comments, sharing or updates on a letter. */
+.account { display: flex; align-items: center; gap: 12px; }
+.account-public { padding: 7px 12px; border: 1px solid color-mix(in srgb, var(--sky-text) 45%, transparent); border-radius: 999px; background: transparent; cursor: pointer;
+  font: 500 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--sky-text); transition: background .2s, color .2s, border-color .2s; }
+[data-depth="sea"] .account-public { color: var(--sea-text); border-color: color-mix(in srgb, var(--sea-text) 45%, transparent); }
+.account-public[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.account-public:hover { border-color: var(--accent); }
+.account-public:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; }
+.account-public[hidden] { display: none; }
+[data-mode="mine"] .note-who { display: none; }
+[data-mode="mine"] #letter :is(.act-like, .act-comment, .act-share, .act-add, .thread, .updates) { display: none !important; }
+
 .signin-lede { margin: 0; font: 400 15px/1.5 var(--font-body); color: #3B4150; }
 .signin-ask, .signin-sent { display: flex; flex-direction: column; gap: 16px; }
 .signin-ask[hidden], .signin-sent[hidden], .signin-google-wrap[hidden] { display: none; }

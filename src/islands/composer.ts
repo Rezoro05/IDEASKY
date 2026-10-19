@@ -17,6 +17,8 @@ const FOLD_MS = 700, FLIGHT_MS = 1300, SCROLL_WAIT_MS = 3000, THROW_SPEED = 180;
 const NOT_SAVED = "The public board couldn’t save your idea just now, so for now only you can see your plane.";
 const UP_NO_MOTION = "Your idea is up. Anyone can open it and read it.";
 const DREAM_NO_MOTION = "Your dream is in the sea. Anyone can open it and read it.";
+const PRIVATE_UP = "Your idea is in your own sky. Only you can see it.";
+const PRIVATE_DREAM = "Your dream is in your own sea. Only you can see it.";
 const DREAM_NOT_SAVED = "The sea couldn’t keep your dream just now, so for now only you can see your fish.";
 
 /** The same paper for both: the Idea Note (sky) and the Dream Note (sea). Only the words differ. */
@@ -26,8 +28,11 @@ const WORDS: Record<Mode, { title: string; field: string; placeholder: string; m
   dream: { title: "Share your dream", field: "The dream", placeholder: "Tell a dream you had", mic: "Speak your dream", empty: "Write your dream first." },
 };
 
-export function startComposer(opts: { board: Board; sky: Sky | null; sea?: SeaBoard; inbox: Inbox; reducedMotion: boolean; dictation?: Dictation; now?: () => number }): void {
+export function startComposer(opts: { board: Board; sky: Sky | null; sea?: SeaBoard; inbox: Inbox; reducedMotion: boolean; dictation?: Dictation; now?: () => number;
+  /** In your own sky and sea: what you share is private, so it isn't emailed to the site's owner and has no name. */
+  isPrivate?: () => boolean }): void {
   const { board, sky, inbox } = opts;
+  const isPrivate = opts.isPrivate ?? (() => false);
   const dictation = opts.dictation ?? { stop() {}, reset() {} };
   const now = opts.now ?? Date.now;
   const form = byId<HTMLFormElement>("note-form"), err = byId("note-error");
@@ -85,13 +90,13 @@ export function startComposer(opts: { board: Board; sky: Sky | null; sea?: SeaBo
       return;
     }
     err.hidden = true;
-    if (mode === "dream" && opts.sea) { sendDream(opts.sea, { id: newRecordId(randomBytes(8)), ...check.idea, stage: "idea", at: now(), kind: "dream" }, check.email); return; }
-    const idea: Idea = { id: newRecordId(randomBytes(8)), ...check.idea, stage: "idea", at: now() };
-    inbox.send(idea, check.email, location.href);
+    if (mode === "dream" && opts.sea) { sendDream(opts.sea, { id: newRecordId(randomBytes(8)), ...check.idea, ...(isPrivate() ? { name: "" } : {}), stage: "idea", at: now(), kind: "dream" }, check.email); return; }
+    const idea: Idea = { id: newRecordId(randomBytes(8)), ...check.idea, ...(isPrivate() ? { name: "" } : {}), stage: "idea", at: now() };
+    if (!isPrivate()) inbox.send(idea, check.email, location.href);
     if (opts.reducedMotion || !sky) {
       const saving = board.post(idea);
       board.sync(); sent(saving);
-      say(UP_NO_MOTION);
+      say(isPrivate() ? PRIVATE_UP : UP_NO_MOTION);
       return;
     }
     const r = form.getBoundingClientRect();
@@ -103,8 +108,8 @@ export function startComposer(opts: { board: Board; sky: Sky | null; sea?: SeaBo
 
   /** A dream folds into a fish that swims down to its place in the sea; with reduced motion it simply joins the list. */
   function sendDream(sea: SeaBoard, dream: Idea, email: string): void {
-    inbox.send(dream, email, location.href);
-    if (opts.reducedMotion) { sent(sea.post(dream), DREAM_NOT_SAVED); say(DREAM_NO_MOTION); return; }
+    if (!isPrivate()) inbox.send(dream, email, location.href);
+    if (opts.reducedMotion) { sent(sea.post(dream), DREAM_NOT_SAVED); say(isPrivate() ? PRIVATE_DREAM : DREAM_NO_MOTION); return; }
     const r = form.getBoundingClientRect(), start = v(r.left + r.width / 2, r.top + r.height / 2);
     const saving = sea.post(dream, { arriving: true });
     form.classList.add("folding");

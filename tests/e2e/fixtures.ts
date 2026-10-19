@@ -5,7 +5,9 @@ import { createHash } from "node:crypto";
 /** Fake the outside world: the test build points at board.test and inbox.test (see build:test), and both are intercepted here. */
 export type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[]; categories?: string[] | null; kind?: "idea" | "dream" };
 export type CommentRow = Row & { idea_id: string; parent_id?: string | null };
-export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean; signInLinks?: { email: string; redirect: string }[]; signInStatus?: number; signOuts?: number; google?: boolean; googleTrips?: string[] };
+export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean; signInLinks?: { email: string; redirect: string }[]; signInStatus?: number; signOuts?: number; google?: boolean; googleTrips?: string[]; privateItems?: PrivateRow[]; privateRequests?: { method: string; owner: string | null }[] };
+/** A row of the private table as the database keeps it: the owner is whoever was signed in when it was added. */
+export type PrivateRow = { id: string; owner: string; kind: "idea" | "dream"; name: string; message: string; links: unknown[]; stage: string; categories: string[] | null; created_at: string };
 export async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [], mails: 0 }) {
   // The first-visit hint plays over the sky for ~10 s; most tests are not first visits (tests/e2e/hint.spec.ts shows it).
   if (!board.firstVisit) await page.addInitScript(() => { try { localStorage.setItem("skyofideas.hint.cage", "1"); } catch { /* none */ } });
@@ -13,6 +15,27 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
   await page.route("https://board.test/**", async (r: Route) => {
     if (board.down) return r.fulfill({ status: 500, body: "down" });
     const url = r.request().url(), method = r.request().method();
+    if (url.includes("/rest/v1/private_items")) { // as the database's owner-only rules: each signed-in person sees and changes only their own rows
+      const bearer = r.request().headers()["authorization"] ?? "", owner = ownerOf(bearer);
+      (board.privateRequests ??= []).push({ method, owner });
+      if (!owner) return r.fulfill({ status: 401, json: { message: "JWT required" } });
+      const items = (board.privateItems ??= []), id = new URL(url).searchParams.get("id")?.replace(/^eq\./, "");
+      if (method === "GET") {
+        const kind = new URL(url).searchParams.get("kind")?.replace(/^eq\./, "");
+        return r.fulfill({ json: items.filter((x) => x.owner === owner && (!kind || x.kind === kind)).sort((a, b) => b.created_at.localeCompare(a.created_at)) });
+      }
+      if (method === "POST") {
+        const b = r.request().postDataJSON();
+        items.push({ id: b.id, owner, kind: b.kind ?? "idea", name: b.name ?? "", message: b.message, links: b.links ?? [], stage: "idea", categories: null, created_at: new Date().toISOString() });
+        return r.fulfill({ status: 201, body: "" });
+      }
+      if (method === "DELETE") {
+        const gone = items.filter((x) => x.id === id && x.owner === owner);
+        board.privateItems = items.filter((x) => !(x.id === id && x.owner === owner));
+        return r.fulfill({ json: gone });
+      }
+      return r.fulfill({ status: 405, body: "" });
+    }
     if (url.includes("/auth/v1/")) { // Supabase Auth: the magic link is "sent" (recorded), sign-out is counted
       if (url.includes("/auth/v1/otp")) {
         if (board.signInStatus && board.signInStatus !== 200) return r.fulfill({ status: board.signInStatus, body: "{}" });
@@ -29,7 +52,14 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
       return r.fulfill({ status: 400, json: { error: "unexpected in tests" } });
     }
     if (url.endsWith("/functions/v1/categorize")) { // the Edge Function that asks Jev
-      const { id } = r.request().postDataJSON();
+      const { id, private: isPrivate } = r.request().postDataJSON();
+      if (isPrivate) { // a private item: read and saved as its signed-in owner
+        const owner = ownerOf(r.request().headers()["authorization"] ?? ""), row = board.privateItems?.find((x) => x.id === id && x.owner === owner);
+        (board.categorizeCalls ??= []).push(`private:${id}`);
+        if (!row) return r.fulfill({ status: 404, json: { categories: null } });
+        if (!row.categories || row.categories.length === 0) row.categories = board.categorize ?? ["tech"];
+        return r.fulfill({ json: { categories: row.categories } });
+      }
       (board.categorizeCalls ??= []).push(id);
       if (board.categorizeDown) return r.fulfill({ status: 502, json: { categories: null } });
       const categories = board.categorize ?? ["tech"], row = board.rows.find((x) => x.id === id);
@@ -128,6 +158,13 @@ export const gioRow = { id: "zzzzzz1", name: "Gio", message: "Night markets", cr
 export const dreamRow = (id: string, message: string, categories: string[] | null, hoursAgo = 1): Row =>
   ({ id, name: "Anonymous", message, created_at: new Date(Date.now() - hoursAgo * 3_600_000).toISOString(), kind: "dream", categories });
 export const withGio = (): Board => ({ rows: [{ ...gioRow }], posts: [], deletes: [], mails: 0 });
+
+/** Who is signed in, from a request's "Authorization: Bearer <token>" (the token's claims; tests don't sign tokens). */
+function ownerOf(bearer: string): string | null {
+  const part = bearer.replace(/^Bearer /, "").split(".")[1];
+  if (!part) return null;
+  try { return JSON.parse(Buffer.from(part, "base64url").toString()).sub ?? null; } catch { return null; }
+}
 
 /** What a sign-in link brings back in the address: a token shaped like Supabase's (its signature isn't checked by the page). */
 export function signInReturn(email: string, id = "user-1"): string {

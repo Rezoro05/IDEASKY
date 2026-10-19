@@ -3,9 +3,6 @@ import { ideaName, ideaNumbers, newestIdeas, previewLine, IDEA_LIMITS, type Idea
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { Categorizer } from "../boundaries/categorizer";
 import { needsSorting } from "../lib/categories";
-
-/** At most this many old ideas are sent for sorting per load, so a visit never sends a burst. */
-const RESORT_PER_LOAD = 6;
 import { v, type Vec } from "../lib/vec";
 import { shownStage } from "../lib/stages";
 import { SHOW_STAGES } from "../content/site";
@@ -27,9 +24,18 @@ export type Board = {
   sync(): void;
   /** Resolves once the board has its first list of ideas (so a link to one can be opened). */
   loaded: Promise<void>;
+  /** Show another source's ideas instead (public ⇄ private): the sky empties and fills again from it. */
+  use(source: Source): void;
+  /** The store shown now. */
+  store(): Promise<IdeaStore>;
 };
 
 const NEW_IDEA_SPEED = 40;
+/** At most this many old ideas are sent for sorting per load, so a visit never sends a burst. */
+const RESORT_PER_LOAD = 6;
+
+/** Where the board's ideas come from: the public store, or the signed-in visitor's private one; each with its own sorter. */
+export type Source = { store: Promise<IdeaStore>; categorizer?: Categorizer };
 
 export function startBoard(opts: {
   sky: Sky | null; store: Promise<IdeaStore>; random?: () => number; openIdea: (id: string, origin: Vec) => void;
@@ -42,16 +48,23 @@ export function startBoard(opts: {
   const unsaved = new Set<string>(), inFlight = new Set<string>();
   let markLoaded = () => {};
   const loaded = new Promise<void>((resolve) => { markLoaded = resolve; });
-  opts.store.then((s) => s.subscribe((ideas) => {
-    for (const id of unsaved) { const n = all.get(id); if (n) ideas.set(id, n); } // keep this visit's unsaved ideas
-    all = ideas;
-    sync();
-    markLoaded();
-    sortTheUnsorted();
-  }));
+  /** The source shown now; `gen` counts switches, so an answer from a source no longer shown is ignored. */
+  let source: Source = { store: opts.store, categorizer: opts.categorizer }, gen = 0;
+  const asked = new Set<string>();
+  function listen(): void {
+    const g = ++gen;
+    source.store.then((s) => s.subscribe((ideas) => {
+      if (g !== gen) return;
+      for (const id of unsaved) { const n = all.get(id); if (n) ideas.set(id, n); } // keep this visit's unsaved ideas
+      all = ideas;
+      sync();
+      markLoaded();
+      sortTheUnsorted();
+    }));
+  }
+  listen();
 
   /** Ideas shown without categories (never sorted, or sorted with none under the old rule) are sorted now, once per visit, a few at a time. */
-  const asked = new Set<string>();
   function sortTheUnsorted(): void {
     const due = newestIdeas(all.values(), IDEA_LIMITS.inSky).filter((n) => needsSorting(n.categories) && !unsaved.has(n.id) && !asked.has(n.id)).slice(0, RESORT_PER_LOAD);
     for (const n of due) { asked.add(n.id); sortIntoCategories(n.id); }
@@ -104,9 +117,10 @@ export function startBoard(opts: {
 
   function sortIntoCategories(id: string): void {
     asked.add(id);
-    opts.categorizer?.categorize(id).then((categories) => {
+    const g = gen;
+    source.categorizer?.categorize(id).then((categories) => {
       const idea = all.get(id);
-      if (!categories || !idea) return;
+      if (!categories || !idea || g !== gen) return;
       const sorted = { ...idea, categories };
       all.set(id, sorted);
       sync(); // it joins its flock
@@ -117,9 +131,9 @@ export function startBoard(opts: {
   return {
     async post(idea) {
       all.set(idea.id, idea); unsaved.add(idea.id);
-      const s = await opts.store;
+      const g = gen, s = await source.store;
       const saved = await s.add(idea);
-      if (saved) { unsaved.delete(idea.id); sortIntoCategories(idea.id); }
+      if (saved && g === gen) { unsaved.delete(idea.id); sortIntoCategories(idea.id); }
       return saved;
     },
     get: (id) => all.get(id),
@@ -130,5 +144,12 @@ export function startBoard(opts: {
     forget(id) { all.delete(id); unsaved.delete(id); sync(); },
     sync,
     loaded,
+    store: () => source.store,
+    use(next) {
+      source = next;
+      all = new Map(); unsaved.clear(); inFlight.clear(); asked.clear();
+      sync();
+      listen();
+    },
   };
 }

@@ -12,7 +12,7 @@ export type StagePanel = { open(idea: Idea): void; close(): void };
 
 const MOVE_FAILED = "Couldn’t move it just now. Try again in a moment.";
 
-export function startStagePanel(opts: { store: Promise<IdeaStore>; moved: (idea: Idea) => void }): StagePanel {
+export function startStagePanel(opts: { store: () => Promise<IdeaStore>; moved: (idea: Idea) => void }): StagePanel {
   const track = byId("stage-track"), error = byId("stage-error");
   const bar = track.querySelector<HTMLElement>(".stage-bar")!;
   const radios = [...track.querySelectorAll<HTMLInputElement>("input[type=radio]")];
@@ -82,7 +82,7 @@ export function startStagePanel(opts: { store: Promise<IdeaStore>; moved: (idea:
       const mine = ++token;
       idea = next; moving = false; dragging = false; error.hidden = true; owner = false;
       render();
-      store = await opts.store;
+      store = await opts.store();
       if (mine !== token) return;
       owner = store.ownsKey(next.id);
       render();

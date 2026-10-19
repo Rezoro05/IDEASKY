@@ -34,6 +34,9 @@ import { browserSpeech } from "../boundaries/speech";
 import { noCategorizer, supabaseCategorizer } from "../boundaries/categorizer";
 import { memoryAuth, supabaseAuth, type Auth } from "../boundaries/auth";
 import { startAccount } from "./account";
+import { startModeSwitch, type Sources } from "./mode-switch";
+import { privateCategorizer, supabasePrivateStore } from "../boundaries/privateStore";
+import type { User } from "../lib/account";
 import { settingsSource, startScenes, type Scenes } from "./scene";
 import { DEFAULTS, mergeSettings, presetSettings } from "../lib/scene-settings";
 import { startStudio } from "./studio";
@@ -73,6 +76,19 @@ function chooseStores(): Stores {
 function chooseAuth(): Auth {
   if (!PUBLIC_BOARD.url) return memoryAuth();
   return supabaseAuth({ url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window), storage: safeStorage() });
+}
+
+/** A signed-in visitor's own ideas and dreams: in Supabase (only they can read them), or in memory for the visit (local runs, the preview). */
+function ownSources(auth: Auth): (user: User) => Sources {
+  return () => {
+    if (!PUBLIC_BOARD.url) return { ideas: { store: Promise.resolve(memoryStore()) }, dreams: { store: Promise.resolve(memoryStore()) } };
+    const base = { url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window), token: () => auth.token() };
+    const categorizer = privateCategorizer(base);
+    return {
+      ideas: { store: Promise.resolve(supabasePrivateStore({ ...base, kind: "idea" })), categorizer },
+      dreams: { store: Promise.resolve(supabasePrivateStore({ ...base, kind: "dream" })), categorizer },
+    };
+  };
 }
 
 /** The 3D backgrounds start once the picture is up and the page has had a moment; #studio opens their control center. */
@@ -136,6 +152,7 @@ export function startSite(): void {
   if (profile !== "none") startBackgrounds();
 
   const stores = Promise.resolve(chooseStores());
+  let isMine = () => false; // set once the mode switch starts (below)
   const categorizer = PUBLIC_BOARD.url ? supabaseCategorizer({ url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window) }) : noCategorizer;
   const sea = startSea({
     field: byId("sea-field"), surface: byId("sea"), net: byId("fish-net"), list: profile === "none" ? byId<HTMLUListElement>("dreams-list") : null,
@@ -155,10 +172,10 @@ export function startSite(): void {
   const likes = startLikes({ store: stores.then((s) => s.likes) });
   let ideaMoved = (_idea: Idea) => {};
   const updates = startUpdates({ store: stores.then((s) => s.updates), opened: opened("update") });
-  const stage = startStagePanel({ store: stores.then((s) => s.ideas), moved: (idea) => ideaMoved(idea) });
+  const stage = startStagePanel({ store: () => board.store(), moved: (idea) => ideaMoved(idea) });
   const ideaStore = stores.then((s) => s.ideas);
   const removal = startRemoval({
-    store: ideaStore, dreamStore: stores.then((s) => s.dreams),
+    store: () => board.store(), dreamStore: () => sea.store(),
     removed: (idea) => { if (idea.kind === "dream") sea.forget(idea.id); else board.forget(idea.id); letter.dismiss(); }, opened: opened("remove"),
   });
   const share = startShare({ linkTo: (id) => ideaLink(location.href, id), nav: navigator });
@@ -170,6 +187,7 @@ export function startSite(): void {
     sky, sea, ideaOf: recordOf, nameOf: nameOfRecord,
     hooks: {
       opened: (idea) => {
+        if (isMine()) { removal.open(idea); return; } // your own: no likes, comments, sharing or updates; only you see it
         thread.open(idea.id); likes.open(idea.id); removal.open(idea); share.open(idea.id);
         if (idea.kind === "dream") { stage.close(); updates.close(); } else { stage.open(idea); updates.open(idea.id); }
       },
@@ -181,9 +199,18 @@ export function startSite(): void {
   commentPosted = letter.foldAfterComment;
   openPlane = letter.open;
   const dictation = startDictation({ speech: browserSpeech(), button: byId<HTMLButtonElement>("note-mic"), field: byId<HTMLTextAreaElement>("note-msg"), status: byId("note-mic-status"), lang: navigator.language || "en-US" });
-  startComposer({ board, sky, sea, reducedMotion, inbox, dictation });
+  startComposer({ board, sky, sea, reducedMotion, inbox, dictation, isPrivate: () => isMine() });
   const say = startToast();
-  startAccount({ auth: chooseAuth(), say });
+  const auth = chooseAuth();
+  const modes = startModeSwitch({
+    auth, board, sea, storage: safeStorage(), say,
+    everyone: { ideas: { store: ideaStore, categorizer }, dreams: { store: stores.then((s) => s.dreams), categorizer } },
+    ownedBy: ownSources(auth),
+    openingPublicIdea: !!linkedIdeaId(location.hash),
+    switching: () => letter.dismiss(),
+  });
+  isMine = () => modes.mode() === "mine";
+  startAccount({ auth, say });
   board.sync();
 
   /** A link to one idea (#idea-<id>) opens it once the board has loaded; a link to one that is gone says so. */

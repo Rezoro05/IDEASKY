@@ -8,9 +8,7 @@ import type { Bounds } from "../lib/sim";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { Categorizer } from "../boundaries/categorizer";
 import { needsSorting } from "../lib/categories";
-
-/** At most this many old dreams are sent for sorting per load, so a visit never sends a burst. */
-const RESORT_PER_LOAD = 6;
+import type { Source } from "./board";
 import { BOLT_SCALE, DART_SPEED, boltAway, dartAway, fishDrop, startledBy } from "../lib/net";
 import { nearestWithin, reachFor, slackFor, type Rect } from "../lib/cage";
 import { v, type Vec } from "../lib/vec";
@@ -19,6 +17,9 @@ import { keepLongPressAway, keyboardFocus } from "./dom";
 
 /** A mouse that hasn't moved for this long counts as still (as in the sky). */
 const MOUSE_STILL_MS = 120;
+
+/** At most this many old dreams are sent for sorting per load, so a visit never sends a burst. */
+const RESORT_PER_LOAD = 6;
 
 /** How many fish swim at once (the newest dreams). */
 export const DREAMS_IN_SEA = 16;
@@ -36,6 +37,10 @@ export type SeaBoard = {
   screenPointOf(id: string): Vec | null;
   /** Resolves once the sea has its first list of dreams. */
   loaded: Promise<void>;
+  /** Show another source's dreams instead (public ⇄ private): the sea empties and fills again from it. */
+  use(source: Source): void;
+  /** The store shown now. */
+  store(): Promise<IdeaStore>;
 };
 
 /** A dream's school: its most likely theme (Jev lists them most likely first); none yet = a loner. */
@@ -105,22 +110,30 @@ export function startSea(opts: {
     }
   }
 
-  opts.store.then((s) => s.subscribe((all) => {
-    for (const id of unsaved) { const d = dreams.get(id); if (d) all.set(id, d); } // keep this visit's unsaved dreams
-    dreams = all; sync(); markLoaded();
-    sortTheUnsorted();
-  }));
-  /** Dreams shown without themes (never sorted, or sorted with none under the old rule) are sorted now, once per visit, a few at a time. */
+  /** The source shown now; `gen` counts switches, so an answer from a source no longer shown is ignored. */
+  let source: Source = { store: opts.store, categorizer: opts.categorizer }, gen = 0;
   const asked = new Set<string>();
+  function listen(): void {
+    const g = ++gen;
+    source.store.then((s) => s.subscribe((all) => {
+      if (g !== gen) return;
+      for (const id of unsaved) { const d = dreams.get(id); if (d) all.set(id, d); } // keep this visit's unsaved dreams
+      dreams = all; sync(); markLoaded();
+      sortTheUnsorted();
+    }));
+  }
+  listen();
+  /** Dreams shown without themes (never sorted, or sorted with none under the old rule) are sorted now, once per visit, a few at a time. */
   function sortTheUnsorted(): void {
     const due = newestIdeas(dreams.values(), DREAMS_IN_SEA).filter((d) => needsSorting(d.categories) && !unsaved.has(d.id) && !asked.has(d.id)).slice(0, RESORT_PER_LOAD);
     for (const d of due) sortIntoThemes(d.id);
   }
   function sortIntoThemes(id: string): void {
     asked.add(id);
-    opts.categorizer?.categorize(id).then((categories) => {
+    const g = gen;
+    source.categorizer?.categorize(id).then((categories) => {
       const d = dreams.get(id);
-      if (!categories || !d) return;
+      if (!categories || !d || g !== gen) return;
       const sorted = { ...d, categories };
       dreams.set(id, sorted); sync(); opts.changed?.(sorted);
     });
@@ -257,12 +270,20 @@ export function startSea(opts: {
       dreams.set(dream.id, dream); unsaved.add(dream.id);
       if (how.arriving) arriving.add(dream.id);
       sync();
-      const saved = await (await opts.store).add(dream);
-      if (saved) { unsaved.delete(dream.id); sortIntoThemes(dream.id); }
+      const g = gen, saved = await (await source.store).add(dream);
+      if (saved && g === gen) { unsaved.delete(dream.id); sortIntoThemes(dream.id); }
       return saved;
     },
     landed(id) { arriving.delete(id); els.get(id)?.classList.remove("arriving"); },
     forget(id) { dreams.delete(id); unsaved.delete(id); if (netted?.slug === id) netted = null; if (held?.slug === id) { held = null; sea.classList.remove("holding-fish"); } sync(); },
     screenPointOf(id) { const body = els.get(id)?.querySelector(".body"); return body ? centreOf(body) : null; },
+    store: () => source.store,
+    use(next) {
+      source = next;
+      dreams = new Map(); unsaved.clear(); arriving.clear(); asked.clear(); netted = null;
+      if (held) { held = null; sea.classList.remove("holding-fish"); }
+      sync();
+      listen();
+    },
   };
 }

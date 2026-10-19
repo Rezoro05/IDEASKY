@@ -8,11 +8,15 @@ export const SITE = {
 export const SEA = {
   headline: "Sea of Dreams",
   lede: "Dreams people had, set free to swim. Share yours and watch it find its school.",
+  /** Signed in, in your own sea. */
+  mineLede: "Your own sea. Dreams you share here are private: only you can see them.",
 } as const;
 
 export const HERO = {
   headline: "Sky of Ideas",
   lede: "Idea without execution is just a thought exercise. Let yours fly into this sky as a bird, where anyone can catch it, read it, and maybe bring it to life.",
+  /** Signed in, in your own sky. */
+  mineLede: "Your own sky. Ideas you share here are private: only you can see them.",
 } as const;
 
 /* Services come from the build environment, so nothing points at a real service by accident.
