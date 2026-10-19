@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 /** Fake the outside world: the test build points at board.test and inbox.test (see build:test), and both are intercepted here. */
 export type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[]; categories?: string[] | null; kind?: "idea" | "dream" };
 export type CommentRow = Row & { idea_id: string; parent_id?: string | null };
-export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean; signInLinks?: { email: string; redirect: string }[]; signInStatus?: number; signOuts?: number };
+export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean; signInLinks?: { email: string; redirect: string }[]; signInStatus?: number; signOuts?: number; google?: boolean; googleTrips?: string[] };
 export async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [], mails: 0 }) {
   // The first-visit hint plays over the sky for ~10 s; most tests are not first visits (tests/e2e/hint.spec.ts shows it).
   if (!board.firstVisit) await page.addInitScript(() => { try { localStorage.setItem("skyofideas.hint.cage", "1"); } catch { /* none */ } });
@@ -18,6 +18,12 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
         if (board.signInStatus && board.signInStatus !== 200) return r.fulfill({ status: board.signInStatus, body: "{}" });
         (board.signInLinks ??= []).push({ email: r.request().postDataJSON().email, redirect: new URL(url).searchParams.get("redirect_to") ?? "" });
         return r.fulfill({ json: {} });
+      }
+      if (url.includes("/auth/v1/settings")) return r.fulfill({ json: { external: { email: true, google: board.google === true } } });
+      if (url.includes("/auth/v1/authorize")) { // the trip to Google and back, in one step: straight back to redirect_to, signed in
+        const back = new URL(url).searchParams.get("redirect_to") ?? "";
+        (board.googleTrips ??= []).push(back);
+        return r.fulfill({ status: 302, headers: { location: back + signInReturn("rez@gmail.com", "google-user") } });
       }
       if (url.includes("/auth/v1/logout")) { board.signOuts = (board.signOuts ?? 0) + 1; return r.fulfill({ status: 204, body: "" }); }
       return r.fulfill({ status: 400, json: { error: "unexpected in tests" } });

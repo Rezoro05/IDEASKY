@@ -142,7 +142,16 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .account-menu button:hover, .account-menu button:focus-visible { outline: none; color: var(--tone-cobalt); text-decoration: underline; }
 .signin-lede { margin: 0; font: 400 15px/1.5 var(--font-body); color: #3B4150; }
 .signin-ask, .signin-sent { display: flex; flex-direction: column; gap: 16px; }
-.signin-ask[hidden], .signin-sent[hidden] { display: none; }
+.signin-ask[hidden], .signin-sent[hidden], .signin-google-wrap[hidden] { display: none; }
+.signin-google-wrap { display: flex; flex-direction: column; gap: 14px; }
+.signin-google { display: inline-flex; align-items: center; justify-content: center; gap: 12px; padding: 11px 16px; border: 1px solid #DADCE0; border-radius: 4px;
+  background: #FFFFFF; color: #1F1F1F; cursor: pointer; font: 500 14px/1.2 var(--font-body); transition: background .2s, box-shadow .2s; }
+.signin-google svg { width: 18px; height: 18px; flex: none; }
+.signin-google:hover { background: #F7F8F8; box-shadow: 0 1px 3px rgba(60,64,67,.25); }
+.signin-google:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; }
+.signin-google:disabled { opacity: .6; cursor: progress; }
+.signin-or { display: flex; align-items: center; gap: 12px; margin: 0; font: 500 10px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: #8A8F9C; }
+.signin-or::before, .signin-or::after { content: ""; flex: 1; height: 1px; background: #E6E8EC; }
 
 /* Dive and Surface: plain text links on the water and in the sea */
 .dive-link { padding: 6px 0; border: 0; background: none; cursor: pointer; font: 500 11px/1.3 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--sky-text); }

@@ -118,6 +118,16 @@ describe("Supabase sign-in", () => {
     expect((calls[0]!.init.headers as Record<string, string>).Authorization).toBe(`Bearer ${TOKEN}`);
   });
 
+  it("Google: on only when the service says so; the trip goes to the service's Google sign-in and back here", async () => {
+    const on = fakeFetch(() => new Response(JSON.stringify({ external: { email: true, google: true } })));
+    expect(await supabaseAuth(opts(on.f)).google()).toBe(true);
+    expect(on.calls[0]!.url).toBe("https://board.test/auth/v1/settings");
+    expect(await supabaseAuth(opts(fakeFetch(() => new Response(JSON.stringify({ external: { google: false } }))).f)).google()).toBe(false);
+    expect(await supabaseAuth(opts(fakeFetch(() => new Response("", { status: 500 })).f)).google()).toBe(false);
+    expect(await supabaseAuth(opts(fakeFetch(() => { throw new Error("offline"); }).f)).google()).toBe(false);
+    expect(await supabaseAuth(opts(on.f)).withGoogle("https://site.test/IDEASKY/")).toEqual({ go: "https://board.test/auth/v1/authorize?provider=google&redirect_to=https%3A%2F%2Fsite.test%2FIDEASKY%2F" });
+  });
+
   it("a broken stored session is ignored", () => {
     const storage = memoryStorage();
     storage.setItem(SESSION_ITEM, "{not json");
@@ -134,5 +144,8 @@ describe("pretend sign-in (no service)", () => {
     await auth.signOut();
     expect(seen).toEqual([null, "rez@example.com", null]);
     expect(await auth.token()).toBeNull();
+    expect(await auth.google()).toBe(true);
+    expect(await auth.withGoogle("x")).toBe("signed-in");
+    expect(auth.user()?.email).toBe("you@gmail.com");
   });
 });

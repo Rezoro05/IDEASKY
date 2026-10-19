@@ -63,6 +63,23 @@ test.describe("sign-in (email link)", () => {
     expect(errors).toEqual([]);
   });
 
+  test("Continue with Google shows only once Google is turned on, and comes back signed in", async ({ page }) => {
+    const board = await fakeServices(page, fresh());
+    await page.goto("/");
+    await page.locator("#account-signin").click(); await settled(page);
+    await expect(page.locator("#signin-email")).toBeVisible();
+    await expect(page.locator("#signin-google")).toBeHidden(); // not set up in Supabase yet: no button that would fail
+    await page.keyboard.press("Escape");
+    board.google = true; // turned on in Supabase: the next visit offers it
+    await page.reload();
+    await page.locator("#account-signin").click(); await settled(page);
+    await page.locator("#signin-google").click();
+    await expect(page.locator("#account-initial")).toHaveText("R");
+    await expect(page.locator("#toast")).toHaveText("Signed in as rez@gmail.com.");
+    expect(board.googleTrips).toEqual(["http://127.0.0.1:4329/"]);
+    await expect(page).toHaveURL("http://127.0.0.1:4329/");
+  });
+
   test("an expired link says so and leaves the visitor signed out", async ({ page }) => {
     await fakeServices(page, fresh());
     await page.goto("/#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired");

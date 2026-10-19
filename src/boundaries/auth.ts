@@ -1,4 +1,5 @@
-/** Sign-in, behind a small interface: Supabase Auth over plain fetch (email magic link), or in memory for previews and tests.
+/** Sign-in, behind a small interface: Supabase Auth over plain fetch (email magic link, or Google), or in memory for previews and tests.
+ *  Both ways come back to the page the same way: the session in the address (#access_token=…), taken by `accept`.
  *  Keeps the session in the browser and renews it before it runs out. Never throws: every failure comes back as a value the page can say. */
 import { needsRenewal, parseSession, sessionFrom, type Session, type Tokens, type User } from "../lib/account";
 
@@ -11,6 +12,10 @@ export interface Auth {
   onChange(fn: (user: User | null) => void): void;
   /** Email a sign-in link that brings the visitor back to `returnTo`. In memory: signs in at once ("signed-in"). */
   sendLink(email: string, returnTo: string): Promise<SendResult>;
+  /** Whether Google sign-in is turned on in the service (so the page shows its button only then). */
+  google(): Promise<boolean>;
+  /** Sign in with Google: the address to send the visitor to (Google, then back to `returnTo` with the session), or "signed-in" in memory. */
+  withGoogle(returnTo: string): Promise<{ go: string } | "signed-in">;
   /** Take the session a sign-in link brought back. False if it isn't usable. */
   accept(tokens: Tokens): boolean;
   /** A fresh access token for a request (renewed first if it is about to run out), or null when signed out. */
@@ -67,6 +72,17 @@ export function supabaseAuth(opts: { url: string; key: string; fetch: typeof fet
         return "failed";
       } catch { return "failed"; }
     },
+    async google() {
+      try {
+        const res = await opts.fetch(`${opts.url}/auth/v1/settings`, { headers: headers(), cache: "no-store" }); // turned on later: seen at once
+        if (!res.ok) return false;
+        const body = await res.json() as { external?: { google?: boolean } };
+        return body.external?.google === true;
+      } catch { return false; }
+    },
+    async withGoogle(returnTo) {
+      return { go: `${opts.url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(returnTo)}` };
+    },
     accept(tokens) {
       const next = sessionFrom(tokens, now());
       if (!next) return false;
@@ -97,6 +113,8 @@ export function memoryAuth(start: User | null = null): Auth {
     user: () => user,
     onChange: (fn) => heard.add(fn, user),
     async sendLink(email) { set({ id: `local-${email}`, email }); return "signed-in"; },
+    google: async () => true,
+    async withGoogle() { set({ id: "local-google", email: "you@gmail.com" }); return "signed-in"; },
     accept: () => false,
     token: async () => (user ? "local" : null),
     async signOut() { set(null); },

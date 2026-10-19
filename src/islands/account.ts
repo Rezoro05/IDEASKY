@@ -1,6 +1,6 @@
 /** The account, on the page: the "Sign in" link or the round initial (top right), its menu, and the sign-in note.
- *  The note: asking ⇄ invalid → sending → sent (check your email) | asking with an error (text kept). In memory (local runs, the preview)
- *  sending signs in at once. A sign-in link coming back (#access_token=… or #error=…) is taken on load and cleared from the address. */
+ *  The note: Continue with Google (leaves for Google, comes back signed in), or by email: asking ⇄ invalid → sending → sent (check your email)
+ *  | asking with an error (text kept). In memory (local runs, the preview) both sign in at once. A sign-in link coming back (#access_token=… or #error=…) is taken on load and cleared from the address. */
 import { authReturn, checkEmail, initialOf, returnAddress, type User } from "../lib/account";
 import type { Auth } from "../boundaries/auth";
 import { byId, cancelPendingOpen, hideOnEdit, openWithTransition } from "./dom";
@@ -54,7 +54,16 @@ export function startAccount(opts: { auth: Auth; say: (text: string) => void }):
   byId("account-signout").addEventListener("click", async () => { closeMenu(false); await auth.signOut(); say(SAYS.signedOut); signinBtn.focus({ preventScroll: true }); });
 
   // The sign-in note
-  function asking(): void { ask.hidden = false; sent.hidden = true; err.hidden = true; send.disabled = false; }
+  const google = byId<HTMLButtonElement>("signin-google");
+  function asking(): void { ask.hidden = false; sent.hidden = true; err.hidden = true; send.disabled = false; google.disabled = false; }
+  // Google shows only when it is turned on in the service, so a site pushed before the setup never offers a button that fails.
+  auth.google().then((on) => { byId("signin-google-wrap").hidden = !on; });
+  google.addEventListener("click", async () => {
+    google.disabled = true;
+    const result = await auth.withGoogle(returnAddress(location.href));
+    if (result === "signed-in") { const who = auth.user()?.email ?? ""; close(false); say(SAYS.signedIn(who)); return; }
+    location.assign(result.go); // to Google; it comes back here signed in (or with #error=…)
+  });
   function open(): void {
     form.reset(); asking();
     openWithTransition(overlay);
