@@ -43,7 +43,7 @@ export const DEFAULTS: Settings = {
     on: true,
     camera: { mode: "both", range: 40, speed: 0.6, smoothing: 0.94, zoom: 1, tilt: 0, turn: 0.5 },
     look: { depth: 1, brightness: 1, saturation: 1, size: 1, opacity: 1, fog: 0.45, blur: 0 },
-    elements: { seabed: element(), rocks: element(), kelp: element(1, 1), jellies: element(1, 1), whale: element(1, 1), snow: element(0.8, 1), shafts: element(1, 1) },
+    elements: { seabed: element(), rocks: element(), kelp: element(1, 1), jellies: element(1, 1), whale: element(1, 1), snow: { on: false, amount: 0.8, speed: 1 } /* owner, 2026-10-19: no snow (the studio can bring it back) */, shafts: element(1, 1) },
   },
   quality: "auto",
 };
