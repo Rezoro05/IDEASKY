@@ -218,6 +218,7 @@ export function startSite(): void {
     ownedBy: ownSources(auth),
     openingPublicIdea: !!linkedIdeaId(location.hash),
     switching: () => letter.dismiss(),
+    askToSignIn: () => document.getElementById("account-signin")?.click(),
   });
   isMine = () => modes.mode() === "mine";
   goPublic = startGoPublic({

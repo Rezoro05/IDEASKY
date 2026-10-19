@@ -52,7 +52,10 @@ const ld = { "@context": "https://schema.org", "@type": "WebSite", name: SITE.na
 </div>
 <div class="account" id="account">
   <button class="account-signin" type="button" id="account-signin" aria-haspopup="dialog">Sign in</button>
-  <button class="account-public" type="button" id="account-public" aria-pressed="false" hidden>Public</button>
+  <div class="board-switch" id="board-switch" role="radiogroup" aria-label="Which board">
+    <label><input type="radio" name="board" value="mine" id="board-mine"><span>Private</span></label>
+    <label><input type="radio" name="board" value="public" id="board-public" checked><span>Public</span></label>
+  </div>
   <button class="account-me" type="button" id="account-me" aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu" hidden><span id="account-initial"></span></button>
   <div class="account-menu" id="account-menu" role="menu" hidden>
     <p class="account-email" id="account-email"></p>

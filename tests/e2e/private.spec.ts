@@ -4,37 +4,55 @@ import { dreamRow, fakeServices, gioRow, settled, signInReturn, type Board } fro
 /** A public board with one idea and one dream, so "empty" really means "only yours". */
 const withPublic = (): Board => ({ rows: [{ ...gioRow, categories: ["food-drink"] }, dreamRow("dreampub1", "I could breathe underwater", ["water"])], posts: [], deletes: [], mails: 0 });
 const signIn = (page: Page, email = "rez@example.com", id = "user-1") => page.goto("/" + signInReturn(email, id));
-const publicBtn = (page: Page) => page.locator("#account-public");
+/** The Private | Public switch, top right. */
+const choose = (page: Page, board: "Private" | "Public") => page.locator("#board-switch label", { hasText: board }).click();
+const onPublic = (page: Page) => page.locator("#board-public");
+const onPrivate = (page: Page) => page.locator("#board-mine");
 
 test.describe("your own sky and sea", () => {
   test("signed out: the public sky, and no Public button", async ({ page }) => {
     await fakeServices(page, withPublic());
     await page.goto("/");
     await expect(page.locator(".plane")).toHaveCount(1);
-    await expect(publicBtn(page)).toBeHidden();
+    await expect(page.locator("#board-switch")).toBeVisible(); // both words, always
+    await expect(onPublic(page)).toBeChecked();
     await expect(page.locator("html")).toHaveAttribute("data-mode", "public");
+  });
+
+  test("signed out, choosing Private asks you to sign in; signing in then opens your own", async ({ page }) => {
+    await fakeServices(page, withPublic());
+    await page.goto("/");
+    await choose(page, "Private");
+    await expect(page.locator("#signin")).toBeVisible();
+    await expect(onPublic(page)).toBeChecked(); // still public until you are signed in
+    await expect(page.locator("html")).toHaveAttribute("data-mode", "public");
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#signin")).toBeHidden();
+    await page.goto("about:blank"); // the email link opens a fresh page
+    await page.goto("/" + signInReturn("rez@example.com"));
+    await expect(onPrivate(page)).toBeChecked();
+    await expect(page.locator("html")).toHaveAttribute("data-mode", "mine");
   });
 
   test("signing in opens your own sky and sea, empty at first; Public shows everyone's, and back", async ({ page }) => {
     const board = await fakeServices(page, withPublic());
     await signIn(page);
     await expect(page.locator("html")).toHaveAttribute("data-mode", "mine");
-    await expect(publicBtn(page)).toBeVisible();
-    await expect(publicBtn(page)).toHaveAttribute("aria-pressed", "false");
+    await expect(onPrivate(page)).toBeChecked();
     await expect(page.locator("#hero-lede")).toHaveText("Your own sky. Ideas you share here are private: only you can see them.");
     await page.waitForTimeout(600);
     await expect(page.locator(".plane")).toHaveCount(0);
     await expect(page.locator(".fish")).toHaveCount(0);
     expect(board.privateRequests?.every((r) => r.owner === "user-1")).toBe(true);
-    await publicBtn(page).click();
-    await expect(publicBtn(page)).toHaveAttribute("aria-pressed", "true");
+    await choose(page, "Public");
+    await expect(onPublic(page)).toBeChecked();
     await expect(page.locator(".plane")).toHaveCount(1);
     await expect(page.locator(".fish")).toHaveCount(1);
     await expect(page.locator("#toast")).toHaveText("Showing everyone’s ideas and dreams.");
     await page.reload(); // the choice is remembered
-    await expect(publicBtn(page)).toHaveAttribute("aria-pressed", "true");
+    await expect(onPublic(page)).toBeChecked();
     await expect(page.locator(".plane")).toHaveCount(1);
-    await publicBtn(page).click();
+    await choose(page, "Private");
     await expect(page.locator(".plane")).toHaveCount(0);
   });
 
@@ -55,7 +73,7 @@ test.describe("your own sky and sea", () => {
     expect(board.posts).toEqual([]); // nothing went to the public board
     expect(board.mails).toBe(0); // and nothing was emailed
     await expect(bird).toHaveAttribute("data-flock", "science");
-    await publicBtn(page).click();
+    await choose(page, "Public");
     await expect(page.locator(`.plane[data-slug="${board.privateItems![0]!.id}"]`)).toHaveCount(0); // not in the public sky
   });
 
@@ -99,7 +117,7 @@ test.describe("your own sky and sea", () => {
     await page.locator("#account-me").click();
     await page.locator("#account-signout").click();
     await expect(page.locator("html")).toHaveAttribute("data-mode", "public");
-    await expect(publicBtn(page)).toBeHidden();
+    await expect(onPublic(page)).toBeChecked();
     await expect(page.locator(".plane")).toHaveCount(1);
   });
 
@@ -122,7 +140,7 @@ test.describe("your own sky and sea", () => {
     await expect(page.locator("#letter-from")).toHaveText("Telescope diary");
     await expect(page.locator("#letter-date")).not.toContainText("Telescope diary"); // only the date under it
     await page.keyboard.press("Escape"); await expect(page.locator("#letter")).toBeHidden();
-    await publicBtn(page).click(); // the public note asks who you are again
+    await choose(page, "Public"); // the public note asks who you are again
     await page.locator("#idea-btn").click(); await settled(page);
     await expect(page.locator("#note-name-label")).toHaveText("Name");
     await expect(page.locator("#note-email")).toBeVisible();
@@ -181,9 +199,9 @@ test.describe("your own sky and sea", () => {
     expect(board.mails).toBe(1); // like any public post
     expect(board.privateItems![0]).toMatchObject({ public_id: post.id, stage: "implementation" }); // yours stays, and remembers it
     await page.keyboard.press("Escape"); await expect(page.locator("#letter")).toBeHidden();
-    await publicBtn(page).click();
+    await choose(page, "Public");
     await expect(page.locator(`.plane[data-slug="${post.id}"]`)).toHaveCount(1); // in the public sky now
-    await publicBtn(page).click();
+    await choose(page, "Private");
     await page.locator('.plane[data-slug="mine0001"]').focus(); await page.keyboard.press("Enter");
     await expect(page.locator("#go-public-done")).toBeVisible(); // still shown as shared after switching back
     await page.locator("#go-public-down").click();

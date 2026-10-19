@@ -143,13 +143,18 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 /* Your own sky and sea (islands/mode-switch). The "Public" button sits left of the initial; pressed, it shows everyone's.
    In your own, what is shared is private: no name or email on the note, and no likes, comments, sharing or updates on a letter. */
 .account { display: flex; align-items: center; gap: 12px; }
-.account-public { padding: 7px 12px; border: 1px solid color-mix(in srgb, var(--sky-text) 45%, transparent); border-radius: 999px; background: transparent; cursor: pointer;
-  font: 500 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--sky-text); transition: background .2s, color .2s, border-color .2s; }
-[data-depth="sea"] .account-public { color: var(--sea-text); border-color: color-mix(in srgb, var(--sea-text) 45%, transparent); }
-.account-public[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
-.account-public:hover { border-color: var(--accent); }
-.account-public:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; }
-.account-public[hidden] { display: none; }
+/* Private | Public: a two-way switch, both words always shown; the board you are on is filled cobalt */
+.board-switch { display: inline-flex; padding: 2px; border: 1px solid color-mix(in srgb, var(--sky-text) 40%, transparent); border-radius: 999px;
+  background: color-mix(in srgb, var(--sky-top) 55%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+[data-depth="sea"] .board-switch { border-color: color-mix(in srgb, var(--sea-text) 40%, transparent); background: color-mix(in srgb, var(--sea-deep) 45%, transparent); }
+.board-switch label { position: relative; cursor: pointer; }
+.board-switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.board-switch span { display: block; padding: 6px 12px; border-radius: 999px; font: 500 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--sky-text); transition: background .2s, color .2s; }
+[data-depth="sea"] .board-switch span { color: var(--sea-text); }
+.board-switch input:checked + span { background: var(--accent); color: #fff; }
+.board-switch label:hover input:not(:checked) + span { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.board-switch input:focus-visible + span { outline: 2px solid var(--tone-cobalt); outline-offset: 2px; }
 /* Sharing your own on the public board: the globe (filled once shared) and its question, under the icon line like the bin's */
 .act-public.is-on svg { fill: color-mix(in srgb, var(--tone-cobalt) 18%, transparent); stroke: var(--tone-cobalt); }
 .go-public[hidden], .go-public-ask[hidden], .go-public-done[hidden] { display: none; }
