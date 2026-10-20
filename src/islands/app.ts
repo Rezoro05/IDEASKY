@@ -94,20 +94,50 @@ function ownSources(auth: Auth): (user: User) => Sources {
   };
 }
 
+/** The 3D scenes once started (startBackgrounds), so a change of board can rebuild them. */
+let scenesNow: () => Scenes | null = () => null;
+
+/** Your own sky and sea have their own backgrounds: San Francisco over the water (scripts/draw-san-francisco.mjs) and a sunken ship below.
+ *  Everyone's keep New York and the deep sea. The picture changes at once (with or without the 3D scenes); the scenes are built again. */
+function startBoardBackgrounds(): void {
+  const root = document.documentElement, picture = document.querySelector<HTMLImageElement>(".skyline");
+  if (!picture) return;
+  const mine = () => root.dataset.mode === "mine";
+  const avif = picture.parentElement?.querySelector<HTMLSourceElement>("source[type='image/avif']") ?? null;
+  let shownMine: boolean | null = null;
+  const showBackgrounds = () => {
+    if (mine() === shownMine) return;
+    const first = shownMine === null;
+    shownMine = mine();
+    if (first && !shownMine) return; // New York is already there
+    const name = shownMine ? "sf-skyline" : "skyline";
+    if (avif) avif.srcset = `${name}.avif`;
+    picture.src = `${name}.webp`;
+    root.dataset.city = shownMine ? "san-francisco" : "new-york";
+    scenesNow()?.rebuild();
+  };
+  picture.addEventListener("load", () => scenesNow()?.rebuild()); // the new picture is in: build the sky from it
+  new MutationObserver(showBackgrounds).observe(root, { attributes: true, attributeFilter: ["data-mode"] });
+  showBackgrounds();
+}
+
 /** The 3D backgrounds start once the picture is up and the page has had a moment; #studio opens their control center. */
 function startBackgrounds(): void {
   const root = document.documentElement;
   const source = settingsSource(SCENE_ON ? DEFAULTS : presetSettings("Picture only"), mergeSettings);
   const picture = document.querySelector<HTMLImageElement>(".skyline");
   let scenes: Scenes | null = null;
+  const mine = () => root.dataset.mode === "mine";
   const start = () => {
     if (scenes || !picture) return;
     scenes = startScenes({
       field: byId("field"), picture, clouds: document.querySelector(".clouds"), sea: byId("sea"), seaBefore: document.querySelector(".sea-light"), source,
       skyActive: () => root.dataset.depth !== "sea" && !root.classList.contains("sky-covered"),
       seaActive: () => root.dataset.depth === "sea" && !root.classList.contains("sky-covered"),
+      seaKind: () => (mine() ? "wreck" : "deep"),
     });
   };
+  scenesNow = () => scenes;
   const whenIdle = (fn: () => void) => ("requestIdleCallback" in window ? requestIdleCallback(fn, { timeout: 1200 }) : setTimeout(fn, 300));
   if (picture) picture.decode().catch(() => undefined).then(() => whenIdle(start));
   let studioOpen = false;
@@ -153,6 +183,7 @@ export function startSite(): void {
   });
 
   if (profile !== "none") startBackgrounds();
+  startBoardBackgrounds();
 
   const stores = Promise.resolve(chooseStores());
   let isMine = () => false; // set once the mode switch starts (below)

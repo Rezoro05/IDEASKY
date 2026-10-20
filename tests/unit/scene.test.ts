@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GROUP, aroundAxis, covariance, joinSplats, splatBuilder } from "../../src/lib/splats";
 import { farness, sampleDepth, skylineSplats } from "../../src/lib/skyline-splats";
-import { SEA_FLOOR_Y, deepSea, floorAt, kelp, rockSpots, whale } from "../../src/lib/deep-sea";
+import { SEA_FLOOR_Y, deepSea, fishSchools, floorAt, kelp, rockSpots, whale, wreck, wreckSea } from "../../src/lib/deep-sea";
 import { CONTROLS, DEFAULTS, accept, changedFrom, detailFor, getPath, mergeSettings, presetSettings, PRESETS, setPath } from "../../src/lib/scene-settings";
 import { STILL, cameraTarget, drift, focalFor, follow, viewFor } from "../../src/lib/scene-camera";
 import { multiply, transformPoint } from "../../src/lib/mat4";
@@ -83,6 +83,35 @@ describe("deep sea", () => {
   });
   it("rocks sit on the seabed, away from the viewer", () => {
     for (const s of rockSpots(mulberry32(9), 20)) { expect(s.z).toBeLessThan(-300); expect(floorAt(s.x, s.z)).toBeLessThan(SEA_FLOOR_Y + 60); }
+  });});
+
+describe("your own sea: the sunken ship", () => {
+  it("the same seed draws the same wreck; less detail draws fewer splats", () => {
+    const a = wreckSea(mulberry32(1849), 0.4), b = wreckSea(mulberry32(1849), 0.4), high = wreckSea(mulberry32(1849), 1);
+    expect(a.count).toBe(b.count);
+    expect(a.centers.slice(0, 300)).toEqual(b.centers.slice(0, 300));
+    expect(high.count).toBeGreaterThan(a.count * 1.5);
+  });
+  it("has the seabed, rocks with the ship, kelp, fish, snow and light, and no jellyfish", () => {
+    const set = wreckSea(mulberry32(1849), 0.4), groups = new Set(set.groups);
+    for (const g of [GROUP.seabed, GROUP.rocks, GROUP.kelp, GROUP.whale, GROUP.snow, GROUP.shafts]) expect(groups.has(g)).toBe(true);
+    expect(groups.has(GROUP.jellies)).toBe(false);
+  });
+  it("the ship lies on the seabed, still, far from the viewer: part buried, its mast rising well above the sand", () => {
+    const w = wreck(mulberry32(4), 3000);
+    expect(w.count).toBe(3000);
+    expect([...w.groups].every((g) => g === GROUP.rocks)).toBe(true);
+    expect([...w.amps].every((a) => a === 0)).toBe(true); // the renderer leaves it in place
+    const ys = [...Array(w.count).keys()].map((i) => w.centers[i * 3 + 1]!), zs = [...Array(w.count).keys()].map((i) => w.centers[i * 3 + 2]!);
+    expect(Math.min(...ys)).toBeLessThan(SEA_FLOOR_Y + 20); // in the sand
+    expect(Math.max(...ys)).toBeGreaterThan(SEA_FLOOR_Y + 450); // the mainmast
+    expect(Math.max(...zs)).toBeLessThan(-500);
+  });
+  it("each school of fish moves as one: one phase per school", () => {
+    const f = fishSchools(mulberry32(6), 3, 20);
+    expect(f.count).toBe(3 * 20 * 5);
+    expect(new Set(f.phases).size).toBe(3);
+    expect([...f.groups].every((g) => g === GROUP.whale)).toBe(true);
   });
 });
 

@@ -4,7 +4,7 @@
 import { createSplatRenderer, type DrawUniforms, type SplatRenderer } from "../boundaries/splatGl";
 import { GROUP, GROUP_COUNT, type SplatSet } from "../lib/splats";
 import { skylineSplats } from "../lib/skyline-splats";
-import { deepSea } from "../lib/deep-sea";
+import { deepSea, wreckSea } from "../lib/deep-sea";
 import { mulberry32 } from "../lib/random";
 import { cameraTarget, focalFor, follow, modelView, placeScene, settled, STILL, viewFor, type Pointer, type Pose } from "../lib/scene-camera";
 import { depthRow, depthSorter, needsResort, type DepthRow, type Sorter } from "../lib/splat-sort";
@@ -21,7 +21,8 @@ type SceneSpec = {
   /** Where the canvas goes in the host (it is inserted before this). */
   before: Element | null;
   scene: (s: Settings) => SceneSettings;
-  build: (detail: number) => SplatSet | null;
+  /** The splats, or "wait" when what they are made from isn't ready yet (a picture still loading): try again next frame. */
+  build: (detail: number) => SplatSet | null | "wait";
   place: (width: number, height: number, s: Settings) => Placement;
   groups: (s: Settings) => { on: Float32Array; amount: Float32Array; speed: Float32Array };
   active: () => boolean;
@@ -33,6 +34,7 @@ type SceneSpec = {
 };
 
 export type SceneStatus = { name: string; fps: number; splats: number; running: boolean };
+type Scene = { status(): SceneStatus; /** What it is made from changed (the picture, or which sea): build it again. */ rebuild(): void };
 
 let pointer: Pointer = null;
 if (typeof addEventListener === "function") {
@@ -48,7 +50,7 @@ function device() {
   return { width: innerWidth, cores: nav.hardwareConcurrency || 4, memory: nav.deviceMemory ?? 8 };
 }
 
-function startScene(spec: SceneSpec, source: SettingsSource): { status(): SceneStatus } {
+function startScene(spec: SceneSpec, source: SettingsSource): Scene {
   const canvas = document.createElement("canvas");
   canvas.className = `scene-canvas scene-${spec.name}`;
   canvas.setAttribute("aria-hidden", "true");
@@ -59,12 +61,13 @@ function startScene(spec: SceneSpec, source: SettingsSource): { status(): SceneS
   let size = { w: spec.host.clientWidth, h: spec.host.clientHeight };
   new ResizeObserver(() => { size = { w: spec.host.clientWidth, h: spec.host.clientHeight }; lastRow = null; }).observe(spec.host);
 
-  function ensureBuilt(s: Settings): boolean {
+  function ensureBuilt(s: Settings): boolean | "wait" {
     const { detail } = detailFor(s.quality, device());
     if (detail === builtDetail && set) return true;
     renderer ??= createSplatRenderer(canvas);
     if (!renderer) return false;
     const next = spec.build(detail);
+    if (next === "wait") return set ? true : "wait"; // keep showing the last one meanwhile
     if (!next) return false;
     set = next; builtDetail = detail; sorter = depthSorter(set.count); lastRow = null;
     renderer.upload(set);
@@ -75,7 +78,9 @@ function startScene(spec: SceneSpec, source: SettingsSource): { status(): SceneS
     frame = 0;
     const s = source.get(), scene = spec.scene(s);
     if (!scene.on || !spec.active() || document.hidden) { last = 0; schedule(); return; }
-    if (!ensureBuilt(s) || !renderer || renderer.lost || !set || !sorter) { canvas.remove(); return; } // the picture stays
+    const built = ensureBuilt(s);
+    if (built === "wait") { schedule(); return; }
+    if (!built || !renderer || renderer.lost || !set || !sorter) { canvas.remove(); return; } // the picture stays
     const { pixelRatio, detail } = detailFor(s.quality, device());
     const capMs = detail < 0.5 ? 1000 / 31 : 0; // slow devices: 30 frames a second is plenty for a background
     if (capMs && now - lastDrawn < capMs) { schedule(); return; }
@@ -104,7 +109,7 @@ function startScene(spec: SceneSpec, source: SettingsSource): { status(): SceneS
   }
   function schedule(): void { if (!frame) frame = requestAnimationFrame(tick); }
 
-  if (spec.prepareAfterMs !== undefined) setTimeout(() => { const s = source.get(); if (spec.scene(s).on) ensureBuilt(s); }, spec.prepareAfterMs);
+  if (spec.prepareAfterMs !== undefined) setTimeout(() => { const s = source.get(); if (spec.scene(s).on) void ensureBuilt(s); }, spec.prepareAfterMs);
   source.subscribe((s) => {
     const on = spec.scene(s).on;
     canvas.hidden = !on;
@@ -114,7 +119,10 @@ function startScene(spec: SceneSpec, source: SettingsSource): { status(): SceneS
     schedule();
   });
   schedule();
-  return { status: () => ({ name: spec.name, fps, splats: set?.count ?? 0, running: !!frame && spec.active() && spec.scene(source.get()).on }) };
+  return {
+    status: () => ({ name: spec.name, fps, splats: set?.count ?? 0, running: !!frame && spec.active() && spec.scene(source.get()).on }),
+    rebuild() { builtDetail = -1; lastRow = null; schedule(); },
+  };
 }
 
 const elementGroups = (e: Part, k: number, out: { on: Float32Array; amount: Float32Array; speed: Float32Array }) => {
@@ -122,9 +130,10 @@ const elementGroups = (e: Part, k: number, out: { on: Float32Array; amount: Floa
 };
 const blankGroups = () => ({ on: new Float32Array(GROUP_COUNT), amount: new Float32Array(GROUP_COUNT), speed: new Float32Array(GROUP_COUNT) });
 
-/** The skyline picture's pixels, sampled to `cols` across. Null when the picture isn't loaded or can't be read. */
-function picturePixels(img: HTMLImageElement, cols: number): { data: Uint8ClampedArray; cols: number; rows: number } | null {
-  if (!img.complete || !img.naturalWidth) return null;
+/** The skyline picture's pixels, sampled to `cols` across. "wait" while it is loading; null when it can't be read. */
+function picturePixels(img: HTMLImageElement, cols: number): { data: Uint8ClampedArray; cols: number; rows: number } | null | "wait" {
+  if (!img.complete) return "wait";
+  if (!img.naturalWidth) return null;
   const rows = Math.round((cols * img.naturalHeight) / img.naturalWidth);
   try {
     const c = document.createElement("canvas");
@@ -137,11 +146,13 @@ function picturePixels(img: HTMLImageElement, cols: number): { data: Uint8Clampe
   } catch { return null; }
 }
 
-export type Scenes = { status(): SceneStatus[] };
+export type Scenes = { status(): SceneStatus[]; /** The picture or the sea changed (your own sky and sea, or everyone's): build both again. */ rebuild(): void };
 
 export function startScenes(opts: {
   field: HTMLElement; picture: HTMLImageElement; clouds: HTMLElement | null; sea: HTMLElement; seaBefore: Element | null;
   source: SettingsSource; skyActive: () => boolean; seaActive: () => boolean;
+  /** Which sea to build: everyone's deep sea, or your own with the sunken ship. */
+  seaKind: () => "deep" | "wreck";
 }): Scenes {
   const { field, picture, source } = opts;
   const sky = startScene({
@@ -149,6 +160,7 @@ export function startScenes(opts: {
     scene: (s) => s.sky,
     build: (detail) => {
       const px = picturePixels(picture, Math.round(330 + 330 * (detail - 0.4) / 0.6));
+      if (px === "wait") return "wait";
       return px && skylineSplats(px, { imageWidth: picture.naturalWidth, imageHeight: picture.naturalHeight, horizon: 0.8, depth: 1, rand: mulberry32(7) });
     },
     place: (w, h, s) => {
@@ -168,7 +180,7 @@ export function startScenes(opts: {
   const sea = startScene({
     name: "sea", host: opts.sea, before: opts.seaBefore,
     scene: (s) => s.sea,
-    build: (detail) => deepSea(mulberry32(1913), detail),
+    build: (detail) => (opts.seaKind() === "wreck" ? wreckSea(mulberry32(1849), detail) : deepSea(mulberry32(1913), detail)),
     place: (_w, h, s) => ({ model: placeScene(h / 1000, s.sea.look.depth, [0, 0, 0]), fogFrom: 0.6, push: null }),
     groups: (s) => {
       const g = blankGroups();
@@ -179,7 +191,7 @@ export function startScenes(opts: {
     prepareAfterMs: 2500,
     ready: () => opts.sea.classList.add("scene-sea-on"),
   }, source);
-  return { status: () => [sky.status(), sea.status()] };
+  return { status: () => [sky.status(), sea.status()], rebuild: () => { sky.rebuild(); sea.rebuild(); } };
 }
 
 const STORE_ITEM = "skyofideas.scene"; // its own key: the bird Motion Studio (not in this repo yet) keeps "skyofideas.studio"

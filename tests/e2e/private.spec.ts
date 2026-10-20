@@ -231,4 +231,20 @@ test.describe("your own sky and sea", () => {
     await expect(page.locator("#toast")).toHaveText("Shared in the public sea. Anyone can open it now.");
     expect(board.posts[0]).toMatchObject({ kind: "dream", name: "Anonymous", message: "I was flying over my old school" });
   });
+
+  test("your own sky shows San Francisco; everyone's keeps New York, and switching swaps them", async ({ page }) => {
+    await fakeServices(page, withPublic());
+    const picture = page.locator(".skyline");
+    await page.goto("/");
+    await expect(picture).toHaveJSProperty("complete", true);
+    expect(await picture.evaluate((img: HTMLImageElement) => img.currentSrc)).toMatch(/\/skyline\.(avif|webp)$/);
+    await page.goto("about:blank"); // the sign-in link opens a fresh page
+    await signIn(page);
+    await expect(page.locator("html")).toHaveAttribute("data-city", "san-francisco");
+    await expect.poll(() => picture.evaluate((img: HTMLImageElement) => img.currentSrc)).toMatch(/\/sf-skyline\.(avif|webp)$/);
+    await expect.poll(() => picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(1983); // the same size as New York's
+    await choose(page, "Public");
+    await expect(page.locator("html")).toHaveAttribute("data-city", "new-york");
+    await expect.poll(() => picture.evaluate((img: HTMLImageElement) => img.currentSrc)).toMatch(/\/skyline\.(avif|webp)$/);
+  });
 });

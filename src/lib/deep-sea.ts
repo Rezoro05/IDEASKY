@@ -1,7 +1,8 @@
 /** The deep sea, made of splats: a sandy seabed with rock ridges and kelp, glowing jellyfish, a whale far off,
  *  marine snow drifting down and light shafts from the surface. Pure and seeded: the same seed draws the same sea.
  *  Units: the screen is 1000 tall at z = 0 (y = 500 top, -500 bottom, 0 centre); z is toward the viewer, so the deep is negative z.
- *  Each piece has its own group, and its motion comes from phase and amp (the renderer animates by group). */
+ *  Each piece has its own group, and its motion comes from phase and amp (the renderer animates by group).
+ *  Your own sea (the private board) is another sea in the same style: a sunken ship on the seabed, rocks and kelp around it, schools of fish, light from above. */
 import { GROUP, aroundAxis, joinSplats, splatBuilder, type Rgba, type SplatSet } from "./splats";
 import type { Rand } from "./random";
 
@@ -164,6 +165,100 @@ export function deepSea(rand: Rand, quality: number): SplatSet {
     kelp(rand, d.kelp, spots),
     jellies(rand, d.jellies, Math.round(d.perJelly * Math.max(q, 0.5))),
     whale(rand, Math.round(d.whale * Math.max(q, 0.5))),
+    snow(rand, Math.round(d.snow * q)),
+    shafts(rand, d.shafts),
+  ]);
+}
+
+/** A sailing ship sunk on the seabed: the hull on its side, half in the sand, its stern broken open to the ribs, the mainmast leaning,
+ *  the foremast snapped, a yard fallen across the sand. Still (the rocks' group: the renderer leaves it in place). */
+export function wreck(rand: Rand, detail: number): SplatSet {
+  const b = splatBuilder(detail);
+  const cx = 160, cz = -1250, L = 1450, B = 330, D = 300;
+  const heel = 0.42, pitch = 0.1, yaw = 0.38; // lying over to one side, the bow a little up, turned toward the viewer
+  const wood: Rgba = [0.24, 0.2, 0.16, 0.97], lit: Rgba = [0.55, 0.46, 0.34, 0.97], weed: Rgba = [0.2, 0.34, 0.2, 0.92], sand: Rgba = [0.3, 0.4, 0.5, 0.9];
+  const floor = floorAt(cx, cz), sinkTo = floor + D * 0.72;
+  /** From the ship's own frame (x along the keel toward the bow, y up from the deck, z across) to the scene. */
+  const place = (x: number, y: number, z: number): [number, number, number] => {
+    const y1 = y * Math.cos(heel) - z * Math.sin(heel), z1 = y * Math.sin(heel) + z * Math.cos(heel); // roll
+    const x2 = x * Math.cos(pitch) - y1 * Math.sin(pitch), y2 = x * Math.sin(pitch) + y1 * Math.cos(pitch); // bow up
+    const x3 = x2 * Math.cos(yaw) - z1 * Math.sin(yaw), z3 = x2 * Math.sin(yaw) + z1 * Math.cos(yaw); // turn
+    return [cx + x3, sinkTo + y2, cz + z3];
+  };
+  const colorAt = (y: number, up: number): Rgba => {
+    const c = mix(wood, lit, Math.max(0, up) * 0.8 * rand());
+    if (y < floor + 24) return mix(c, sand, Math.min(1, (floor + 24 - y) / 40)); // where it sinks into the sand
+    return rand() < 0.12 ? weed : c;
+  };
+  const halfBeam = (u: number) => (B / 2) * Math.pow(Math.max(0, 1 - u * u), u > 0 ? 0.75 : 0.25); // a sharp bow, a full stern
+  const hull = Math.round(detail * 0.62);
+  for (let n = 0; n < hull; n++) {
+    const u = rand() * 2 - 1, a = rand() * Math.PI; // along the keel; around the hull from one rail (0) under the keel to the other (π)
+    if (u < -0.45 && (u * 12.5 - Math.floor(u * 12.5)) > 0.3 && a > 0.5 && a < 2.6) continue; // the stern is broken open: only its ribs remain
+    const w = halfBeam(u), at = place(u * L / 2, -D * Math.sin(a) * (0.6 + 0.4 * Math.sqrt(1 - u * u)), w * Math.cos(a));
+    const r = between(rand, 10, 16);
+    b.add({ at, color: colorAt(at[1], Math.cos(a) * Math.sin(heel) + 0.3), shape: { scale: [r * 1.5, r, r] }, group: GROUP.rocks });
+  }
+  const deck = Math.round(detail * 0.14);
+  for (let n = 0; n < deck; n++) { // planks across the deck, with gaps where it has fallen in
+    const u = between(rand, -0.4, 0.92), z = (rand() * 2 - 1) * halfBeam(u) * 0.95;
+    if (Math.sin(u * 23) > 0.55) continue;
+    const at = place(u * L / 2, 0, z);
+    b.add({ at, color: colorAt(at[1], 0.6), shape: { scale: [16, 3, 7] }, group: GROUP.rocks });
+  }
+  const spar = (from: [number, number, number], to: [number, number, number], count: number, r: number) => {
+    for (let k = 0; k < count; k++) {
+      const t = k / (count - 1), at = place(from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t, from[2] + (to[2] - from[2]) * t);
+      b.add({ at, color: colorAt(at[1], 0.4), shape: { scale: [r, r, r] }, group: GROUP.rocks });
+    }
+  };
+  const mastSplats = Math.round(detail * 0.06);
+  spar([30, 0, 0], [80, 560, 0], mastSplats, 9); // the mainmast, leaning with the hull
+  spar([70, 470, 0], [190, 250, 30], Math.round(mastSplats * 0.35), 6); // its yard, hanging from one end
+  spar([300, 0, 0], [318, 210, 0], Math.round(mastSplats * 0.4), 8); // the foremast, snapped
+  spar([-260, 0, 0], [-250, 120, 0], Math.round(mastSplats * 0.2), 7); // a stump at the stern
+  const fallen = Math.round(detail * 0.05);
+  for (let k = 0; k < fallen; k++) { // a yard fallen onto the sand beside the ship
+    const t = k / fallen, x = cx - 420 + t * 520, z = cz + 360 - t * 160;
+    b.add({ at: [x, floorAt(x, z) + 8, z], color: mix(wood, sand, 0.3), shape: { scale: [7, 7, 7] }, group: GROUP.rocks });
+  }
+  const left = detail - b.count;
+  for (let k = 0; k < left; k++) { // barnacles and weed on the rail
+    const u = between(rand, -0.9, 0.95), at = place(u * L / 2, between(rand, -20, 6), halfBeam(u) * (rand() < 0.5 ? 1 : -1));
+    b.add({ at, color: rand() < 0.5 ? weed : [0.55, 0.55, 0.5, 0.9], shape: { scale: [5, 5, 5] }, group: GROUP.rocks });
+  }
+  return b.done();
+}
+
+/** Schools of small silver fish crossing the sea toward +x (the whale's group and motion: each school moves as one, by its phase). */
+export function fishSchools(rand: Rand, schools: number, fishPer: number): SplatSet {
+  const b = splatBuilder(schools * fishPer * 5);
+  for (let s = 0; s < schools; s++) {
+    const phase = 0.12 + s * 0.41, cy = between(rand, -120, 200), cz = between(rand, -700, -1700);
+    const silver: Rgba = [0.62, 0.74, 0.84, 0.92], back: Rgba = [0.22, 0.34, 0.46, 0.92];
+    for (let f = 0; f < fishPer; f++) {
+      const x = between(rand, -1, 1) * 260, y = cy + between(rand, -1, 1) * 90 * Math.sqrt(rand()), z = cz + between(rand, -1, 1) * 180;
+      const size = between(rand, 0.7, 1.2);
+      for (let k = 0; k < 4; k++) b.add({ at: [x + (k - 1.5) * 9 * size, y, z], color: mix(silver, back, k === 3 ? 0.6 : rand() * 0.4), shape: { scale: [8 * size, 4 * size * (1 - Math.abs(k - 1.2) * 0.2), 3 * size] }, group: GROUP.whale, phase, amp: 1 });
+      b.add({ at: [x - 26 * size, y, z], color: back, shape: { scale: [3 * size, 6 * size, 2 * size] }, group: GROUP.whale, phase, amp: 1 }); // the tail
+    }
+  }
+  return b.done();
+}
+
+/** How many splats each piece of your own sea gets at full detail. */
+export const WRECK_DETAIL = { seabed: 26000, rocks: 9, perRock: 420, kelp: 14, wreck: 11000, schools: 3, fishPer: 70, snow: 3200, shafts: 11 } as const;
+
+/** Your own sea: the sunken ship, with rocks and kelp around it, schools of fish, and light from above. No whale, no jellyfish. */
+export function wreckSea(rand: Rand, quality: number): SplatSet {
+  const q = Math.min(1, Math.max(0.2, quality)), d = WRECK_DETAIL;
+  const spots = rockSpots(rand, d.rocks).filter((s) => Math.hypot(s.x - 160, (s.z + 1250) * 0.7) > 520); // none inside the ship
+  return joinSplats([
+    seabed(rand, Math.round(d.seabed * q)),
+    rocks(rand, spots, Math.round(d.perRock * q)),
+    wreck(rand, Math.round(d.wreck * Math.max(q, 0.5))),
+    kelp(rand, d.kelp, spots),
+    fishSchools(rand, d.schools, Math.round(d.fishPer * Math.max(q, 0.6))),
     snow(rand, Math.round(d.snow * q)),
     shafts(rand, d.shafts),
   ]);
