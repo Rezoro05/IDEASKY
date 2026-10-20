@@ -17,3 +17,7 @@ export function countFromContentRange(header: string | null): number | null {
   if (!total || !/^\d+$/.test(total)) return null;
   return Number(total);
 }
+
+/** On the public board a liked idea or dream grows a little with each like: 6% each, up to 60% bigger (10 likes). */
+export const LIKE_GROWTH = { perLike: 0.06, most: 0.6 } as const;
+export const likeScale = (likes: number): number => 1 + Math.min(LIKE_GROWTH.most, Math.max(0, Math.floor(likes)) * LIKE_GROWTH.perLike);

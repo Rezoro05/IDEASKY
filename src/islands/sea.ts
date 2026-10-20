@@ -1,6 +1,8 @@
 /** The Sea of Dreams: keeps the dreams, draws the newest as fish, and lets them swim (pure rules in lib/swim).
  *  Swims only while the sea is in view and nothing covers it. */
-import { dreamName, ideaNumbers, newestIdeas, previewLine, type Idea } from "../lib/ideas";
+import { dreamName, newestIdeas, previewLine, type Idea } from "../lib/ideas";
+import { OLDER_PAGE, recordNumbers } from "../lib/browse";
+import { likeScale } from "../lib/likes";
 import { fishFacing, fishTransform, spawnFish, stepSwim, type Fish } from "../lib/swim";
 import { mulberry32 } from "../lib/random";
 import { FISH_SVG } from "../lib/fish-art";
@@ -43,6 +45,14 @@ export type SeaBoard = {
   use(source: Source): void;
   /** The store shown now. */
   store(): Promise<IdeaStore>;
+  /** Every dream loaded so far, the sea's and older ones (for browsing). */
+  records(): Idea[];
+  /** Fetch the next page of older dreams: "more", "end" or "failed". */
+  loadOlder(): Promise<"more" | "end" | "failed">;
+  /** Could there be older dreams than those loaded? */
+  mayHaveOlder(): boolean;
+  /** Someone here liked or unliked it: its new count (its fish grows or shrinks a little). */
+  setLikes(id: string, count: number): void;
 };
 
 /** A dream's school: its most likely theme (Jev lists them most likely first); none yet = a loner. */
@@ -60,6 +70,8 @@ export function startSea(opts: {
   onOpen: (id: string, origin: Vec) => void;
   /** Sorts a just-saved dream into themes; `changed` hears about the result. */
   categorizer?: Categorizer; changed?: (dream: Idea) => void;
+  /** The public sea's likes (a liked dream swims a little bigger). */
+  likeCounts?: Source["likeCounts"];
 }): SeaBoard {
   const { field } = opts;
   let size: Bounds = { width: field.clientWidth, height: field.clientHeight };
@@ -71,7 +83,23 @@ export function startSea(opts: {
   let markLoaded = () => {};
   const loaded = new Promise<void>((resolve) => { markLoaded = resolve; });
 
-  const nameOf = (id: string) => { const d = dreams.get(id); const numbered = dreamName(ideaNumbers(dreams.values()).get(id)); return d ? labelOf(d, numbered, source.named) : numbered; };
+  /** Older dreams fetched for browsing, kept apart so the sea never changes; `base` = how many older ones aren't loaded (numbers never shift). */
+  let older = new Map<string, Idea>(), base = 0, olderDone = false;
+  const numbers = () => recordNumbers([...dreams.values(), ...older.values()], base);
+  /** Likes per dream (the public sea only), asked once per dream per visit; a liked fish swims a little bigger. */
+  let likes = new Map<string, number>(), likesAsked = new Set<string>();
+  function askLikes(ids: string[]): void {
+    const g = gen, due = ids.filter((id) => !likesAsked.has(id) && !unsaved.has(id));
+    if (!source.likeCounts || due.length === 0) return;
+    for (const id of due) likesAsked.add(id);
+    source.likeCounts(due).then((counts) => {
+      if (!counts || g !== gen) return;
+      for (const [id, n] of counts) likes.set(id, n);
+      sync();
+    });
+  }
+  const sizeOf = (id: string) => opts.size * likeScale(likes.get(id) ?? 0) + "px";
+  const nameOf = (id: string) => { const d = dreams.get(id) ?? older.get(id); const numbered = dreamName(numbers().get(id)); return d ? labelOf(d, numbered, source.named) : numbered; };
 
   function makeFish(dream: Idea, name: string): HTMLAnchorElement {
     const a = document.createElement("a");
@@ -86,7 +114,7 @@ export function startSea(opts: {
   }
 
   function renderList(list: HTMLUListElement, shown: Idea[]): void {
-    const nums = ideaNumbers(dreams.values());
+    const nums = numbers();
     list.closest<HTMLElement>("#dreams-fallback")!.hidden = shown.length === 0;
     list.replaceChildren(...shown.map((d) => {
       const li = document.createElement("li"), a = document.createElement("a");
@@ -98,7 +126,7 @@ export function startSea(opts: {
   }
 
   function sync(): void {
-    const shown = newestIdeas(dreams.values(), DREAMS_IN_SEA), keep = new Set(shown.map((d) => d.id)), nums = ideaNumbers(dreams.values());
+    const shown = newestIdeas(dreams.values(), DREAMS_IN_SEA), keep = new Set(shown.map((d) => d.id)), nums = numbers();
     if (opts.list) { renderList(opts.list, shown); return; }
     for (const [id, el] of els) if (!keep.has(id)) { el.remove(); els.delete(id); facing.delete(id); }
     fish = fish.filter((f) => keep.has(f.slug));
@@ -106,22 +134,36 @@ export function startSea(opts: {
       const name = labelOf(d, dreamName(nums.get(d.id)), source.named), school = schoolOf(d), el = els.get(d.id);
       if (el) { el.dataset.school = school; el.querySelector(".tag")!.textContent = name; el.setAttribute("aria-label", `${name}: open the dream`); }
       else els.set(d.id, makeFish(d, name));
+      const fishEl = els.get(d.id)!, px = sizeOf(d.id);
+      if (fishEl.style.getPropertyValue("--s") !== px) fishEl.style.setProperty("--s", px);
       const i = fish.findIndex((f) => f.slug === d.id);
       if (i < 0) fish.push(spawnFish(d.id, school, size, rand));
       else if (fish[i]!.school !== school) fish[i] = { ...fish[i]!, school }; // a theme arrived: it joins its school
     }
+    askLikes(shown.map((d) => d.id));
   }
 
   /** The source shown now; `gen` counts switches, so an answer from a source no longer shown is ignored. */
-  let source: Source = { store: opts.store, categorizer: opts.categorizer }, gen = 0;
+  let source: Source = { store: opts.store, categorizer: opts.categorizer, likeCounts: opts.likeCounts }, gen = 0;
   const asked = new Set<string>();
   function listen(): void {
     const g = ++gen;
+    let counted = false;
     source.store.then((s) => s.subscribe((all) => {
       if (g !== gen) return;
+      const fromStore = all.size;
       for (const id of unsaved) { const d = dreams.get(id); if (d) all.set(id, d); } // keep this visit's unsaved dreams
       dreams = all; sync(); markLoaded();
       sortTheUnsorted();
+      if (counted) return;
+      counted = true;
+      if (!s.older || !s.total) { olderDone = true; return; }
+      s.total().then((t) => {
+        if (g !== gen || t === null) return;
+        base = Math.max(0, t - fromStore - older.size);
+        if (base === 0) olderDone = true;
+        sync();
+      });
     }));
   }
   listen();
@@ -267,7 +309,21 @@ export function startSea(opts: {
   if (!opts.list) requestAnimationFrame(frame);
 
   return {
-    get: (id) => dreams.get(id), nameOf, loaded,
+    get: (id) => dreams.get(id) ?? older.get(id), nameOf, loaded,
+    records: () => [...dreams.values(), ...older.values()],
+    mayHaveOlder: () => !olderDone,
+    setLikes(id, count) { if (!source.likeCounts) return; likes.set(id, count); likesAsked.add(id); sync(); },
+    async loadOlder() {
+      const g = gen, s = await source.store, oldest = Math.min(...[...dreams.values(), ...older.values()].map((d) => d.at));
+      if (!s.older || olderDone || !Number.isFinite(oldest)) { olderDone = true; return "end"; }
+      const page = await s.older(oldest, OLDER_PAGE);
+      if (g !== gen) return "end";
+      if (!page) return "failed";
+      for (const d of page) if (!dreams.has(d.id)) older.set(d.id, d);
+      base = Math.max(0, base - page.length);
+      if (page.length < OLDER_PAGE || base === 0) olderDone = true;
+      return olderDone ? "end" : "more";
+    },
     async post(dream, how = {}) {
       dreams.set(dream.id, dream); unsaved.add(dream.id);
       if (how.arriving) arriving.add(dream.id);
@@ -276,14 +332,14 @@ export function startSea(opts: {
       if (saved && g === gen) { unsaved.delete(dream.id); sortIntoThemes(dream.id); }
       return saved;
     },
-    update(dream) { if (dreams.has(dream.id)) { dreams.set(dream.id, dream); sync(); } },
+    update(dream) { if (dreams.has(dream.id)) { dreams.set(dream.id, dream); sync(); } else if (older.has(dream.id)) older.set(dream.id, dream); },
     landed(id) { arriving.delete(id); els.get(id)?.classList.remove("arriving"); },
-    forget(id) { dreams.delete(id); unsaved.delete(id); if (netted?.slug === id) netted = null; if (held?.slug === id) { held = null; sea.classList.remove("holding-fish"); } sync(); },
+    forget(id) { dreams.delete(id); older.delete(id); unsaved.delete(id); if (netted?.slug === id) netted = null; if (held?.slug === id) { held = null; sea.classList.remove("holding-fish"); } sync(); },
     screenPointOf(id) { const body = els.get(id)?.querySelector(".body"); return body ? centreOf(body) : null; },
     store: () => source.store,
     use(next) {
       source = next;
-      dreams = new Map(); unsaved.clear(); arriving.clear(); asked.clear(); netted = null;
+      dreams = new Map(); older = new Map(); base = 0; olderDone = false; likes = new Map(); likesAsked = new Set(); unsaved.clear(); arriving.clear(); asked.clear(); netted = null;
       if (held) { held = null; sea.classList.remove("holding-fish"); }
       sync();
       listen();

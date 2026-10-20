@@ -117,3 +117,18 @@ describe("memoryLikes", () => {
     expect(await memoryLikes({}, { failReads: true }).count("idea01")).toBeNull();
   });
 });
+
+describe("likes on many at once", () => {
+  it("the database counts them in one request; a failure is null; none asked, none sent", async () => {
+    const f = vi.fn(async (_u: string, _i?: RequestInit) => ({ ok: true, status: 200, json: async () => [{ idea_id: "abc123", likes: 3 }, { idea_id: 5, likes: 1 }] }) as unknown as Response);
+    const store = supabaseLikes({ url: "https://x.supabase.co", key: "sb_publishable_k", fetch: f as unknown as typeof fetch, keys: browserKeyStore(memStorage(), LIKES_ITEM), likerId: () => "me", sha256Hex: async (t) => t });
+    expect(Object.fromEntries((await store.counts(["abc123", "def456"]))!)).toEqual({ abc123: 3 });
+    expect(f.mock.calls[0]![0]).toBe("https://x.supabase.co/rest/v1/rpc/like_counts");
+    expect(JSON.parse(f.mock.calls[0]![1]!.body as string)).toEqual({ p_ids: ["abc123", "def456"] });
+    expect((await store.counts([]))!.size).toBe(0);
+    expect(f).toHaveBeenCalledTimes(1);
+    const down = supabaseLikes({ url: "u", key: "k", fetch: (async () => { throw new Error("x"); }) as unknown as typeof fetch, keys: browserKeyStore(memStorage(), LIKES_ITEM), likerId: () => "me", sha256Hex: async (t) => t });
+    expect(await down.counts(["abc123"])).toBeNull();
+    expect(Object.fromEntries((await memoryLikes({ a1b2c3: 2 }).counts(["a1b2c3", "zzz999"]))!)).toEqual({ a1b2c3: 2 });
+  });
+});

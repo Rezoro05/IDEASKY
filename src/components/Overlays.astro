@@ -10,6 +10,18 @@ import { STAGES, stageLabel } from "../lib/stages";
 <div class="letter compose" id="compose" role="dialog" aria-modal="true" aria-label="Share your idea" hidden><div class="note-slot" id="note-slot"><IdeaNote /></div></div>
 <div class="letter compose" id="signin" role="dialog" aria-modal="true" aria-label="Sign in" hidden><div class="note-slot" id="signin-slot"><SignIn /></div></div>
 <p class="toast" id="toast" role="status" hidden></p>
+<!-- Browse: every idea or dream, not just the few flying or swimming, newest first, by category, with older ones on request (islands/browse) -->
+<div class="letter compose" id="browse" role="dialog" aria-modal="true" aria-labelledby="browse-title" hidden><div class="note-slot browse-slot" id="browse-slot">
+  <div class="note browse">
+    <div class="note-head"><span class="note-label" id="browse-title">All ideas</span></div>
+    <button class="note-close" type="button" id="browse-close" aria-label="Close">✕</button>
+    <div class="browse-chips" id="browse-chips" role="group" aria-label="Show a category"></div>
+    <ul class="browse-list" id="browse-list"></ul>
+    <p class="browse-empty" id="browse-empty" hidden></p>
+    <p class="inline-error" id="browse-error" role="alert" hidden></p>
+    <button class="text-btn browse-more" type="button" id="browse-more" hidden>Show older</button>
+  </div>
+</div></div>
 
 <div class="letter" id="letter" role="dialog" aria-modal="true" aria-labelledby="letter-from" hidden>
   <div class="letter-card">

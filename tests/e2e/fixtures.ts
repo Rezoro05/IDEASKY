@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 /** Fake the outside world: the test build points at board.test (see build:test), intercepted here. */
 export type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[]; categories?: string[] | null; kind?: "idea" | "dream" };
 export type CommentRow = Row & { idea_id: string; parent_id?: string | null };
-export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean; signInLinks?: { email: string; redirect: string }[]; signInStatus?: number; signOuts?: number; google?: boolean; googleTrips?: string[]; privateItems?: PrivateRow[]; privateRequests?: { method: string; owner: string | null }[]; privateUpdates?: { id: string; item_id: string; owner: string; message: string; links: unknown[]; created_at: string }[] };
+export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean; signInLinks?: { email: string; redirect: string }[]; signInStatus?: number; signOuts?: number; google?: boolean; googleTrips?: string[]; privateItems?: PrivateRow[]; /** Public posts that belong to an account: id → user id. */ owners?: Record<string, string>; claims?: { id: string; key: string }[][]; likeCountsCalls?: number; privateRequests?: { method: string; owner: string | null }[]; privateUpdates?: { id: string; item_id: string; owner: string; message: string; links: unknown[]; created_at: string }[] };
 /** A row of the private table as the database keeps it: the owner is whoever was signed in when it was added. */
 export type PrivateRow = { id: string; owner: string; kind: "idea" | "dream"; name: string; message: string; links: unknown[]; stage: string; categories: string[] | null; created_at: string; public_id?: string | null };
 export async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [] }) {
@@ -20,9 +20,11 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
       (board.privateRequests ??= []).push({ method, owner });
       if (!owner) return r.fulfill({ status: 401, json: { message: "JWT required" } });
       const items = (board.privateItems ??= []), id = new URL(url).searchParams.get("id")?.replace(/^eq\./, "");
-      if (method === "GET") {
-        const kind = new URL(url).searchParams.get("kind")?.replace(/^eq\./, "");
-        return r.fulfill({ json: items.filter((x) => x.owner === owner && (!kind || x.kind === kind)).sort((a, b) => b.created_at.localeCompare(a.created_at)) });
+      if (method === "GET" || method === "HEAD") { // HEAD: how many there are (Content-Range), for browsing
+        const q = new URL(url).searchParams, kind = q.get("kind")?.replace(/^eq\./, ""), before = q.get("created_at")?.replace(/^lt\./, "");
+        const mine = items.filter((x) => x.owner === owner && (!kind || x.kind === kind) && (!before || Date.parse(x.created_at) < Date.parse(before))).sort((a, b) => b.created_at.localeCompare(a.created_at));
+        if (method === "HEAD") return r.fulfill({ status: 200, headers: { "content-range": `*/${mine.length}`, "access-control-expose-headers": "Content-Range", "access-control-allow-origin": "*" }, body: "" });
+        return r.fulfill({ json: mine });
       }
       if (method === "POST") {
         const b = r.request().postDataJSON();
@@ -85,6 +87,12 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
       if (row && (!row.categories || row.categories.length === 0)) row.categories = categories; // as the function: [] (old rule) is sorted again
       return r.fulfill({ json: { categories: row?.categories ?? categories } });
     }
+    if (url.endsWith("/rpc/like_counts")) { // likes on many ideas at once (a liked one flies a little bigger)
+      board.likes ??= []; board.likeCountsCalls = (board.likeCountsCalls ?? 0) + 1;
+      const ids: string[] = r.request().postDataJSON().p_ids, counts = new Map<string, number>();
+      for (const l of board.likes) if (ids.includes(l.idea_id)) counts.set(l.idea_id, (counts.get(l.idea_id) ?? 0) + 1);
+      return r.fulfill({ json: [...counts].map(([idea_id, likes]) => ({ idea_id, likes })) });
+    }
     if (url.includes("comment_like_counts")) { // the database counts (supabase/migrations/20261001000012_indexes_and_counts.sql)
       board.commentLikes ??= [];
       const ids: string[] = r.request().postDataJSON().p_ids, counts = new Map<string, number>();
@@ -131,25 +139,44 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
       board.updates ??= [];
       if (board.updatesDown) return r.fulfill({ status: 500, body: "down" });
       if (method === "GET") { const id = new URL(url).searchParams.get("idea_id")!.slice(3); return r.fulfill({ json: board.updates.filter((x) => x.idea_id === id) }); }
-      const b = r.request().postDataJSON(), hash = createHash("sha256").update(b.p_key).digest("hex");
-      const ownerOf = (ideaId: string) => (board.posts as { id: string; delete_key_hash: string }[]).some((p) => p.id === ideaId && p.delete_key_hash === hash);
+      const b = r.request().postDataJSON(), hash = b.p_key ? createHash("sha256").update(b.p_key).digest("hex") : "", me = ownerOf(r.request().headers()["authorization"] ?? "");
+      const owns = (ideaId: string) => (board.posts as { id: string; delete_key_hash: string }[]).some((p) => p.id === ideaId && p.delete_key_hash === hash) || (!!me && board.owners?.[ideaId] === me);
       if (url.endsWith("/rpc/add_idea_update")) {
-        if (!ownerOf(b.p_idea_id)) return r.fulfill({ json: false });
+        if (!owns(b.p_idea_id)) return r.fulfill({ json: false });
         board.updates.push({ id: b.p_id, idea_id: b.p_idea_id, message: b.p_message, links: b.p_links, created_at: new Date().toISOString() });
         return r.fulfill({ json: true });
       }
       const u = board.updates.find((x) => x.id === b.p_id);
-      if (!u || !ownerOf(u.idea_id)) return r.fulfill({ json: false });
+      if (!u || !owns(u.idea_id)) return r.fulfill({ json: false });
       board.updates = board.updates.filter((x) => x.id !== b.p_id);
       return r.fulfill({ json: true });
     }
-    if (method === "GET") { // ideas for the sky, dreams for the sea
-      const kind = new URL(url).searchParams.get("kind");
-      return r.fulfill({ json: board.rows.filter((x) => kind === "eq.dream" ? x.kind === "dream" : x.kind !== "dream") });
+    if (url.endsWith("/rpc/my_idea_ids")) { // your own public posts, as the database answers it (ids only)
+      const me = ownerOf(r.request().headers()["authorization"] ?? "");
+      return r.fulfill({ json: me ? Object.entries(board.owners ?? {}).filter(([, o]) => o === me).map(([id]) => id) : [] });
+    }
+    if (url.endsWith("/rpc/claim_ideas")) { // this browser's earlier posts join the account, each with its own key
+      const me = ownerOf(r.request().headers()["authorization"] ?? ""), items: { id: string; key: string }[] = r.request().postDataJSON().p_items;
+      (board.claims ??= []).push(items);
+      let n = 0;
+      for (const c of items) {
+        const post = (board.posts as { id: string; delete_key_hash: string }[]).find((p) => p.id === c.id);
+        if (me && post && !board.owners?.[c.id] && post.delete_key_hash === createHash("sha256").update(c.key).digest("hex")) { (board.owners ??= {})[c.id] = me; n++; }
+      }
+      return r.fulfill({ json: n });
+    }
+    if (method === "GET" || method === "HEAD") { // ideas for the sky, dreams for the sea; older pages and the total, as PostgREST answers them
+      const q = new URL(url).searchParams, kind = q.get("kind"), before = q.get("created_at"), limit = Number(q.get("limit") ?? "60");
+      const ofKind = board.rows.filter((x) => kind === "eq.dream" ? x.kind === "dream" : x.kind !== "dream")
+        .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+      if (method === "HEAD") return r.fulfill({ status: 200, headers: { "content-range": `*/${ofKind.length}`, "access-control-expose-headers": "Content-Range", "access-control-allow-origin": "*" }, body: "" });
+      const page = before ? ofKind.filter((x) => Date.parse(x.created_at) < Date.parse(before.slice(3))) : ofKind;
+      return r.fulfill({ json: page.slice(0, limit) });
     }
     if (url.endsWith("/rest/v1/ideas")) {
-      const body = r.request().postDataJSON();
+      const body = r.request().postDataJSON(), poster = ownerOf(r.request().headers()["authorization"] ?? "");
       board.posts.push(body);
+      if (poster) (board.owners ??= {})[body.id] = poster; // posted while signed in: it is that account's
       board.rows.unshift({ id: body.id, name: body.name, message: body.message, links: body.links ?? [], stage: "idea", created_at: new Date().toISOString(), ...(body.kind ? { kind: body.kind } : {}) });
       return r.fulfill({ status: 201, body: "" });
     }
@@ -160,7 +187,16 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
       if (row) row.stage = b.p_stage;
       return r.fulfill({ json: !!row });
     }
-    if (url.endsWith("/rpc/delete_idea")) { board.deletes.push(r.request().postDataJSON()); return r.fulfill({ json: true }); }
+    if (url.endsWith("/rpc/delete_idea")) {
+      const b = r.request().postDataJSON(), me = ownerOf(r.request().headers()["authorization"] ?? "");
+      const byKey = !!b.p_key && (board.posts as { id: string; delete_key_hash: string }[]).some((p) => p.id === b.p_id && p.delete_key_hash === createHash("sha256").update(b.p_key).digest("hex"));
+      const byAccount = !!me && board.owners?.[b.p_id] === me;
+      const known = (board.posts as { id: string }[]).some((p) => p.id === b.p_id);
+      if (known && !byKey && !byAccount) return r.fulfill({ json: false }); // a post made here, and not yours either way
+      board.deletes.push(b);
+      board.rows = board.rows.filter((x) => x.id !== b.p_id);
+      return r.fulfill({ json: true });
+    }
     return r.fulfill({ status: 404 });
   });
   return board;

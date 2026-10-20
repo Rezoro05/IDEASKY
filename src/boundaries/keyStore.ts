@@ -3,6 +3,8 @@ export interface KeyStore {
   get(id: string): string | undefined;
   set(id: string, key: string): void;
   drop(id: string): void;
+  /** Every id and its key (to claim this browser's posts for an account). */
+  all(): Record<string, string>;
 }
 
 export const DELETE_KEYS_ITEM = "idea-delete-keys";
@@ -22,5 +24,6 @@ export function browserKeyStore(storage: Pick<Storage, "getItem" | "setItem"> | 
     get: (id) => read()[id],
     set: (id, key) => { const k = read(); k[id] = key; write(k); },
     drop: (id) => { const k = read(); delete k[id]; write(k); },
+    all: () => read(),
   };
 }

@@ -24,10 +24,11 @@ import LinkRows from "./LinkRows.astro";
     <label class="note-field" for="note-name"><span id="note-name-label">Name</span>
       <input id="note-name" name="name" type="text" autocomplete="name" maxlength={IDEA_LIMITS.name} placeholder="Steve Gates">
     </label>
-    <label class="note-field note-email-field" for="note-email"><span>Email</span>
-      <input id="note-email" name="email" type="text" inputmode="email" autocomplete="email" placeholder="you@company.com">
+    <label class="note-field note-email-field" for="note-email"><span>Email <span class="opt">(to hear when someone answers)</span></span>
+      <input id="note-email" name="email" type="text" inputmode="email" autocomplete="email" placeholder="you@company.com" aria-describedby="note-email-private">
     </label>
   </div>
+  <p class="note-hint note-email-field" id="note-email-private">Your email is never shown on the board.</p>
   <p class="note-error" id="note-error" role="alert" hidden></p>
   <div class="note-choice">
     <button class="note-send" type="submit">Fold &amp; share <span aria-hidden="true">→</span></button>

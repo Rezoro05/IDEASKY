@@ -6,7 +6,7 @@ import { byId } from "./dom";
 
 export type Likes = { open(ideaId: string): void; close(): void };
 
-export function startLikes(opts: { store: Promise<LikeStore> }): Likes {
+export function startLikes(opts: { store: Promise<LikeStore>; /** The count is known or changed (its bird or fish grows to match). */ counted?: (ideaId: string, count: number) => void }): Likes {
   const button = byId<HTMLButtonElement>("like-btn"), countEl = byId("like-count");
   let ideaId: string | null = null, token = 0, state: LikeState = { liked: false, count: 0 }, countKnown = false, store: LikeStore | null = null;
 
@@ -27,6 +27,7 @@ export function startLikes(opts: { store: Promise<LikeStore> }): Likes {
     if (mine !== token || count === null) return;
     state = { ...state, count: Math.max(count, state.liked ? 1 : 0) }; countKnown = true; // a tap may have landed before the count did
     render();
+    opts.counted?.(id, state.count);
   }
 
   button.addEventListener("click", async () => {
@@ -35,6 +36,7 @@ export function startLikes(opts: { store: Promise<LikeStore> }): Likes {
     state = toggled(state);
     render();
     const saved = await (state.liked ? store.like(id) : store.unlike(id));
+    if (saved && countKnown) opts.counted?.(id, state.count);
     if (mine !== token || saved) return;
     state = before;
     render();

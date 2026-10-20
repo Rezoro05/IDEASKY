@@ -8,6 +8,7 @@ import type { IdeaStore } from "./ideaStore";
 import type { Categorizer } from "./categorizer";
 import type { UpdateStore } from "./updateStore";
 import { cleanUpdate, UPDATE_LIMITS, type Update } from "../lib/updates";
+import { countFromContentRange } from "../lib/likes";
 
 export type PrivateDeps = {
   url: string; key: string; fetch: typeof fetch;
@@ -24,24 +25,44 @@ async function authed(d: Pick<PrivateDeps, "key" | "token">, extra: Record<strin
 /** Your own store can also remember the public copy of an item you shared (null = taken down). */
 export type PrivateStore = IdeaStore & { markShared(id: string, publicId: string | null): Promise<boolean> };
 
+type PrivateRow = { id: string; name: string; message: string; stage: unknown; links: unknown; categories?: unknown; public_id?: unknown; created_at: string };
+const COLUMNS = "id,name,message,stage,links,categories,public_id,created_at";
+
 export function supabasePrivateStore(d: PrivateDeps): PrivateStore {
   const table = `${d.url}/rest/v1/private_items`;
+  const toItem = (row: PrivateRow): Idea | null => {
+    const idea = cleanIdea({ id: row.id, name: row.name, message: row.message, stage: row.stage, links: row.links, categories: row.categories, at: Date.parse(row.created_at) }, d.kind);
+    return idea && isRecordId(row.public_id) ? { ...idea, publicId: row.public_id } : idea;
+  };
   return {
     async subscribe(onIdeas) {
       try {
         const headers = await authed(d);
         if (!headers) return false;
-        const r = await d.fetch(`${table}?select=id,name,message,stage,links,categories,public_id,created_at&kind=eq.${d.kind}&order=created_at.desc&limit=200`, { headers });
+        const r = await d.fetch(`${table}?select=${COLUMNS}&kind=eq.${d.kind}&order=created_at.desc&limit=200`, { headers });
         if (!r.ok) return false;
-        const rows = (await r.json()) as { id: string; name: string; message: string; stage: unknown; links: unknown; categories?: unknown; public_id?: unknown; created_at: string }[];
         const out = new Map<string, Idea>();
-        for (const row of rows) {
-          const idea = cleanIdea({ id: row.id, name: row.name, message: row.message, stage: row.stage, links: row.links, categories: row.categories, at: Date.parse(row.created_at) }, d.kind);
-          if (idea) out.set(idea.id, isRecordId(row.public_id) ? { ...idea, publicId: row.public_id } : idea);
-        }
+        for (const row of (await r.json()) as PrivateRow[]) { const item = toItem(row); if (item) out.set(item.id, item); }
         onIdeas(out);
         return true;
       } catch { return false; }
+    },
+    async older(before, limit) {
+      try {
+        const headers = await authed(d);
+        if (!headers) return null;
+        const r = await d.fetch(`${table}?select=${COLUMNS}&kind=eq.${d.kind}&created_at=lt.${encodeURIComponent(new Date(before).toISOString())}&order=created_at.desc&limit=${limit}`, { headers });
+        if (!r.ok) return null;
+        return ((await r.json()) as PrivateRow[]).map(toItem).filter((n): n is Idea => n !== null);
+      } catch { return null; }
+    },
+    async total() {
+      try {
+        const headers = await authed(d, { Prefer: "count=exact" });
+        if (!headers) return null;
+        const r = await d.fetch(`${table}?select=id&kind=eq.${d.kind}`, { method: "HEAD", headers });
+        return r.ok ? countFromContentRange(r.headers.get("content-range")) : null;
+      } catch { return null; }
     },
     async add(idea) {
       try {

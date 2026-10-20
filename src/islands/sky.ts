@@ -28,6 +28,8 @@ export type Sky = {
   reform(slug: string, stage: Stage): void;
   /** The idea's main category arrived or changed: it takes that tint and joins that flock. */
   flock(slug: string, flock: string): void;
+  /** Its size: 1 = as drawn; a liked idea grows a little (lib/likes likeScale). */
+  grow(slug: string, scale: number): void;
   remove(slug: string): void;
 };
 
@@ -215,6 +217,10 @@ export function startSky(opts: {
       a.querySelector(".body")!.innerHTML = formFor(stage);
       wings.set(slug, wingGroupsOf(a));
       world = setStage(world, slug, stage);
+    },
+    grow(slug, scale) {
+      const a = els.get(slug), s = config.planeSize * scale + "px";
+      if (a && a.style.getPropertyValue("--s") !== s) a.style.setProperty("--s", s);
     },
     flock(slug, flock) {
       const a = els.get(slug);

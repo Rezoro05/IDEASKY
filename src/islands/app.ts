@@ -32,9 +32,11 @@ import { startDictation } from "./dictation";
 import { browserSpeech } from "../boundaries/speech";
 import { noCategorizer, supabaseCategorizer } from "../boundaries/categorizer";
 import { memoryAuth, supabaseAuth, type Auth } from "../boundaries/auth";
+import { supabaseAccountPosts } from "../boundaries/accountPosts";
 import { startAccount, type Account } from "./account";
 import { startModeSwitch, type Sources } from "./mode-switch";
 import { startGoPublic, type GoPublic } from "./go-public";
+import { startBrowse } from "./browse";
 import { memoryPrivateStore, privateCategorizer, privateUpdates, supabasePrivateStore } from "../boundaries/privateStore";
 import type { User } from "../lib/account";
 import type { Scenes } from "./scene";
@@ -52,7 +54,7 @@ async function sha256Hex(text: string): Promise<string> {
 type Stores = { ideas: IdeaStore; dreams: IdeaStore; comments: CommentStore; commentLikes: CommentLikeStore; likes: LikeStore; updates: UpdateStore };
 
 /** Supabase when a board is configured; otherwise everything lives in memory for this visit. */
-function chooseStores(): Stores {
+function chooseStores(auth: Auth): Stores {
   if (!PUBLIC_BOARD.url) {
     const ideas = memoryStore(DEMO_IDEAS ? demoIdeas(Date.now()) : []);
     return { ideas, dreams: memoryStore(DEMO_IDEAS ? demoDreams(Date.now()) : []), comments: memoryComments(), commentLikes: memoryCommentLikes(), likes: memoryLikes(), updates: memoryUpdates((id) => ideas.ownsKey(id)) };
@@ -60,10 +62,12 @@ function chooseStores(): Stores {
   const base = { url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window), randomBytes, sha256Hex };
   const likeKeys = browserKeyStore(safeStorage(), LIKES_ITEM), ideaKeys = browserKeyStore(safeStorage());
   const likerId = likerIdFrom(likeKeys, randomBytes); // one liker id for ideas and comments alike
+  // Signed in, public posts belong to your account (and this browser's earlier ones join it): manageable from any browser.
+  const account = supabaseAccountPosts({ ...base, auth, ideaKeys });
   return {
-    ideas: supabaseStore({ ...base, keys: ideaKeys }),
-    dreams: supabaseStore({ ...base, keys: ideaKeys, kind: "dream" }),
-    updates: supabaseUpdates({ ...base, ideaKeys }),
+    ideas: supabaseStore({ ...base, keys: ideaKeys, account }),
+    dreams: supabaseStore({ ...base, keys: ideaKeys, kind: "dream", account }),
+    updates: supabaseUpdates({ ...base, ideaKeys, account }),
     comments: supabaseComments({ ...base, keys: browserKeyStore(safeStorage(), COMMENT_KEYS_ITEM) }),
     likes: supabaseLikes({ ...base, keys: likeKeys, likerId, pageIsLeaving: () => leaving }),
     commentLikes: supabaseCommentLikes({ ...base, keys: browserKeyStore(safeStorage(), COMMENT_LIKES_ITEM), likerId, pageIsLeaving: () => leaving }),
@@ -154,7 +158,7 @@ export function startSite(): void {
       onOpen: (id, origin) => openPlane(id, origin),
       covered: () => document.documentElement.classList.contains("sky-covered") || document.documentElement.dataset.depth === "sea", // under an overlay, or out of view in the sea
     });
-    const overlays = [byId("compose"), byId("letter")];
+    const overlays = [byId("compose"), byId("letter"), byId("browse")];
     const markCovered = () => document.documentElement.classList.toggle("sky-covered", overlays.some((o) => o.classList.contains("open")));
     startCageHint({ field: byId("field"), cage: byId("cage"), reducedMotion, store: safeStorage(), inSky: () => document.documentElement.dataset.depth !== "sea" });
     const watcher = new MutationObserver(markCovered);
@@ -170,7 +174,10 @@ export function startSite(): void {
   if (profile !== "none") loadBackgrounds();
   startBoardBackgrounds();
 
-  const stores = Promise.resolve(chooseStores());
+  const auth = chooseAuth();
+  const stores = Promise.resolve(chooseStores(auth));
+  /** Likes on many ideas or dreams at once: on the public board a liked one flies or swims a little bigger. */
+  const likeCounts = (ids: string[]) => stores.then((s) => s.likes.counts(ids));
   let isMine = () => false; // set once the mode switch starts (below)
   let currentUpdates = () => stores.then((s) => s.updates);
   let goPublic: GoPublic = { open() {}, close() {} }; // set once the mode switch starts (below)
@@ -181,14 +188,14 @@ export function startSite(): void {
     size: FLIGHT_CONFIGS[profile === "none" ? "lite" : profile].planeSize,
     active: () => document.documentElement.dataset.depth === "sea" && !document.documentElement.classList.contains("sky-covered"),
     onOpen: (id, origin) => letter.open(id, origin),
-    categorizer, changed: (dream) => letter.refresh(dream),
+    categorizer, likeCounts, changed: (dream) => letter.refresh(dream),
   });
   let commentPosted = (_ideaId: string) => {};
   /** The icons that open something below them: choosing one closes the other two. */
   const closers: Record<Panel, () => void> = { comment: () => thread.closePanel(), update: () => updates.closePanel(), remove: () => removal.closePanel() };
   const opened = (panel: Panel) => () => { for (const other of panelsToClose(panel)) closers[other](); };
   const thread = startThread({ store: stores.then((s) => s.comments), likes: stores.then((s) => s.commentLikes), posted: (id) => commentPosted(id), opened: opened("comment") });
-  const likes = startLikes({ store: stores.then((s) => s.likes) });
+  const likes = startLikes({ store: stores.then((s) => s.likes), counted: (id, count) => { board.setLikes(id, count); sea.setLikes(id, count); } });
   let ideaMoved = (_idea: Idea) => {};
   const updates = startUpdates({ store: () => currentUpdates(), opened: opened("update") });
   const stage = startStagePanel({ store: () => board.store(), moved: (idea) => ideaMoved(idea) });
@@ -198,7 +205,7 @@ export function startSite(): void {
     removed: (idea) => { if (idea.kind === "dream") sea.forget(idea.id); else board.forget(idea.id); letter.dismiss(); }, opened: opened("remove"),
   });
   const share = startShare({ linkTo: (id) => ideaLink(location.href, id), nav: navigator });
-  const board = startBoard({ sky, store: ideaStore, openIdea: (id, origin) => letter.open(id, origin), categorizer, changed: (idea) => letter.refresh(idea) });
+  const board = startBoard({ sky, store: ideaStore, openIdea: (id, origin) => letter.open(id, origin), categorizer, likeCounts, changed: (idea) => letter.refresh(idea) });
   /** A letter shows an idea from the sky or a dream from the sea; dreams have no stages and no updates. */
   const recordOf = (id: string) => board.get(id) ?? sea.get(id);
   const nameOfRecord = (id: string) => (board.has(id) ? board.nameOf(id) : sea.nameOf(id));
@@ -218,16 +225,16 @@ export function startSite(): void {
       closed: () => { thread.close(); likes.close(); stage.close(); updates.close(); removal.close(); share.close(); goPublic.close(); forgetLink(); },
     },
   });
+  startBrowse({ ideas: board, dreams: sea, open: (id, origin) => letter.open(id, origin), stagesShown: () => board.stagesShown(), isPrivate: () => isMine() });
   ideaMoved = (idea) => { board.update(idea); letter.refresh(idea); };
   commentPosted = letter.foldAfterComment;
   openPlane = letter.open;
   const dictation = startDictation({ speech: browserSpeech(), button: byId<HTMLButtonElement>("note-mic"), field: byId<HTMLTextAreaElement>("note-msg"), status: byId("note-mic-status"), lang: navigator.language || "en-US" });
   startComposer({ board, sky, sea, reducedMotion, dictation, isPrivate: () => isMine() });
   const say = startToast();
-  const auth = chooseAuth();
   const modes = startModeSwitch({
     auth, board, sea, storage: safeStorage(), say,
-    everyone: { ideas: { store: ideaStore, categorizer }, dreams: { store: stores.then((s) => s.dreams), categorizer }, updates: stores.then((s) => s.updates) },
+    everyone: { ideas: { store: ideaStore, categorizer, likeCounts }, dreams: { store: stores.then((s) => s.dreams), categorizer, likeCounts }, updates: stores.then((s) => s.updates) },
     ownedBy: ownSources(auth),
     openingPublicIdea: !!linkedIdeaId(location.hash),
     switching: () => letter.dismiss(),

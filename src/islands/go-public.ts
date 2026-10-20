@@ -2,7 +2,7 @@
  *  It asks first, with an optional name; then a copy is posted on the public board, as any visitor's post is (the board emails the site's owner,
  *  sorted into categories there), and your own keeps the copy's id: its letter then says "On the public board", with "Take it down".
  *  States: idle → asking → sharing → shared | asking with an error;  shared → taking down → idle | shared with an error.
- *  Taking down needs this browser's key for the copy (as removing any public post does). */
+ *  The copy is posted with your sign-in, so it is yours by account: you can take it down from any browser where you are signed in. */
 import { ANONYMOUS, IDEA_LIMITS, newRecordId, type Idea } from "../lib/ideas";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { PrivateStore } from "../boundaries/privateStore";
@@ -12,7 +12,7 @@ export type GoPublic = { open(item: Idea): void; close(): void };
 
 const SAYS = {
   failed: "Couldn’t share it just now. Try again in a moment.",
-  downFailed: "Couldn’t take it down here. It can only be taken down from the browser it was shared from.",
+  downFailed: "Couldn’t take it down just now. Try again in a moment.",
   shared: (kind: "idea" | "dream") => kind === "dream" ? "Shared in the public sea. Anyone can open it now." : "Shared in the public sky. Anyone can catch it now.",
   down: "Taken down from the public board.",
 };

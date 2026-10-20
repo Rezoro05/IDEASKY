@@ -7,6 +7,8 @@ import type { KeyStore } from "./keyStore";
 export interface LikeStore {
   /** null = couldn't load */
   count(ideaId: string): Promise<number | null>;
+  /** Likes on many at once (ids with none are left out). null = couldn't load. */
+  counts(ideaIds: string[]): Promise<Map<string, number> | null>;
   /** Did this browser like it? Answered from browser storage, no network. */
   likedHere(ideaId: string): boolean;
   like(ideaId: string): Promise<boolean>;
@@ -46,6 +48,15 @@ export function supabaseLikes(d: SupabaseLikeDeps): LikeStore {
         return r.ok ? countFromContentRange(r.headers.get("content-range")) : null;
       } catch { return null; }
     },
+    async counts(ids) {
+      if (ids.length === 0) return new Map();
+      try { // counted by the database (like_counts), one row per liked idea
+        const r = await d.fetch(`${d.url}/rest/v1/rpc/like_counts`, { method: "POST", headers, body: JSON.stringify({ p_ids: ids }) });
+        if (!r.ok) return null;
+        const rows = (await r.json()) as { idea_id?: unknown; likes?: unknown }[];
+        return new Map(rows.filter((x) => typeof x.idea_id === "string" && Number(x.likes) > 0).map((x) => [x.idea_id as string, Number(x.likes)]));
+      } catch { return null; }
+    },
     likedHere: (ideaId) => d.keys.get(ideaId) === "1",
     /* The browser remembers the change before it is sent and takes it back only if sending really failed,
        not when a reload or navigation cut the request off. */
@@ -78,6 +89,7 @@ export function memoryLikes(initial: Record<string, number> = {}, opts: { failWr
   const counts = new Map(Object.entries(initial)), likedHere = new Set<string>();
   return {
     async count(ideaId) { return opts.failReads ? null : counts.get(ideaId) ?? 0; },
+    async counts(ids) { return opts.failReads ? null : new Map(ids.filter((id) => (counts.get(id) ?? 0) > 0).map((id) => [id, counts.get(id)!])); },
     likedHere: (ideaId) => likedHere.has(ideaId),
     async like(ideaId) {
       if (opts.failWrites) return false;

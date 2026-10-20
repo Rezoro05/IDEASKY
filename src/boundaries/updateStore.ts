@@ -4,6 +4,7 @@
 import { cleanUpdate, UPDATE_LIMITS, type Update } from "../lib/updates";
 import { supabaseHeaders } from "./ideaStore";
 import type { KeyStore } from "./keyStore";
+import type { AccountPosts } from "./accountPosts";
 
 export interface UpdateStore {
   /** null = couldn't load */
@@ -15,13 +16,14 @@ export interface UpdateStore {
 }
 
 /* ---------- Supabase ---------- */
-export type SupabaseUpdateDeps = { url: string; key: string; fetch: typeof fetch; ideaKeys: KeyStore };
+export type SupabaseUpdateDeps = { url: string; key: string; fetch: typeof fetch; ideaKeys: KeyStore; /** Ideas yours by account count too. */ account?: AccountPosts };
 
 export function supabaseUpdates(d: SupabaseUpdateDeps): UpdateStore {
   const headers = supabaseHeaders(d.key);
   const call = async (fn: string, body: unknown): Promise<boolean> => {
     try {
-      const r = await d.fetch(`${d.url}/rest/v1/rpc/${fn}`, { method: "POST", headers, body: JSON.stringify(body) });
+      const token = await d.account?.token().catch(() => null);
+      const r = await d.fetch(`${d.url}/rest/v1/rpc/${fn}`, { method: "POST", headers: token ? { ...headers, Authorization: `Bearer ${token}` } : headers, body: JSON.stringify(body) });
       return r.ok && !!(await r.json());
     } catch { return false; }
   };
@@ -37,14 +39,14 @@ export function supabaseUpdates(d: SupabaseUpdateDeps): UpdateStore {
       } catch { return null; }
     },
     async add(u) {
-      const key = d.ideaKeys.get(u.ideaId);
-      return !!key && call("add_idea_update", { p_idea_id: u.ideaId, p_key: key, p_id: u.id, p_message: u.message, p_links: u.links });
+      const key = d.ideaKeys.get(u.ideaId) ?? null;
+      return (!!key || !!d.account?.owns(u.ideaId)) && call("add_idea_update", { p_idea_id: u.ideaId, p_key: key, p_id: u.id, p_message: u.message, p_links: u.links });
     },
     async remove(u) {
-      const key = d.ideaKeys.get(u.ideaId);
-      return !!key && call("delete_idea_update", { p_id: u.id, p_key: key });
+      const key = d.ideaKeys.get(u.ideaId) ?? null;
+      return (!!key || !!d.account?.owns(u.ideaId)) && call("delete_idea_update", { p_id: u.id, p_key: key });
     },
-    canManage: (ideaId) => !!d.ideaKeys.get(ideaId),
+    canManage: (ideaId) => !!d.ideaKeys.get(ideaId) || !!d.account?.owns(ideaId),
   };
 }
 
