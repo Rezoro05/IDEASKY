@@ -1,5 +1,5 @@
 /** The signed-in visitor's own ideas and dreams (their private sky and sea), behind the same IdeaStore interface as the public board.
- *  Every request carries the visitor's sign-in; the database lets each owner see and change only their own rows (supabase/09).
+ *  Every request carries the visitor's sign-in; the database lets each owner see and change only their own rows (supabase/migrations/20261001000009_private_boards.sql).
  *  Never throws: failures come back as `false` or `null`, as in every store. */
 import { cleanIdea, isRecordId, type Idea } from "../lib/ideas";
 import { isOneStep } from "../lib/stages";

@@ -31,8 +31,6 @@ test.describe("comments on visitor ideas", () => {
     await expect(mine.locator(".c-remove")).toBeVisible();
     await expect(page.locator("#comment-msg")).toHaveValue("");
     expect(board.comments!.at(-1)).toMatchObject({ idea_id: "zzzzzz1", name: "Nino" });
-    await expect.poll(() => board.mails).toBe(1);
-    expect(board.mailBodies![0]).toContain("New comment on Idea1 from Nino");
     await expect(page.locator(".letter-card")).toHaveClass(/folding/, { timeout: 3000 }); // seen it land, now it folds and flies home
     await expect(page.locator("#letter")).toBeHidden();
     await openGio(page);
@@ -82,7 +80,6 @@ test.describe("comments on visitor ideas", () => {
     await page.locator(".thread-send").click();
     await page.waitForTimeout(300);
     expect(board.comments).toHaveLength(1);
-    expect(board.mails).toBe(0);
   });
 
   test("if a comment can't be saved, the letter stays open and keeps the text", async ({ page }) => {

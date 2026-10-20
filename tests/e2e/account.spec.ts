@@ -3,7 +3,7 @@ import { fakeServices, settled, signInReturn, watchErrors, type Board } from "./
 
 /** No Sign in button: choosing Private on the switch while signed out opens the note. */
 const openSignIn = (page: Page) => page.locator("#board-switch label", { hasText: "Private" }).click();
-const fresh = (): Board => ({ rows: [], posts: [], deletes: [], mails: 0 });
+const fresh = (): Board => ({ rows: [], posts: [], deletes: [] });
 
 test.describe("sign-in (email link)", () => {
   test("choosing Private opens the sign-in note (no Sign in button); an email gets a link that comes back to this page, and the note says where it went", async ({ page }) => {

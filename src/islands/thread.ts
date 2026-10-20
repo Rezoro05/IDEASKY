@@ -6,7 +6,6 @@ import { commentGroups, replyParent, threadFor, validateCommentDraft, type Comme
 import type { CommentLikeStore } from "../boundaries/commentLikeStore";
 import { newRecordId } from "../lib/ideas";
 import type { CommentStore } from "../boundaries/commentStore";
-import type { Inbox } from "../boundaries/inbox";
 import { byId, hideOnEdit, randomBytes } from "./dom";
 
 export type Thread = { open(ideaId: string): void; close(): void; /** Hide the comment form (another icon was chosen); what was typed stays. */ closePanel(): void };
@@ -17,7 +16,7 @@ const SEND_FAILED = "Couldn’t post your comment. Try again in a moment.";
 const REMOVE_FAILED = "Couldn’t remove it. Try again later.";
 
 export function startThread(opts: {
-  store: Promise<CommentStore>; likes: Promise<CommentLikeStore>; inbox: Inbox; ideaNameOf: (ideaId: string) => string; now?: () => number;
+  store: Promise<CommentStore>; likes: Promise<CommentLikeStore>; now?: () => number;
   /** A comment was saved and shown. */
   posted?: (ideaId: string) => void;
   /** The comment form was just opened by its icon. */
@@ -123,7 +122,6 @@ export function startThread(opts: {
     if (mine !== token) return;
     send.disabled = false;
     if (!saved) { err.textContent = SEND_FAILED; err.hidden = false; return; }
-    opts.inbox.sendComment(c, opts.ideaNameOf(forIdea), location.href);
     comments = threadFor([...comments, c], forIdea);
     field("message").value = "";
     setReply(null);

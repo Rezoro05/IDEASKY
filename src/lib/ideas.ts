@@ -9,7 +9,9 @@ export type Idea = { id: string; name: string; message: string; at: number; stag
   /** Your own (private) idea or dream: the id of its copy on the public board, once you shared it. */
   publicId?: string;
   /** "dream" for a dream in the Sea of Dreams; absent for an idea. */
-  kind?: "dream" };
+  kind?: "dream";
+  /** The poster's email, if they gave one on a public post: sent with the post for the owner's alert only, never readable by visitors and never read back. */
+  contactEmail?: string };
 export type Draft = { name: string; email: string; message: string; trap: string; linkRows: readonly LinkRow[] };
 export type DraftCheck =
   | { ok: true; idea: Pick<Idea, "name" | "message" | "links">; email: string }
@@ -54,13 +56,16 @@ export function ideaNumbers(ideas: Iterable<Idea>): Map<string, number> {
   return new Map(sorted.map((n, i) => [n.id, i + 1]));
 }
 
+/** The poster's optional email, as the board accepts it (supabase/migrations/20261001000013_owner_alerts.sql): anything else is dropped, never a reason to refuse the post. */
+export const usableEmail = (typed: string): string => { const e = typed.trim(); return e.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e) ? e : ""; };
+
 export function validateDraft(d: Draft): DraftCheck {
   if (d.trap) return { ok: false, reason: "bot" };
   const message = d.message.trim().slice(0, IDEA_LIMITS.message);
   if (!message) return { ok: false, reason: "empty-message", text: "Write your idea first." };
   const links = checkLinkRows(d.linkRows);
   if (!links.ok) return { ok: false, reason: "bad-link", row: links.row, text: links.text };
-  return { ok: true, idea: { name: d.name.trim().slice(0, IDEA_LIMITS.name) || ANONYMOUS, message, links: links.links }, email: d.email.trim() };
+  return { ok: true, idea: { name: d.name.trim().slice(0, IDEA_LIMITS.name) || ANONYMOUS, message, links: links.links }, email: usableEmail(d.email) };
 }
 
 /** Ids for ideas and comments alike. */

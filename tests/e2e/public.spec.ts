@@ -6,7 +6,7 @@ const row = (id: string, stage: string, hoursAgo: number): Row => ({ id, name: "
 
 test.describe("the public board: ideas only, no stages", () => {
   test("every idea flies as a bird, whatever stage is stored", async ({ page }) => {
-    await fakeServices(page, { rows: [row("pubidea1", "idea", 3), row("pubidea2", "implementation", 2), row("pubidea3", "live", 1)], posts: [], deletes: [], mails: 0 });
+    await fakeServices(page, { rows: [row("pubidea1", "idea", 3), row("pubidea2", "implementation", 2), row("pubidea3", "live", 1)], posts: [], deletes: [] });
     await page.goto("/");
     await expect(page.locator(".plane")).toHaveCount(3);
     for (const id of ["pubidea1", "pubidea2", "pubidea3"]) await expect(page.locator(`.plane[data-slug="${id}"]`)).toHaveAttribute("data-stage", "idea");
@@ -14,7 +14,7 @@ test.describe("the public board: ideas only, no stages", () => {
   });
 
   test("an open idea has no stage bar", async ({ page }) => {
-    await fakeServices(page, { rows: [row("pubidea3", "live", 1)], posts: [], deletes: [], mails: 0 });
+    await fakeServices(page, { rows: [row("pubidea3", "live", 1)], posts: [], deletes: [] });
     await page.goto("/");
     await page.locator(".plane").focus(); await page.keyboard.press("Enter");
     await expect(page.locator("#letter-body")).toHaveText("An idea at live");

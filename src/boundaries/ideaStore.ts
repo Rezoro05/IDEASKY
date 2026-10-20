@@ -59,7 +59,7 @@ export function supabaseStore(d: SupabaseDeps): IdeaStore {
         const deleteKey = toHex(d.randomBytes(16));
         const r = await d.fetch(d.url + "/rest/v1/ideas", {
           method: "POST", headers: { ...headers, Prefer: "return=minimal" },
-          body: JSON.stringify({ id: idea.id, name: idea.name, message: idea.message, links: idea.links, delete_key_hash: await d.sha256Hex(deleteKey), ...(kind === "dream" ? { kind } : {}) }),
+          body: JSON.stringify({ id: idea.id, name: idea.name, message: idea.message, links: idea.links, delete_key_hash: await d.sha256Hex(deleteKey), ...(kind === "dream" ? { kind } : {}), ...(idea.contactEmail ? { contact_email: idea.contactEmail } : {}) }),
         });
         if (!r.ok) return false;
         d.keys.set(idea.id, deleteKey);

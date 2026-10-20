@@ -1,7 +1,7 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import { fakeServices } from "./fixtures";
 
-const idea = (stage: "implementation" | "live" | "idea") => ({ rows: [{ id: "bbbbbb2", name: "Bea", message: "A caught idea", stage, created_at: "2026-09-30T12:00:00Z" }], posts: [], deletes: [], mails: 0 });
+const idea = (stage: "implementation" | "live" | "idea") => ({ rows: [{ id: "bbbbbb2", name: "Bea", message: "A caught idea", stage, created_at: "2026-09-30T12:00:00Z" }], posts: [], deletes: [] });
 
 /** A paused plane (keyboard focus holds it still) and the middle of it, so a press lands on it reliably. */
 async function pausedPlane(page: Page, stage: "implementation" | "live" | "idea") {

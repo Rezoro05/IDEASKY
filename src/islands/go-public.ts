@@ -1,12 +1,11 @@
 /** Sharing your own idea or dream on the public board: the globe on its letter (only in your own sky and sea).
- *  It asks first, with an optional name; then a copy is posted on the public board, as any visitor's post is (emailed to the site's owner,
+ *  It asks first, with an optional name; then a copy is posted on the public board, as any visitor's post is (the board emails the site's owner,
  *  sorted into categories there), and your own keeps the copy's id: its letter then says "On the public board", with "Take it down".
  *  States: idle → asking → sharing → shared | asking with an error;  shared → taking down → idle | shared with an error.
  *  Taking down needs this browser's key for the copy (as removing any public post does). */
 import { ANONYMOUS, IDEA_LIMITS, newRecordId, type Idea } from "../lib/ideas";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { PrivateStore } from "../boundaries/privateStore";
-import type { Inbox } from "../boundaries/inbox";
 import { byId, randomBytes } from "./dom";
 
 export type GoPublic = { open(item: Idea): void; close(): void };
@@ -25,7 +24,6 @@ export function startGoPublic(opts: {
   /** Where the item lives now (your own store), and the public board for its kind. */
   ownStore: (item: Idea) => Promise<IdeaStore>;
   publicStore: (item: Idea) => Promise<IdeaStore>;
-  inbox: Inbox;
   /** The item changed (shared or taken down): keep it and redraw. */
   changed: (item: Idea) => void;
   say: (text: string) => void;
@@ -67,7 +65,6 @@ export function startGoPublic(opts: {
     };
     yes.disabled = true;
     const posted = await (await opts.publicStore(original)).add(copy);
-    if (posted) opts.inbox.send(copy, "", location.href); // like any public post: the site's owner hears of it
     const own = await opts.ownStore(original);
     const marked = posted && isPrivateStore(own) && await own.markShared(original.id, copy.id);
     yes.disabled = false;

@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { dreamRow, fakeServices, gioRow, settled, signInReturn, type Board } from "./fixtures";
 
 /** A public board with one idea and one dream, so "empty" really means "only yours". */
-const withPublic = (): Board => ({ rows: [{ ...gioRow, categories: ["food-drink"] }, dreamRow("dreampub1", "I could breathe underwater", ["water"])], posts: [], deletes: [], mails: 0 });
+const withPublic = (): Board => ({ rows: [{ ...gioRow, categories: ["food-drink"] }, dreamRow("dreampub1", "I could breathe underwater", ["water"])], posts: [], deletes: [] });
 const signIn = (page: Page, email = "rez@example.com", id = "user-1") => page.goto("/" + signInReturn(email, id));
 /** The Private | Public switch, top right. */
 const choose = (page: Page, board: "Private" | "Public") => page.locator("#board-switch label", { hasText: board }).click();
@@ -71,8 +71,7 @@ test.describe("your own sky and sea", () => {
     await expect(bird).toHaveCount(1, { timeout: 8000 });
     await expect.poll(() => board.privateItems?.length ?? 0).toBe(1);
     expect(board.privateItems![0]).toMatchObject({ owner: "user-1", kind: "idea", message: "A private telescope diary", name: "" });
-    expect(board.posts).toEqual([]); // nothing went to the public board
-    expect(board.mails).toBe(0); // and nothing was emailed
+    expect(board.posts).toEqual([]); // nothing went to the public board (so nothing is emailed either)
     await expect(bird).toHaveAttribute("data-flock", "science");
     await choose(page, "Public");
     await expect(page.locator(`.plane[data-slug="${board.privateItems![0]!.id}"]`)).toHaveCount(0); // not in the public sky
@@ -197,7 +196,7 @@ test.describe("your own sky and sea", () => {
     const post = board.posts[0] as { id: string; name: string; message: string };
     expect(post).toMatchObject({ name: "Rez", message: "Riders mark potholes" });
     expect(post.id).not.toBe("mine0001"); // a copy with its own id
-    expect(board.mails).toBe(1); // like any public post
+    expect(post).not.toHaveProperty("contact_email"); // posted like any public post (the board emails the owner), with no email of yours
     expect(board.privateItems![0]).toMatchObject({ public_id: post.id, stage: "implementation" }); // yours stays, and remembers it
     await page.keyboard.press("Escape"); await expect(page.locator("#letter")).toBeHidden();
     await choose(page, "Public");

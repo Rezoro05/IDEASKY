@@ -1,8 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
-import { cleanComment, threadFor, commentGroups, replyParent, tally, validateCommentDraft, COMMENT_LIMITS, type Comment } from "../../src/lib/comments";
+import { cleanComment, threadFor, commentGroups, replyParent, validateCommentDraft, COMMENT_LIMITS, type Comment } from "../../src/lib/comments";
 import { supabaseComments, memoryComments } from "../../src/boundaries/commentStore";
 import { browserKeyStore, COMMENT_KEYS_ITEM, DELETE_KEYS_ITEM } from "../../src/boundaries/keyStore";
-import { commentFields, formspreeInbox } from "../../src/boundaries/inbox";
 
 const c = (id: string, at: number, extra: Partial<Comment> = {}): Comment => ({ id, ideaId: "idea01", parentId: null, name: "A", message: "m", at, ...extra });
 const res = (body: unknown, ok = true) => ({ ok, json: async () => body }) as Response;
@@ -45,13 +44,6 @@ describe("replies", () => {
   it("files a reply to a reply under the same top-level comment (one level deep)", () => {
     expect(replyParent(c("top001", 1))).toBe("top001");
     expect(replyParent(c("rep001", 2, { parentId: "top001" }))).toBe("top001");
-  });
-});
-
-describe("comment likes", () => {
-  it("tally counts each id", () => {
-    expect(Object.fromEntries(tally(["a", "b", "a", "a"]))).toEqual({ a: 3, b: 1 });
-    expect(tally([]).size).toBe(0);
   });
 });
 
@@ -109,18 +101,12 @@ describe("supabaseComments", () => {
   });
 });
 
-describe("memoryComments and inbox", () => {
+describe("memoryComments", () => {
   it("memory store adds, lists, removes and can fail", async () => {
     const s = memoryComments();
     await s.add(c("cmt001", 1));
     expect(await s.list("idea01")).toHaveLength(1);
     expect(await s.remove(c("cmt001", 1))).toBe(true);
     expect(await memoryComments([], { failReads: true }).list("idea01")).toBeNull();
-  });
-  it("comment emails name the idea", async () => {
-    expect(commentFields(c("cmt001", 1, { name: "Gio" }), "Idea3", "p").at(-1)).toEqual(["_subject", "New comment on Idea3 from Gio"]);
-    const f = vi.fn(async (_u: string, _i?: RequestInit) => res({}));
-    expect(await formspreeInbox("u", f as unknown as typeof fetch).sendComment(c("cmt001", 1), "Idea3", "p")).toBe(true);
-    expect((f.mock.calls[0]![1] as RequestInit).body).toBeInstanceOf(FormData);
   });
 });

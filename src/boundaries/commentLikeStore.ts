@@ -1,6 +1,5 @@
 /** Where likes on comments live. Same rules as idea likes (likeStore): one per browser, only the liker id's hash leaves the browser,
  *  the browser remembers its likes, and failures become null/false (never an exception). */
-import { tally } from "../lib/comments";
 import { supabaseHeaders } from "./ideaStore";
 import type { KeyStore } from "./keyStore";
 
@@ -29,9 +28,11 @@ export function supabaseCommentLikes(d: SupabaseCommentLikeDeps): CommentLikeSto
     async counts(ids) {
       if (ids.length === 0) return new Map();
       try {
-        const r = await d.fetch(`${d.url}/rest/v1/comment_likes?select=comment_id&comment_id=in.(${ids.map(encodeURIComponent).join(",")})`, { headers });
+        // Counted by the database (supabase/migrations/20261001000012_indexes_and_counts.sql): one small row per liked comment, not one per like.
+        const r = await d.fetch(`${d.url}/rest/v1/rpc/comment_like_counts`, { method: "POST", headers, body: JSON.stringify({ p_ids: ids }) });
         if (!r.ok) return null;
-        return tally(((await r.json()) as { comment_id: string }[]).map((row) => row.comment_id));
+        const rows = (await r.json()) as { comment_id?: unknown; likes?: unknown }[];
+        return new Map(rows.filter((x) => typeof x.comment_id === "string" && Number(x.likes) > 0).map((x) => [x.comment_id as string, Number(x.likes)]));
       } catch { return null; }
     },
     likedHere: (id) => d.keys.get(id) === "1",

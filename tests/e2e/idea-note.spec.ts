@@ -16,8 +16,7 @@ test("post an idea: it flies to the sky, opens as a letter, and its author can r
   expect(await plane.locator(".body").evaluate((el) => getComputedStyle(el, "::after").animationName)).toBe("fresh-ring"); // just posted: it pulses a ring
   expect(board.posts).toHaveLength(1);
   expect(board.posts[0]).toMatchObject({ name: "Nino", message: "A bike-share for Tbilisi hills" });
-  expect(JSON.stringify(board.posts[0])).not.toContain("nino@"); // email never goes to the public board
-  expect(board.mails).toBe(1);
+  expect(JSON.stringify(board.posts[0])).not.toContain("nino@"); // not an email address: dropped, and the idea still posts
   await plane.focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("#letter")).toBeVisible();
@@ -37,6 +36,17 @@ test("post an idea: it flies to the sky, opens as a letter, and its author can r
   expect(board.deletes).toHaveLength(1);
 });
 
+test("an email given on the note goes with the post, for the owner's alert (visitors never read it back)", async ({ page }) => {
+  const board = await fakeServices(page);
+  await page.goto("/");
+  await page.locator("#idea-btn").click(); await settled(page);
+  await page.locator("#note-email").fill(" nino@example.com ");
+  await page.locator("#note-msg").fill("Night markets on the river");
+  await page.locator(".note-send").click();
+  await expect.poll(() => board.posts.length).toBe(1);
+  expect(board.posts[0]).toMatchObject({ message: "Night markets on the river", contact_email: "nino@example.com" });
+});
+
 test("closing the Idea Note right after opening it closes it for good", async ({ page }) => {
   await fakeServices(page);
   await page.goto("/");
@@ -52,7 +62,7 @@ test("closing the Idea Note right after opening it closes it for good", async ({
 });
 
 test("if the board is down, the idea still flies and the visitor is told", async ({ page }) => {
-  await fakeServices(page, { rows: [], down: true, posts: [], deletes: [], mails: 0 });
+  await fakeServices(page, { rows: [], down: true, posts: [], deletes: [] });
   await page.goto("/");
   await page.locator("#idea-btn").click(); await settled(page);
   await page.locator("#note-msg").fill("Still here");
@@ -83,5 +93,4 @@ test("bots that fill the hidden field are ignored", async ({ page }) => {
   await page.locator(".note-send").click();
   await page.waitForTimeout(500);
   expect(board.posts).toHaveLength(0);
-  expect(board.mails).toBe(0);
 });

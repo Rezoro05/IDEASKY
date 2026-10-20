@@ -2,7 +2,6 @@
  *  States: closed → editing ⇄ invalid → folding → flying → sent (closed). Saving and emailing run alongside and never hold up the animation. */
 import { newRecordId, validateDraft, type Idea } from "../lib/ideas";
 import { v, type Vec } from "../lib/vec";
-import type { Inbox } from "../boundaries/inbox";
 import type { Board } from "./board";
 import type { Sky } from "./sky";
 import { byId, cancelPendingOpen, hideOnEdit, openWithTransition, randomBytes } from "./dom";
@@ -28,10 +27,10 @@ const WORDS: Record<Mode, { title: string; field: string; placeholder: string; m
   dream: { title: "Share your dream", field: "The dream", placeholder: "Tell a dream you had", mic: "Speak your dream", empty: "Write your dream first.", ownName: "Name your dream", ownNamePlaceholder: "Flying over the school" },
 };
 
-export function startComposer(opts: { board: Board; sky: Sky | null; sea?: SeaBoard; inbox: Inbox; reducedMotion: boolean; dictation?: Dictation; now?: () => number;
+export function startComposer(opts: { board: Board; sky: Sky | null; sea?: SeaBoard; reducedMotion: boolean; dictation?: Dictation; now?: () => number;
   /** In your own sky and sea: what you share is private, so it isn't emailed to the site's owner; its name field names it. */
   isPrivate?: () => boolean }): void {
-  const { board, sky, inbox } = opts;
+  const { board, sky } = opts;
   const isPrivate = opts.isPrivate ?? (() => false);
   /** In your own sky: the name typed for the idea or dream ("" = none: it is called Idea1, Dream1…). */
   const ownName = () => field("name").value.trim().slice(0, 40);
@@ -95,9 +94,10 @@ export function startComposer(opts: { board: Board; sky: Sky | null; sea?: SeaBo
       return;
     }
     err.hidden = true;
-    if (mode === "dream" && opts.sea) { sendDream(opts.sea, { id: newRecordId(randomBytes(8)), ...check.idea, ...(isPrivate() ? { name: ownName() } : {}), stage: "idea", at: now(), kind: "dream" }, check.email); return; }
-    const idea: Idea = { id: newRecordId(randomBytes(8)), ...check.idea, ...(isPrivate() ? { name: ownName() } : {}), stage: "idea", at: now() };
-    if (!isPrivate()) inbox.send(idea, check.email, location.href);
+    // A public post carries the poster's email (if given) to the board, which emails the owner (supabase/functions/notify). Your own never does.
+    const contact = !isPrivate() && check.email ? { contactEmail: check.email } : {};
+    if (mode === "dream" && opts.sea) { sendDream(opts.sea, { id: newRecordId(randomBytes(8)), ...check.idea, ...(isPrivate() ? { name: ownName() } : {}), stage: "idea", at: now(), kind: "dream", ...contact }); return; }
+    const idea: Idea = { id: newRecordId(randomBytes(8)), ...check.idea, ...(isPrivate() ? { name: ownName() } : {}), stage: "idea", at: now(), ...contact };
     if (opts.reducedMotion || !sky) {
       const saving = board.post(idea);
       board.sync(); sent(saving);
@@ -112,8 +112,7 @@ export function startComposer(opts: { board: Board; sky: Sky | null; sea?: SeaBo
   });
 
   /** A dream folds into a fish that swims down to its place in the sea; with reduced motion it simply joins the list. */
-  function sendDream(sea: SeaBoard, dream: Idea, email: string): void {
-    if (!isPrivate()) inbox.send(dream, email, location.href);
+  function sendDream(sea: SeaBoard, dream: Idea): void {
     if (opts.reducedMotion) { sent(sea.post(dream), DREAM_NOT_SAVED); say(isPrivate() ? PRIVATE_DREAM : DREAM_NO_MOTION); return; }
     const r = form.getBoundingClientRect(), start = v(r.left + r.width / 2, r.top + r.height / 2);
     const saving = sea.post(dream, { arriving: true });

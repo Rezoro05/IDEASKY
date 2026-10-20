@@ -11,9 +11,9 @@ describe("the category list", () => {
   });
   it("matches the keys the database accepts (07 for ideas; 08 for ideas and dreams, which replaces it)", () => {
     const arrays = (file: string) => [...readFileSync(file, "utf8").matchAll(/array\[([^\]]+)\]::text/g)].map((m) => m[1]!.split(",").map((k) => k.trim().replace(/'/g, "")));
-    expect(arrays("supabase/07-categories.sql")).toEqual([IDEA_CATEGORIES.map((c) => c.key)]);
-    expect(arrays("supabase/08-dreams.sql")).toEqual([IDEA_CATEGORIES.map((c) => c.key), DREAM_THEMES.map((c) => c.key)]);
-    expect(readFileSync("supabase/08-dreams.sql", "utf8")).toContain(`cardinality(categories) <= ${PICK.max}`);
+    expect(arrays("supabase/migrations/20261001000007_categories.sql")).toEqual([IDEA_CATEGORIES.map((c) => c.key)]);
+    expect(arrays("supabase/migrations/20261001000008_dreams.sql")).toEqual([IDEA_CATEGORIES.map((c) => c.key), DREAM_THEMES.map((c) => c.key)]);
+    expect(readFileSync("supabase/migrations/20261001000008_dreams.sql", "utf8")).toContain(`cardinality(categories) <= ${PICK.max}`);
   });
   it("has the ten agreed dream themes, asked about as dreams", () => {
     expect(DREAM_THEMES.map((c) => c.label)).toEqual(["Flying", "Falling", "Being chased", "Water", "Lost", "People", "Places", "Animals", "Strange", "Nightmare"]);

@@ -3,7 +3,7 @@ import { dreamRow, fakeServices, gioRow, settled, watchErrors } from "./fixtures
 
 test.describe("categories (set by Jev)", () => {
   test("an open idea shows its category tags", async ({ page }) => {
-    await fakeServices(page, { rows: [{ ...gioRow, categories: ["food-drink", "city-places"] }], posts: [], deletes: [], mails: 0 });
+    await fakeServices(page, { rows: [{ ...gioRow, categories: ["food-drink", "city-places"] }], posts: [], deletes: [] });
     await page.goto("/");
     const plane = page.locator(".plane");
     await expect(plane).toHaveCount(1);
@@ -16,7 +16,7 @@ test.describe("categories (set by Jev)", () => {
   });
 
   test("a bird takes its main category's tint, as a fish takes its school's; one not sorted yet stays plain", async ({ page }) => {
-    const board = await fakeServices(page, { rows: [{ ...gioRow, categories: ["tech", "science"] }, { ...gioRow, id: "plain1", categories: [] }], posts: [], deletes: [], mails: 0 });
+    const board = await fakeServices(page, { rows: [{ ...gioRow, categories: ["tech", "science"] }, { ...gioRow, id: "plain1", categories: [] }], posts: [], deletes: [] });
     board.categorizeDown = true; // so plain1 stays unsorted
     await page.goto("/");
     await expect(page.locator(".plane")).toHaveCount(2);
@@ -29,7 +29,7 @@ test.describe("categories (set by Jev)", () => {
   });
 
   test("ideas and dreams left without categories are sorted when shown, once, and join their flock and school", async ({ page }) => {
-    const board = await fakeServices(page, { rows: [{ ...gioRow, categories: [] }, { ...gioRow, id: "sorted1", categories: ["health"] }, dreamRow("dream0001", "I was flying", null)], posts: [], deletes: [], mails: 0 });
+    const board = await fakeServices(page, { rows: [{ ...gioRow, categories: [] }, { ...gioRow, id: "sorted1", categories: ["health"] }, dreamRow("dream0001", "I was flying", null)], posts: [], deletes: [] });
     board.categorize = ["play-games"];
     await page.goto("/");
     await expect(page.locator(`.plane[data-slug="${gioRow.id}"]`)).toHaveAttribute("data-flock", "play-games");
@@ -40,7 +40,7 @@ test.describe("categories (set by Jev)", () => {
   });
 
   test("an idea that can't be sorted yet shows no tags", async ({ page }) => {
-    const board = await fakeServices(page, { rows: [{ ...gioRow, categories: [] }], posts: [], deletes: [], mails: 0 });
+    const board = await fakeServices(page, { rows: [{ ...gioRow, categories: [] }], posts: [], deletes: [] });
     board.categorizeDown = true;
     await page.goto("/");
     await page.locator(".plane").focus(); await page.keyboard.press("Enter");

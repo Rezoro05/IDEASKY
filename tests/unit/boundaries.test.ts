@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { supabaseStore, supabaseHeaders, memoryStore } from "../../src/boundaries/ideaStore";
 import { browserKeyStore, DELETE_KEYS_ITEM } from "../../src/boundaries/keyStore";
-import { feedbackFields, formspreeInbox, inboxFields, inboxFor, unconfiguredInbox } from "../../src/boundaries/inbox";
 import type { Idea } from "../../src/lib/ideas";
 
 const idea: Idea = { id: "abc123", name: "Nino", message: "An idea", at: 1000, stage: "idea", links: [{ title: "Demo", url: "https://demo.app/" }] };
@@ -66,6 +65,13 @@ describe("supabaseStore", () => {
     expect(body).toEqual({ id: "abc123", name: "Nino", message: "An idea", links: [{ title: "Demo", url: "https://demo.app/" }], delete_key_hash: "hash:" + "ab".repeat(16) }); // no stage: the database starts every idea at "idea"
     expect(d.keys.get("abc123")).toBe("ab".repeat(16));
     expect(store.ownsKey("abc123")).toBe(true);
+  });
+  it("the poster's email, when given, goes with the post (for the owner's alert); never otherwise", async () => {
+    const f = vi.fn(async (_u: string, _i?: RequestInit) => res(null));
+    await supabaseStore(deps(f as unknown as typeof fetch)).add({ ...idea, contactEmail: "nino@example.com" });
+    expect(JSON.parse((f.mock.calls[0]![1] as RequestInit).body as string).contact_email).toBe("nino@example.com");
+    await supabaseStore(deps(f as unknown as typeof fetch)).add(idea);
+    expect(JSON.parse((f.mock.calls[1]![1] as RequestInit).body as string)).not.toHaveProperty("contact_email");
   });
   it("removing calls the delete_idea function with the saved key, then forgets it", async () => {
     const f = vi.fn(async (_u: string, _i?: RequestInit) => res(true));
@@ -138,39 +144,4 @@ describe("memoryStore", () => {
   });
 });
 
-describe("inbox", () => {
-  it("sends the fields Formspree expects; email only when given", () => {
-    expect(inboxFields(idea, "", "https://x/")).toEqual([["name", "Nino"], ["message", "An idea"], ["idea_id", "abc123"], ["page", "https://x/"], ["_subject", "New idea on Sky of Ideas from Nino"]]);
-    expect(inboxFields({ ...idea, kind: "dream" }, "", "https://x/").at(-1)).toEqual(["_subject", "New dream in the Sea of Dreams from Nino"]);
-    expect(inboxFields(idea, "a@b.c", "p").map(([k]) => k)).toContain("email");
-  });
-  it("posts as JSON-accepting form data; failures become false", async () => {
-    const f = vi.fn(async (_u: string, _i?: RequestInit) => res({}));
-    expect(await formspreeInbox("https://formspree.io/f/x", f as unknown as typeof fetch).send(idea, "", "p")).toBe(true);
-    const init = f.mock.calls[0]![1] as RequestInit;
-    expect(init.method).toBe("POST");
-    expect(init.body).toBeInstanceOf(FormData);
-    expect(init.headers).toEqual({ Accept: "application/json" });
-    expect(await formspreeInbox("u", (async () => { throw new Error("x"); }) as unknown as typeof fetch).send(idea, "", "p")).toBe(false);
-  });
-  it("with no endpoint configured, nothing is fetched and sends report false", async () => {
-    const f = vi.fn();
-    const inbox = inboxFor("", f as unknown as typeof fetch);
-    expect(inbox).toBe(unconfiguredInbox);
-    expect(await inbox.send(idea, "", "p")).toBe(false);
-    expect(f).not.toHaveBeenCalled();
-    expect(inboxFor("https://formspree.io/f/x", f as unknown as typeof fetch)).not.toBe(unconfiguredInbox);
-  });
-  it("says whether an inbox is set up, so feedback can refuse to pretend", () => {
-    expect(unconfiguredInbox.configured).toBe(false);
-    expect(formspreeInbox("https://formspree.io/f/x", vi.fn() as unknown as typeof fetch).configured).toBe(true);
-  });
-  it("feedback goes out with its own subject; email only when given", async () => {
-    expect(feedbackFields({ message: "Love it", email: "" }, "https://x/")).toEqual([["message", "Love it"], ["page", "https://x/"], ["_subject", "Feedback on Sky of Ideas"]]);
-    expect(feedbackFields({ message: "Love it", email: "a@b.c" }, "p")[0]).toEqual(["email", "a@b.c"]);
-    const f = vi.fn(async (_u: string, _i?: RequestInit) => res({}));
-    expect(await formspreeInbox("https://formspree.io/f/x", f as unknown as typeof fetch).sendFeedback({ message: "Love it", email: "" }, "p")).toBe(true);
-    expect((f.mock.calls[0]![1] as RequestInit).body).toBeInstanceOf(FormData);
-    expect(await unconfiguredInbox.sendFeedback({ message: "x", email: "" }, "p")).toBe(false);
-  });
-});
+

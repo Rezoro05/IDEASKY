@@ -6,7 +6,7 @@ const planeAt = (page: Page) => page.locator(".plane").first().evaluate((el) => 
 
 test.describe("the Sea of Dreams: diving and surfacing", () => {
   test("Dive glides down to the sea; the sky holds still and can't be tabbed into; Back to the sky returns", async ({ page }) => {
-    await fakeServices(page, { rows: [{ ...gioRow }], posts: [], deletes: [], mails: 0 });
+    await fakeServices(page, { rows: [{ ...gioRow }], posts: [], deletes: [] });
     await page.goto("/");
     await expect(page.locator(".plane")).toHaveCount(1);
     await page.waitForFunction(() => (document.querySelector(".plane") as HTMLElement | null)?.style.transform);
@@ -104,7 +104,7 @@ test.describe("fish (dreams)", () => {
       dreamRow("dreamaa3", "The subway filled with sea water", ["water"], 3),
       dreamRow("dreamaa4", "A dream not sorted yet", null, 2),
     ],
-    posts: [], deletes: [], mails: 0,
+    posts: [], deletes: [],
   });
 
   test("dreams swim in the sea as fish, named Dream1…, in schools by their main theme; ideas stay in the sky", async ({ page }) => {
@@ -136,7 +136,7 @@ test.describe("fish (dreams)", () => {
   });
 
   test("a fish darts away from a quickly moving mouse, as a bird does", async ({ page }) => {
-    await fakeServices(page, { rows: [dreamRow("dreamcc1", "A lone fish", null, 1)], posts: [], deletes: [], mails: 0 });
+    await fakeServices(page, { rows: [dreamRow("dreamcc1", "A lone fish", null, 1)], posts: [], deletes: [] });
     await page.goto("/#sea");
     await page.waitForFunction(() => (document.querySelector(".fish") as HTMLElement | null)?.style.transform);
     await page.waitForTimeout(1000); // the glide down has ended
@@ -177,7 +177,7 @@ test.describe("fish (dreams)", () => {
 test.describe("catching and opening dreams", () => {
   const sea = () => ({
     rows: [dreamRow("dreambb1", "A whale showed me the way home", ["water", "animals"], 3), dreamRow("dreambb2", "Stairs that never ended", ["places"], 2)],
-    posts: [], deletes: [], mails: 0,
+    posts: [], deletes: [],
   });
   /** Fish keep swimming while a busy test machine works, so a press may miss: re-aim and try again, as a person would (up to 6 tries). */
   const until = async (page: Page, attempt: () => Promise<void>, done: () => Promise<boolean>) => {
@@ -382,7 +382,6 @@ test.describe("the Dream Note", () => {
     await expect(page.locator(".fish.arriving")).toHaveCount(0, { timeout: 6000 }); // the fish from the note has landed
     expect(board.posts[0]).toMatchObject({ message: "I rode a bicycle across the bottom of the sea", kind: "dream" });
     await expect.poll(() => board.categorizeCalls?.length ?? 0).toBe(1);
-    expect(board.mailBodies?.[0]).toContain("New dream in the Sea of Dreams");
     await expect(page.locator(".plane")).toHaveCount(0); // a dream never flies in the sky
     await expect(fish).toHaveAttribute("data-school", "water");
     await fish.focus(); await page.keyboard.press("Enter");

@@ -31,14 +31,14 @@ test.describe("on a phone, with a thumb", () => {
   };
 
   test("a thumb pressing beside a bird catches it, and dropping near the cage opens its idea", async ({ page }) => {
-    await fakeServices(page, { rows: [{ ...gioRow }], posts: [], deletes: [], mails: 0 });
+    await fakeServices(page, { rows: [{ ...gioRow }], posts: [], deletes: [] });
     await page.goto("/");
     expect(await carry(page, ".plane .body", "#cage")).toBe(true);
     await expect(page.locator("#letter-from")).toHaveText("Idea1");
   });
 
   test("a thumb pressing beside a fish catches it, and dropping near the net opens its dream", async ({ page }) => {
-    await fakeServices(page, { rows: [dreamRow("dreamph1", "A lighthouse that sang", ["water"], 1)], posts: [], deletes: [], mails: 0 });
+    await fakeServices(page, { rows: [dreamRow("dreamph1", "A lighthouse that sang", ["water"], 1)], posts: [], deletes: [] });
     await page.goto("/#sea");
     expect(await carry(page, ".fish .body", "#fish-net")).toBe(true);
     await expect(page.locator("#letter-from")).toHaveText("Dream1");
@@ -47,7 +47,7 @@ test.describe("on a phone, with a thumb", () => {
   test("an open idea fits the visible screen, even a short one, with its icons in view", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 560 });
     const long = "A pocket-sized weather station that clips to a balcony rail and shares readings with the block. ".repeat(6);
-    await fakeServices(page, { rows: [{ ...gioRow, message: long }], posts: [], deletes: [], mails: 0 });
+    await fakeServices(page, { rows: [{ ...gioRow, message: long }], posts: [], deletes: [] });
     await page.goto("/#idea-" + gioRow.id);
     await expect(page.locator("#letter")).toBeVisible();
     await page.waitForTimeout(900);

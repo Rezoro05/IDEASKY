@@ -3,7 +3,7 @@ import { fakeServices, gioRow } from "./fixtures";
 
 test.describe("the first-visit hint", () => {
   test("a first visit shows how to catch a bird and drop it in the cage; the next visit doesn't", async ({ page }) => {
-    await fakeServices(page, { rows: [{ ...gioRow }], posts: [], deletes: [], mails: 0, firstVisit: true });
+    await fakeServices(page, { rows: [{ ...gioRow }], posts: [], deletes: [], firstVisit: true });
     await page.goto("/");
     const tour = page.locator(".cage-hint-tour");
     await expect(tour).toHaveCount(1, { timeout: 4000 });
@@ -16,7 +16,7 @@ test.describe("the first-visit hint", () => {
   });
 
   test("any press ends it at once", async ({ page }) => {
-    await fakeServices(page, { rows: [], posts: [], deletes: [], mails: 0, firstVisit: true });
+    await fakeServices(page, { rows: [], posts: [], deletes: [], firstVisit: true });
     await page.goto("/");
     await expect(page.locator(".cage-hint-tour")).toHaveCount(1, { timeout: 4000 });
     await page.mouse.click(600, 600);
@@ -24,7 +24,7 @@ test.describe("the first-visit hint", () => {
   });
 
   test("a visit that starts in the sea, or at an idea, skips it", async ({ page }) => {
-    await fakeServices(page, { rows: [], posts: [], deletes: [], mails: 0, firstVisit: true });
+    await fakeServices(page, { rows: [], posts: [], deletes: [], firstVisit: true });
     await page.goto("/#sea");
     await page.waitForTimeout(2500);
     await expect(page.locator(".cage-hint-tour")).toHaveCount(0);

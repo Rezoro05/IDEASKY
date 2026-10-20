@@ -40,12 +40,17 @@ describe("collections", () => {
 });
 
 describe("validateDraft", () => {
+  it("keeps a usable email and drops anything else, without refusing the post", () => {
+    const ok = (email: string) => { const c = validateDraft({ ...draft, message: "hi", email }); return c.ok ? c.email : null; };
+    expect(ok("  nino@example.com ")).toBe("nino@example.com");
+    for (const bad of ["nino@", "nino", "a b@c.d", "x@y", "a@b.c".padStart(260, "a")]) expect(ok(bad)).toBe("");
+  });
   const draft = { name: "", email: "", message: "", trap: "", linkRows: [] };
   it("needs a message", () => expect(validateDraft(draft)).toEqual({ ok: false, reason: "empty-message", text: "Write your idea first." }));
   it("catches the bot trap first", () => expect(validateDraft({ ...draft, message: "x", trap: "spam" })).toEqual({ ok: false, reason: "bot" }));
-  it("accepts any email, even incomplete", () => {
+  it("an incomplete email never stops the post: it is dropped", () => {
     expect(validateDraft({ ...draft, message: " idea ", email: " half@ ", name: " Nino " }))
-      .toEqual({ ok: true, idea: { name: "Nino", message: "idea", links: [] }, email: "half@" });
+      .toEqual({ ok: true, idea: { name: "Nino", message: "idea", links: [] }, email: "" });
   });
   it("carries clean links; a bad link names its row", () => {
     expect(validateDraft({ ...draft, message: "x", linkRows: [{ title: "", url: "demo.app" }] }))

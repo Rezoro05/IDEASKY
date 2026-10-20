@@ -1,7 +1,6 @@
 ---
 import { COMMENT_LIMITS } from "../lib/comments";
 import IdeaNote from "./IdeaNote.astro";
-import Feedback from "./Feedback.astro";
 import SignIn from "./SignIn.astro";
 import LinkRows from "./LinkRows.astro";
 import { UPDATE_LIMITS } from "../lib/updates";
@@ -9,7 +8,6 @@ import { STAGES, stageLabel } from "../lib/stages";
 /* The compose overlay holding the Idea Note, the status toast, and the letter a caught plane opens into. */
 ---
 <div class="letter compose" id="compose" role="dialog" aria-modal="true" aria-label="Share your idea" hidden><div class="note-slot" id="note-slot"><IdeaNote /></div></div>
-<div class="letter compose" id="feedback" role="dialog" aria-modal="true" aria-label="Send feedback" hidden><div class="note-slot" id="feedback-slot"><Feedback /></div></div>
 <div class="letter compose" id="signin" role="dialog" aria-modal="true" aria-label="Sign in" hidden><div class="note-slot" id="signin-slot"><SignIn /></div></div>
 <p class="toast" id="toast" role="status" hidden></p>
 

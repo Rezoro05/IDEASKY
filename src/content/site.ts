@@ -20,10 +20,7 @@ export const HERO = {
 } as const;
 
 /* Services come from the build environment, so nothing points at a real service by accident.
-   Unset (local runs): the board lives in memory and nothing is emailed. The browser tests set fake addresses and intercept them. */
-
-/** Every idea and comment is emailed to the platform owner here. */
-export const FORMSPREE_ENDPOINT: string = import.meta.env.PUBLIC_FORMSPREE_ENDPOINT ?? "";
+   Unset (local runs): the board lives in memory and nothing is emailed (the board emails the owner: supabase/functions/notify). The browser tests set fake addresses and intercept them. */
 
 /** Public idea board. The publishable key is meant to be public; database rules decide what it can do. */
 /** Build flag: start an empty in-memory board with five example ideas, one or more per stage. */

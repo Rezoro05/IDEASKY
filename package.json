@@ -5,13 +5,13 @@
     "dev": "astro dev",
     "build": "astro build",
     "test": "vitest run",
-    "build:test": "PUBLIC_BOARD_URL=https://board.test PUBLIC_BOARD_KEY=sb_publishable_test PUBLIC_FORMSPREE_ENDPOINT=https://inbox.test/f/test PUBLIC_SHOW_STAGES=1 PUBLIC_SCENE=0 astro build && PUBLIC_BOARD_URL=https://board.test PUBLIC_BOARD_KEY=sb_publishable_test PUBLIC_FORMSPREE_ENDPOINT=https://inbox.test/f/test PUBLIC_SCENE=0 astro build --outDir ./dist-public",
+    "build:test": "PUBLIC_BOARD_URL=https://board.test PUBLIC_BOARD_KEY=sb_publishable_test PUBLIC_SHOW_STAGES=1 PUBLIC_SCENE=0 astro build && PUBLIC_BOARD_URL=https://board.test PUBLIC_BOARD_KEY=sb_publishable_test PUBLIC_SCENE=0 astro build --outDir ./dist-public",
     "test:e2e": "npm run build:test && playwright test",
-    "check": "astro check",
-    "build:functions": "node scripts/build-functions.mjs"
+    "check": "astro check"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@electric-sql/pglite": "^0.3.16",
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.4",
     "astro": "^5.18.2",

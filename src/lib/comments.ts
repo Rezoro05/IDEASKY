@@ -43,12 +43,6 @@ export function commentGroups(comments: Iterable<Comment>, ideaId: string): Comm
 /** The comment a reply is filed under: the one answered, or, when answering a reply, that reply's own comment. */
 export const replyParent = (target: Comment): string => target.parentId ?? target.id;
 
-/** How many times each id appears (used to count likes per comment from one query). */
-export function tally(ids: Iterable<string>): Map<string, number> {
-  const out = new Map<string, number>();
-  for (const id of ids) out.set(id, (out.get(id) ?? 0) + 1);
-  return out;
-}
 
 export function validateCommentDraft(d: CommentDraft): CommentCheck {
   if (d.trap) return { ok: false, reason: "bot" };

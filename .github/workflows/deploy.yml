@@ -1,14 +1,25 @@
-# Publishes the site to GitHub Pages on every push to main.
+# On every push to main: first brings the live database up to date (supabase/migrations, and the Edge Functions), then publishes the site
+# to GitHub Pages. The database job needs two repository Secrets (Settings → Secrets and variables → Actions → Secrets):
+#   SUPABASE_ACCESS_TOKEN  a personal access token (supabase.com → Account → Access Tokens)
+#   SUPABASE_DB_PASSWORD   the project's database password (Project Settings → Database)
+# Without them it skips with a notice and the site still publishes. The first time, run this workflow by hand with "baseline" ticked:
+# it records migrations 01–11 (already run by hand in the SQL editor) as applied, so they aren't run again.
 # One-time setup (repo Settings): Pages → Source = "GitHub Actions".
-# The real services are IDEA SKY's Supabase project and Formspree form (set below). Repository Variables of the same names override them;
-# with all three empty it would publish a preview (in-memory board with example ideas), and with only some set it fails.
-# These three values end up in the public site by design (a publishable key and a form address), so they live here, not in Secrets.
+# The real service is IDEA SKY's Supabase project (set below). Repository Variables of the same names override it;
+# with both empty it would publish a preview (in-memory board with example ideas), and with only one set it fails.
+# These two values end up in the public site by design (the project address and its publishable key), so they live here, not in Secrets.
+# Emails to the owner are sent by the database (supabase/functions/notify), not by the site. The database itself is updated by database.yml.
 name: Deploy
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      baseline:
+        description: "One time only: record migrations 01–11 as already applied (they were run by hand), then apply the rest"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,10 +34,46 @@ env:
   PUBLIC_BASE_PATH: /IDEASKY/
   PUBLIC_BOARD_URL: ${{ vars.PUBLIC_BOARD_URL || 'https://ssqcfsbkmrhjfylxghfj.supabase.co' }}
   PUBLIC_BOARD_KEY: ${{ vars.PUBLIC_BOARD_KEY || 'sb_publishable_iTflyj7RKulZ3DRoDFBmfg_ESbUKOWq' }}
-  PUBLIC_FORMSPREE_ENDPOINT: ${{ vars.PUBLIC_FORMSPREE_ENDPOINT || 'https://formspree.io/f/xeaowwln' }}
 
 jobs:
+  database:
+    runs-on: ubuntu-latest
+    concurrency: { group: database, cancel-in-progress: false } # never two migrations at once
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || 'ssqcfsbkmrhjfylxghfj' }}
+    steps:
+      - name: Ready?
+        id: ready
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::notice::Database not updated: set the SUPABASE_ACCESS_TOKEN and SUPABASE_DB_PASSWORD secrets to apply supabase/migrations automatically."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.go == 'true'
+      - uses: supabase/setup-cli@v1
+        if: steps.ready.outputs.go == 'true'
+        with:
+          version: 2.121.0
+      - name: Link the project
+        if: steps.ready.outputs.go == 'true'
+        run: supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+      - name: Record 01–11 as applied (baseline, one time)
+        if: steps.ready.outputs.go == 'true' && inputs.baseline
+        run: supabase migration repair --status applied 20261001000001 20261001000002 20261001000003 20261001000004 20261001000005 20261001000006 20261001000007 20261001000008 20261001000009 20261001000010 20261001000011 --linked --password "$SUPABASE_DB_PASSWORD"
+      - name: Apply new migrations
+        if: steps.ready.outputs.go == 'true'
+        run: supabase db push --password "$SUPABASE_DB_PASSWORD"
+      - name: Deploy the Edge Functions
+        if: steps.ready.outputs.go == 'true'
+        run: supabase functions deploy --project-ref "$PROJECT_REF" --use-api
+
   build:
+    needs: database # the site may use what the newest migration adds
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +82,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # All three services set: the live site. None set: a preview (in-memory board, example ideas). Some set: stop, naming what is missing.
+      # Both services set: the live site. None set: a preview (in-memory board, example ideas). Some set: stop, naming what is missing.
       - name: Choose live or preview
         run: node scripts/deploy-mode.mjs
       - run: npm run check

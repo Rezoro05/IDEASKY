@@ -8,11 +8,15 @@ const deps = (f: typeof fetch) => ({ url: "https://x.supabase.co", key: "sb_publ
   likerId: () => "me", sha256Hex: async (t: string) => "hash:" + t });
 
 describe("likes on comments (Supabase)", () => {
-  it("counts the likes on a set of comments in one request", async () => {
-    const f = vi.fn(async (_u: string) => res([{ comment_id: "cmt001" }, { comment_id: "cmt002" }, { comment_id: "cmt001" }]));
+  it("asks the database to count the likes on a set of comments, in one request", async () => {
+    const f = vi.fn(async (_u: string, _i?: RequestInit) => res([{ comment_id: "cmt001", likes: 2 }, { comment_id: "cmt002", likes: 1 }, { comment_id: 7, likes: 3 }]));
     const counts = await supabaseCommentLikes(deps(f as unknown as typeof fetch)).counts(["cmt001", "cmt002", "cmt003"]);
-    expect(Object.fromEntries(counts!)).toEqual({ cmt001: 2, cmt002: 1 });
-    expect(f.mock.calls[0]![0]).toBe("https://x.supabase.co/rest/v1/comment_likes?select=comment_id&comment_id=in.(cmt001,cmt002,cmt003)");
+    expect(Object.fromEntries(counts!)).toEqual({ cmt001: 2, cmt002: 1 }); // a malformed row is ignored; no row = no likes
+    expect(f.mock.calls[0]![0]).toBe("https://x.supabase.co/rest/v1/rpc/comment_like_counts");
+    expect(JSON.parse((f.mock.calls[0]![1] as RequestInit).body as string)).toEqual({ p_ids: ["cmt001", "cmt002", "cmt003"] });
+  });
+  it("a failed count is null", async () => {
+    expect(await supabaseCommentLikes(deps((async () => res(null, false)) as unknown as typeof fetch)).counts(["cmt001"])).toBeNull();
   });
   it("asks for nothing when there are no comments", async () => {
     const f = vi.fn();

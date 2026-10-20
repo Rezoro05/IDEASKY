@@ -1,12 +1,12 @@
 // Decides what the deploy workflow builds, from the service settings it was given.
-//   all three set  -> "live": the real board and inbox
+//   both set       -> "live": the real board (which also emails the owner: supabase/functions/notify)
 //   none set       -> "preview": an in-memory board with five example ideas (nothing is saved, nothing is emailed)
 //   some set       -> "error": a half-configured deploy is a mistake, so it stops and names what is missing
 // The decision (deployMode) is pure; the command line at the bottom reports it to GitHub Actions.
 import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-export const SERVICE_VARIABLES = ["PUBLIC_BOARD_URL", "PUBLIC_BOARD_KEY", "PUBLIC_FORMSPREE_ENDPOINT"];
+export const SERVICE_VARIABLES = ["PUBLIC_BOARD_URL", "PUBLIC_BOARD_KEY"];
 
 export function deployMode(env) {
   const isSet = (name) => typeof env[name] === "string" && env[name].trim() !== "";
@@ -19,7 +19,7 @@ export function deployMode(env) {
 function main() {
   const result = deployMode(process.env);
   if (result.mode === "error") {
-    for (const name of result.missing) console.log(`::error::Repository variable ${name} is not set (Settings → Secrets and variables → Actions → Variables). Set all three, or none for a preview.`);
+    for (const name of result.missing) console.log(`::error::Repository variable ${name} is not set (Settings → Secrets and variables → Actions → Variables). Set both, or none for a preview.`);
     process.exit(1);
   }
   if (result.mode === "preview") {

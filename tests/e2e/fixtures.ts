@@ -1,14 +1,14 @@
-/** Shared by the browser tests: a fake board and inbox (the test build points at board.test and inbox.test), and small helpers. */
+/** Shared by the browser tests: a fake board (the test build points at board.test), and small helpers. */
 import type { Page, Route } from "@playwright/test";
 import { createHash } from "node:crypto";
 
-/** Fake the outside world: the test build points at board.test and inbox.test (see build:test), and both are intercepted here. */
+/** Fake the outside world: the test build points at board.test (see build:test), intercepted here. */
 export type Row = { id: string; name: string; message: string; created_at: string; stage?: string; links?: { title: string; url: string }[]; categories?: string[] | null; kind?: "idea" | "dream" };
 export type CommentRow = Row & { idea_id: string; parent_id?: string | null };
-export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; mails: number; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; mailBodies?: string[]; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean; signInLinks?: { email: string; redirect: string }[]; signInStatus?: number; signOuts?: number; google?: boolean; googleTrips?: string[]; privateItems?: PrivateRow[]; privateRequests?: { method: string; owner: string | null }[]; privateUpdates?: { id: string; item_id: string; owner: string; message: string; links: unknown[]; created_at: string }[] };
+export type Board = { rows: Row[]; down?: boolean; posts: unknown[]; deletes: unknown[]; comments?: CommentRow[]; commentsDown?: boolean; commentPostsDown?: boolean; likes?: { idea_id: string; liker_hash: string }[]; likesDown?: boolean; commentLikes?: { comment_id: string; liker_hash: string }[]; stageMoves?: unknown[]; stageDown?: boolean; updates?: { id: string; idea_id: string; message: string; links: unknown; created_at: string }[]; updatesDown?: boolean; categorize?: string[]; categorizeDown?: boolean; categorizeCalls?: string[]; firstVisit?: boolean; signInLinks?: { email: string; redirect: string }[]; signInStatus?: number; signOuts?: number; google?: boolean; googleTrips?: string[]; privateItems?: PrivateRow[]; privateRequests?: { method: string; owner: string | null }[]; privateUpdates?: { id: string; item_id: string; owner: string; message: string; links: unknown[]; created_at: string }[] };
 /** A row of the private table as the database keeps it: the owner is whoever was signed in when it was added. */
 export type PrivateRow = { id: string; owner: string; kind: "idea" | "dream"; name: string; message: string; links: unknown[]; stage: string; categories: string[] | null; created_at: string; public_id?: string | null };
-export async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [], mails: 0 }) {
+export async function fakeServices(page: Page, board: Board = { rows: [], posts: [], deletes: [] }) {
   // The first-visit hint plays over the sky for ~10 s; most tests are not first visits (tests/e2e/hint.spec.ts shows it).
   if (!board.firstVisit) await page.addInitScript(() => { try { localStorage.setItem("skyofideas.hint.cage", "1"); } catch { /* none */ } });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.abort());
@@ -85,9 +85,14 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
       if (row && (!row.categories || row.categories.length === 0)) row.categories = categories; // as the function: [] (old rule) is sorted again
       return r.fulfill({ json: { categories: row?.categories ?? categories } });
     }
+    if (url.includes("comment_like_counts")) { // the database counts (supabase/migrations/20261001000012_indexes_and_counts.sql)
+      board.commentLikes ??= [];
+      const ids: string[] = r.request().postDataJSON().p_ids, counts = new Map<string, number>();
+      for (const l of board.commentLikes) if (ids.includes(l.comment_id)) counts.set(l.comment_id, (counts.get(l.comment_id) ?? 0) + 1);
+      return r.fulfill({ json: [...counts].map(([comment_id, likes]) => ({ comment_id, likes })) });
+    }
     if (url.includes("/rest/v1/comment_likes") || url.includes("unlike_comment")) {
       board.commentLikes ??= [];
-      if (method === "GET") { const ids = new URL(url).searchParams.get("comment_id")!.replace(/^in\.\(|\)$/g, "").split(","); return r.fulfill({ json: board.commentLikes.filter((l) => ids.includes(l.comment_id)).map((l) => ({ comment_id: l.comment_id })) }); }
       if (url.includes("unlike_comment")) {
         const { p_comment_id, p_liker } = r.request().postDataJSON(), hash = createHash("sha256").update(p_liker).digest("hex");
         board.commentLikes = board.commentLikes.filter((l) => !(l.comment_id === p_comment_id && l.liker_hash === hash));
@@ -158,7 +163,6 @@ export async function fakeServices(page: Page, board: Board = { rows: [], posts:
     if (url.endsWith("/rpc/delete_idea")) { board.deletes.push(r.request().postDataJSON()); return r.fulfill({ json: true }); }
     return r.fulfill({ status: 404 });
   });
-  await page.route("https://inbox.test/**", (r) => { board.mails++; (board.mailBodies ??= []).push(r.request().postData() ?? ""); return r.fulfill({ json: { ok: true } }); });
   return board;
 }
 /** Wait for opening animations (the note unfolding, a letter opening) to finish, as a person would before clicking inside. */
@@ -176,7 +180,7 @@ export function watchErrors(page: Page) {
 export const gioRow = { id: "zzzzzz1", name: "Gio", message: "Night markets", created_at: "2026-09-30T10:00:00Z" };
 export const dreamRow = (id: string, message: string, categories: string[] | null, hoursAgo = 1): Row =>
   ({ id, name: "Anonymous", message, created_at: new Date(Date.now() - hoursAgo * 3_600_000).toISOString(), kind: "dream", categories });
-export const withGio = (): Board => ({ rows: [{ ...gioRow }], posts: [], deletes: [], mails: 0 });
+export const withGio = (): Board => ({ rows: [{ ...gioRow }], posts: [], deletes: [] });
 
 /** Who is signed in, from a request's "Authorization: Bearer <token>" (the token's claims; tests don't sign tokens). */
 function ownerOf(bearer: string): string | null {

@@ -171,7 +171,7 @@ test.describe("stages and links", () => {
   });
 
   test("other people's ideas show their stage and form, with no way to move them", async ({ page }) => {
-    await fakeServices(page, { rows: [{ ...gioRow, stage: "live", links: [{ title: "Market map", url: "https://markets.example.com/" }] }], posts: [], deletes: [], mails: 0 });
+    await fakeServices(page, { rows: [{ ...gioRow, stage: "live", links: [{ title: "Market map", url: "https://markets.example.com/" }] }], posts: [], deletes: [] });
     await page.goto("/");
     await expect(page.locator(".plane")).toHaveAttribute("data-stage", "live");
     await openOnly(page);

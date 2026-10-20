@@ -1,5 +1,5 @@
 /** Wires the pure parts to the page. Every feature lights up on its own; if one fails, the rest of the page still works. */
-import { DEMO_IDEAS, FORMSPREE_ENDPOINT, PUBLIC_BOARD, SCENE_ON } from "../content/site";
+import { DEMO_IDEAS, PUBLIC_BOARD } from "../content/site";
 import { demoIdeas } from "../content/demo-ideas";
 import { demoDreams } from "../content/demo-dreams";
 import { startSea } from "./sea";
@@ -10,7 +10,6 @@ import { browserKeyStore, COMMENT_KEYS_ITEM, COMMENT_LIKES_ITEM, LIKES_ITEM } fr
 import { memoryCommentLikes, supabaseCommentLikes, type CommentLikeStore } from "../boundaries/commentLikeStore";
 import { likerIdFrom, memoryLikes, supabaseLikes, type LikeStore } from "../boundaries/likeStore";
 import { memoryComments, supabaseComments, type CommentStore } from "../boundaries/commentStore";
-import { inboxFor } from "../boundaries/inbox";
 import { memoryUpdates, supabaseUpdates, type UpdateStore } from "../boundaries/updateStore";
 import { startSky, type Sky } from "./sky";
 import { startBoard } from "./board";
@@ -38,9 +37,7 @@ import { startModeSwitch, type Sources } from "./mode-switch";
 import { startGoPublic, type GoPublic } from "./go-public";
 import { memoryPrivateStore, privateCategorizer, privateUpdates, supabasePrivateStore } from "../boundaries/privateStore";
 import type { User } from "../lib/account";
-import { settingsSource, startScenes, type Scenes } from "./scene";
-import { DEFAULTS, mergeSettings, presetSettings } from "../lib/scene-settings";
-import { startStudio } from "./studio";
+import type { Scenes } from "./scene";
 
 function safeStorage(): Storage | null { try { return window.localStorage; } catch { return null; } }
 
@@ -121,34 +118,22 @@ function startBoardBackgrounds(): void {
   showBackgrounds();
 }
 
-/** The 3D backgrounds start once the picture is up and the page has had a moment; #studio opens their control center. */
-function startBackgrounds(): void {
-  const root = document.documentElement;
-  const source = settingsSource(SCENE_ON ? DEFAULTS : presetSettings("Picture only"), mergeSettings);
-  const picture = document.querySelector<HTMLImageElement>(".skyline");
-  let scenes: Scenes | null = null;
-  const mine = () => root.dataset.mode === "mine";
-  const start = () => {
-    if (scenes || !picture) return;
-    scenes = startScenes({
-      field: byId("field"), picture, clouds: document.querySelector(".clouds"), sea: byId("sea"), seaBefore: document.querySelector(".sea-light"), source,
-      skyActive: () => root.dataset.depth !== "sea" && !root.classList.contains("sky-covered"),
-      seaActive: () => root.dataset.depth === "sea" && !root.classList.contains("sky-covered"),
-      seaKind: () => (mine() ? "wreck" : "deep"),
-    });
+/** The 3D backgrounds are their own script, fetched once the page is up and idle (or at once for #studio): the first view never waits for them. */
+function loadBackgrounds(): void {
+  let asked = false;
+  const load = () => {
+    if (asked) return;
+    asked = true;
+    import("./backgrounds").then((m) => m.startBackgrounds({ started: (scenes) => { scenesNow = scenes; } }))
+      .catch(() => { /* offline or blocked: the pictures stay, which is the designed fallback */ });
   };
-  scenesNow = () => scenes;
-  const whenIdle = (fn: () => void) => ("requestIdleCallback" in window ? requestIdleCallback(fn, { timeout: 1200 }) : setTimeout(fn, 300));
-  if (picture) picture.decode().catch(() => undefined).then(() => whenIdle(start));
-  let studioOpen = false;
-  const openStudio = () => {
-    if (studioOpen || location.hash !== "#studio") return;
-    studioOpen = true;
-    start();
-    startStudio({ source, defaults: SCENE_ON ? DEFAULTS : presetSettings("Picture only"), status: () => scenes?.status() ?? [], closed: () => { studioOpen = false; } });
-  };
-  openStudio();
-  addEventListener("hashchange", openStudio);
+  if (location.hash === "#studio") load();
+  else {
+    const whenIdle = (fn: () => void) => ("requestIdleCallback" in window ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 400));
+    const picture = document.querySelector<HTMLImageElement>(".skyline");
+    (picture ? picture.decode().catch(() => undefined) : Promise.resolve()).then(() => whenIdle(load));
+  }
+  addEventListener("hashchange", () => { if (location.hash === "#studio") load(); });
 }
 
 export function startSite(): void {
@@ -169,7 +154,7 @@ export function startSite(): void {
       onOpen: (id, origin) => openPlane(id, origin),
       covered: () => document.documentElement.classList.contains("sky-covered") || document.documentElement.dataset.depth === "sea", // under an overlay, or out of view in the sea
     });
-    const overlays = [byId("compose"), byId("letter"), byId("feedback")];
+    const overlays = [byId("compose"), byId("letter")];
     const markCovered = () => document.documentElement.classList.toggle("sky-covered", overlays.some((o) => o.classList.contains("open")));
     startCageHint({ field: byId("field"), cage: byId("cage"), reducedMotion, store: safeStorage(), inSky: () => document.documentElement.dataset.depth !== "sea" });
     const watcher = new MutationObserver(markCovered);
@@ -182,7 +167,7 @@ export function startSite(): void {
     blocked: () => document.documentElement.classList.contains("sky-covered"),
   });
 
-  if (profile !== "none") startBackgrounds();
+  if (profile !== "none") loadBackgrounds();
   startBoardBackgrounds();
 
   const stores = Promise.resolve(chooseStores());
@@ -198,13 +183,11 @@ export function startSite(): void {
     onOpen: (id, origin) => letter.open(id, origin),
     categorizer, changed: (dream) => letter.refresh(dream),
   });
-  const inbox = inboxFor(FORMSPREE_ENDPOINT, window.fetch.bind(window));
-  let nameOf = (id: string) => id;
   let commentPosted = (_ideaId: string) => {};
   /** The icons that open something below them: choosing one closes the other two. */
   const closers: Record<Panel, () => void> = { comment: () => thread.closePanel(), update: () => updates.closePanel(), remove: () => removal.closePanel() };
   const opened = (panel: Panel) => () => { for (const other of panelsToClose(panel)) closers[other](); };
-  const thread = startThread({ store: stores.then((s) => s.comments), likes: stores.then((s) => s.commentLikes), inbox, ideaNameOf: (id) => nameOf(id), posted: (id) => commentPosted(id), opened: opened("comment") });
+  const thread = startThread({ store: stores.then((s) => s.comments), likes: stores.then((s) => s.commentLikes), posted: (id) => commentPosted(id), opened: opened("comment") });
   const likes = startLikes({ store: stores.then((s) => s.likes) });
   let ideaMoved = (_idea: Idea) => {};
   const updates = startUpdates({ store: () => currentUpdates(), opened: opened("update") });
@@ -236,11 +219,10 @@ export function startSite(): void {
     },
   });
   ideaMoved = (idea) => { board.update(idea); letter.refresh(idea); };
-  nameOf = nameOfRecord;
   commentPosted = letter.foldAfterComment;
   openPlane = letter.open;
   const dictation = startDictation({ speech: browserSpeech(), button: byId<HTMLButtonElement>("note-mic"), field: byId<HTMLTextAreaElement>("note-msg"), status: byId("note-mic-status"), lang: navigator.language || "en-US" });
-  startComposer({ board, sky, sea, reducedMotion, inbox, dictation, isPrivate: () => isMine() });
+  startComposer({ board, sky, sea, reducedMotion, dictation, isPrivate: () => isMine() });
   const say = startToast();
   const auth = chooseAuth();
   const modes = startModeSwitch({
@@ -253,7 +235,7 @@ export function startSite(): void {
   });
   isMine = () => modes.mode() === "mine";
   goPublic = startGoPublic({
-    isMine, inbox, say,
+    isMine, say,
     ownStore: (item) => (item.kind === "dream" ? sea.store() : board.store()),
     publicStore: (item) => stores.then((s) => (item.kind === "dream" ? s.dreams : s.ideas)),
     changed: (item) => { if (item.kind === "dream") sea.update(item); else board.update(item); letter.refresh(item); },
