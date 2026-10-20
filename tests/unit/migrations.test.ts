@@ -30,7 +30,7 @@ describe("database migrations", () => {
 
   it("are named in order, with unique versions", () => {
     const versions = files.map((f) => f.split("_")[0]!);
-    expect(files.length).toBeGreaterThanOrEqual(14);
+    expect(files.length).toBeGreaterThanOrEqual(15);
     expect(new Set(versions).size).toBe(files.length);
     expect(versions.every((v) => /^\d{14}$/.test(v))).toBe(true);
   });
@@ -112,5 +112,16 @@ describe("database migrations", () => {
     await db.exec(`insert into public.likes (idea_id, liker_hash) values ('alert01', repeat('1',64)), ('alert01', repeat('2',64)), ('alert02', repeat('3',64))`);
     expect(await anon("select * from public.like_counts(array['alert01'])")).toBe("allowed");
     expect((await db.query("select * from public.like_counts(array['alert01','alert02','nothere']) order by idea_id")).rows).toEqual([{ idea_id: "alert01", likes: 2 }, { idea_id: "alert02", likes: 1 }]);
+  });
+
+  it("feedback: anyone can send a note, nobody can read it back, and the owner is emailed", async () => {
+    await db.exec(`create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 5000)
+      returns bigint language plpgsql as $$ begin insert into net.calls values (url, body, headers); return 1; end $$`);
+    await db.exec("delete from net.calls");
+    expect(await anon(`insert into public.feedback (id, message, email, page) values ('fdb0001', 'Lovely sky', 'ana@example.com', 'https://x/')`)).toBe("allowed");
+    expect(await anon("select * from public.feedback")).toBe("refused");
+    expect(await anon(`insert into public.feedback (id, message, email) values ('fdb0002', 'x', 'not-an-email')`)).toBe("refused");
+    const calls = (await db.query<{ body: Record<string, unknown> }>("select body from net.calls")).rows;
+    expect(calls.map((c) => c.body)).toEqual([{ type: "feedback", id: "fdb0001", message: "Lovely sky", email: "ana@example.com", page: "https://x/" }]);
   });
 });

@@ -20,8 +20,15 @@ describe("the owner's email for something new", () => {
     expect(a.subject).toBe("New comment from Nino on Gio's post");
     expect(a.text).toContain("#idea-abc123");
   });
+  it("a feedback note comes to the owner, with a reply-to when the sender left an email", () => {
+    const a = alertFor({ type: "feedback", id: "fdb001", message: "Dragging felt sticky on my phone", email: "ana@example.com", page: "https://rezoro05.github.io/IDEASKY/#sea" }, SITE)!;
+    expect(a.subject).toBe("Feedback on Sky of Ideas");
+    expect(a.text).toBe("Dragging felt sticky on my phone\n\nFrom: ana@example.com\nPage: https://rezoro05.github.io/IDEASKY/#sea");
+    expect(a.replyTo).toBe("ana@example.com");
+    expect(alertFor({ type: "feedback", id: "fdb002", message: "Lovely" }, SITE)!.text).toContain("someone who left no email");
+  });
   it("anything else gets no email", () => {
-    for (const bad of [null, "x", {}, { type: "idea", id: "ABC", message: "x" }, { type: "idea", id: "abc123", message: "  " }, { type: "comment", id: "cmt001", message: "x" }, { type: "feedback", id: "abc123", message: "x" }])
+    for (const bad of [null, "x", {}, { type: "idea", id: "ABC", message: "x" }, { type: "idea", id: "abc123", message: "  " }, { type: "comment", id: "cmt001", message: "x" }, { type: "feedback", id: "abc123", message: " " }, { type: "spam", id: "abc123", message: "x" }])
       expect(alertFor(bad, SITE)).toBeNull();
   });
 

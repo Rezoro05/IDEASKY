@@ -1,4 +1,4 @@
-/** The owner's email for something new on the public board: an idea, a dream or a comment. Pure and import-free, so it is tested without Deno.
+/** The owner's email for something new: an idea, a dream or a comment on the public board, or a feedback note. Pure and import-free, so it is tested without Deno.
  *  The database sends the record (supabase/migrations/20261001000013_owner_alerts.sql); anything that isn't one of those shapes gets no email. */
 export type Alert = { subject: string; text: string; replyTo?: string };
 /** An email to someone other than the owner: the author of a post that was just answered. */
@@ -26,6 +26,14 @@ export function alertFor(body: unknown, site: string): Alert | null {
     return {
       subject: type === "dream" ? `New dream in the Sea of Dreams from ${name}` : `New idea on Sky of Ideas from ${name}`,
       text: lines.join("\n"),
+      ...(EMAIL.test(email) ? { replyTo: email } : {}),
+    };
+  }
+  if (type === "feedback") {
+    const email = str(b.email, 254), page = str(b.page, 300);
+    return {
+      subject: "Feedback on Sky of Ideas",
+      text: [message, "", `From: ${EMAIL.test(email) ? email : "someone who left no email"}`, ...(page ? [`Page: ${page}`] : [])].join("\n"),
       ...(EMAIL.test(email) ? { replyTo: email } : {}),
     };
   }

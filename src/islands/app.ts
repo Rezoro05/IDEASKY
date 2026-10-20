@@ -37,6 +37,8 @@ import { startAccount, type Account } from "./account";
 import { startModeSwitch, type Sources } from "./mode-switch";
 import { startGoPublic, type GoPublic } from "./go-public";
 import { startBrowse } from "./browse";
+import { startFeedback } from "./feedback";
+import { supabaseFeedback, unconfiguredFeedback } from "../boundaries/feedbackStore";
 import { memoryPrivateStore, privateCategorizer, privateUpdates, supabasePrivateStore } from "../boundaries/privateStore";
 import type { User } from "../lib/account";
 import type { Scenes } from "./scene";
@@ -158,7 +160,7 @@ export function startSite(): void {
       onOpen: (id, origin) => openPlane(id, origin),
       covered: () => document.documentElement.classList.contains("sky-covered") || document.documentElement.dataset.depth === "sea", // under an overlay, or out of view in the sea
     });
-    const overlays = [byId("compose"), byId("letter"), byId("browse")];
+    const overlays = [byId("compose"), byId("letter"), byId("browse"), byId("feedback")];
     const markCovered = () => document.documentElement.classList.toggle("sky-covered", overlays.some((o) => o.classList.contains("open")));
     startCageHint({ field: byId("field"), cage: byId("cage"), reducedMotion, store: safeStorage(), inSky: () => document.documentElement.dataset.depth !== "sea" });
     const watcher = new MutationObserver(markCovered);
@@ -232,6 +234,7 @@ export function startSite(): void {
   const dictation = startDictation({ speech: browserSpeech(), button: byId<HTMLButtonElement>("note-mic"), field: byId<HTMLTextAreaElement>("note-msg"), status: byId("note-mic-status"), lang: navigator.language || "en-US" });
   startComposer({ board, sky, sea, reducedMotion, dictation, isPrivate: () => isMine() });
   const say = startToast();
+  startFeedback({ feedback: PUBLIC_BOARD.url ? supabaseFeedback({ url: PUBLIC_BOARD.url, key: PUBLIC_BOARD.key, fetch: window.fetch.bind(window), randomBytes }) : unconfiguredFeedback, say, reducedMotion });
   const modes = startModeSwitch({
     auth, board, sea, storage: safeStorage(), say,
     everyone: { ideas: { store: ideaStore, categorizer, likeCounts }, dreams: { store: stores.then((s) => s.dreams), categorizer, likeCounts }, updates: stores.then((s) => s.updates) },

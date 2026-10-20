@@ -206,6 +206,13 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 @keyframes dive-hint { from { transform: translateY(-2px); } to { transform: translateY(3px); } }
 @media (max-width: 560px) { .dive-btn { bottom: calc(58px + var(--floor)); } } /* Dive and Back to the sky: the same spot, clear of the home bar */
 @media (max-width: 560px) { :root { --target-w: 40px; --target-h: 45px; --target-bottom: calc(96px + var(--floor)); } } /* on a phone: bottom centre, on top of Dive / Back to the sky */
+/* Feedback: bottom left over both worlds, on one line with Dive / Back to the sky */
+.feedback-btn { position: fixed; left: var(--gutter); bottom: 56px; z-index: 10; padding: 6px 0; border: 0; background: none; cursor: pointer;
+  font: 500 11px/1.3 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--sky-text); transition: color .9s; }
+[data-depth="sea"] .feedback-btn { color: var(--sea-text); }
+.feedback-btn:hover, .feedback-btn:focus-visible { outline: none; text-decoration: underline; text-underline-offset: 3px; }
+.feedback-btn:focus-visible { outline: 2px solid var(--tone-cobalt); outline-offset: 3px; text-decoration: none; }
+@media (max-width: 560px) { .feedback-btn { bottom: calc(58px + var(--floor)); } }
 .surface-link { color: var(--sea-text); z-index: 4; } /* in the sea, where Dive is in the sky: bottom centre, above the fish */
 .surface-link span { display: inline-block; animation: surface-hint 1.6s ease-in-out infinite alternate; }
 @keyframes surface-hint { from { transform: translateY(2px); } to { transform: translateY(-3px); } }
