@@ -23,7 +23,7 @@ test.describe("categories (set by Jev)", () => {
     const tech = page.locator(`.plane[data-slug="${gioRow.id}"]`), plain = page.locator('.plane[data-slug="plain1"]');
     await expect(tech).toHaveAttribute("data-flock", "tech");
     await expect(plain).toHaveAttribute("data-flock", "");
-    const tailOf = (bird: typeof tech) => bird.locator(".pf.ot1").first().evaluate((el) => getComputedStyle(el).fill);
+    const tailOf = (bird: typeof tech) => bird.locator(".ln-main path").first().evaluate((el) => getComputedStyle(el).stroke);
     expect(await tailOf(tech)).toBe("rgb(140, 108, 240)");
     expect(await tailOf(plain)).not.toBe("rgb(140, 108, 240)");
   });

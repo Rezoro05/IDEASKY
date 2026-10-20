@@ -250,7 +250,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 .fish svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .fish { --fold: var(--fish); --crease: var(--fish-edge); --tint: var(--fish-tint); }
 .fish .pf-eye { fill: var(--fish-edge); }
-.fish-tail { transform-box: view-box; transform-origin: -15px 0; animation: tail-sway .8s ease-in-out infinite alternate; }
+.fish-tail { transform-box: view-box; transform-origin: 31px 31px; animation: tail-sway .8s ease-in-out infinite alternate; }
 @keyframes tail-sway { from { transform: rotate(-13deg); } to { transform: rotate(13deg); } }
 :root:not([data-depth="sea"]) .fish-tail, .sky-covered .fish-tail { animation-play-state: paused; }
 .fish .tag { position: absolute; left: calc(var(--s) / 2 + 2px); top: -8px; padding: 3px 6px; border-radius: 3px; white-space: nowrap; pointer-events: none;
@@ -326,8 +326,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
 @keyframes ht-move { 0% { offset-distance: 0%; opacity: 0; } 10% { opacity: 1; } 28% { offset-distance: 0%; } 74% { offset-distance: 100%; opacity: 1; } 92%, 100% { offset-distance: 100%; opacity: 0; } }
 .ht-bird { position: absolute; left: -32px; top: -32px; width: 64px; height: 64px; animation: ht-bird var(--loop) ease-in-out var(--loops) both; }
 .ht-bird svg { width: 100%; height: 100%; overflow: visible; }
-.ht-bird .pf { fill: rgba(255,255,255,.22); stroke: #fff; stroke-width: 1.6; stroke-linejoin: round; }
-.ht-bird .pf-eye { fill: #fff; } .ht-bird .pf-beak { fill: none; stroke: #fff; } .ht-bird .bird-legs { display: none; }
+.ht-bird { --line: #fff; } .ht-bird .ln-under { display: none; } .ht-bird .bird-legs { display: none; }
 @keyframes ht-bird { 0%, 16% { transform: none; } 20% { transform: rotate(-8deg); } 24% { transform: rotate(8deg); } 28% { transform: rotate(-4deg); } 74% { transform: rotate(0); } 84%, 100% { transform: scale(.4); opacity: 0; } }
 .ht-hand { position: absolute; left: -9px; top: -4px; width: 30px; height: 30px; transform-origin: 30% 15%; animation: ht-hand var(--loop) ease-in-out var(--loops) both; }
 .ht-hand svg { width: 100%; height: 100%; overflow: visible; }
@@ -386,25 +385,28 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.
   font: 500 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--graphite); transition: color .2s; }
 .plane:hover .tag, .plane:focus-visible .tag, .plane.held .tag { color: var(--accent); }
 .plane:hover, .plane:focus-visible, .plane.held { --fold: var(--accent); --edge: var(--paper); }
-/* Origami (bird, paper plane, fish, and the notes flying home): folded facets, no outlines. Each facet is the paper colour (--fold) shaded
-   toward the crease colour; the hover or held colour just changes --fold. A thin stroke in the facet's own colour closes the seams. */
-:is(.plane, .fish, .note-flier) .pf:is(.of1, .of2, .of3, .of4, .ot1, .ot2) { stroke-width: .5; stroke-linejoin: round; transition: fill .2s, stroke .2s; }
-:is(.plane, .fish, .note-flier) .pf.of1 { fill: var(--fold); stroke: var(--fold); }
-:is(.plane, .fish, .note-flier) .pf.of2 { fill: color-mix(in srgb, var(--fold) 90%, var(--crease)); stroke: color-mix(in srgb, var(--fold) 90%, var(--crease)); }
-:is(.plane, .fish, .note-flier) .pf.of3 { fill: color-mix(in srgb, var(--fold) 80%, var(--crease)); stroke: color-mix(in srgb, var(--fold) 80%, var(--crease)); }
-:is(.plane, .fish, .note-flier) .pf.of4 { fill: color-mix(in srgb, var(--fold) 66%, var(--crease)); stroke: color-mix(in srgb, var(--fold) 66%, var(--crease)); }
-:is(.plane, .fish, .note-flier) .pf.ot1 { fill: var(--tint); stroke: var(--tint); }
-:is(.plane, .fish, .note-flier) .pf.ot2 { fill: color-mix(in srgb, var(--tint) 74%, var(--crease)); stroke: color-mix(in srgb, var(--tint) 74%, var(--crease)); }
+/* Bold raised lines (bird, paper plane, airliner, fish, and the notes flying home; lib/line-art): each part is drawn as a soft shadow,
+   a dark underside, the line in its colour (--line: the flock's or school's tint), and a thin highlight on top. Hover or hold: the accent. */
+.line-art { color: var(--line); transition: color .2s; }
+.line-art .ln-fill { fill: currentColor; fill-opacity: .14; stroke: none; }
+.line-art .ln-shadow { stroke: #0B1E3A; stroke-opacity: .2; stroke-width: 6.6; }
+.line-art .ln-under { stroke: color-mix(in srgb, currentColor 55%, #0B1E3A); stroke-width: 6.4; }
+.line-art .ln-main { stroke: currentColor; stroke-width: 5; }
+.line-art .ln-light { stroke: #fff; stroke-opacity: .6; stroke-width: 1.4; }
+.plane, .note-flier { --line: #12263F; }
+.plane[data-flock]:not([data-flock=""]) { --line: var(--tint); }
+.fish, .fish-flier { --line: var(--fish-tint); }
+.plane:hover, .plane:focus-visible, .plane.held, .fish:hover, .fish:focus-visible { --line: var(--accent); }
+.fish:hover, .fish:focus-visible { --line: var(--accent-sea); }
 /* A flock's tint: the idea's main category (lib/flock), on the bird's tail and wing fold and the paper plane's keel, as a fish's school is on its fins */
 .plane[data-flock="tech"] { --tint: #8C6CF0; } .plane[data-flock="food-drink"] { --tint: #F28E2B; } .plane[data-flock="city-places"] { --tint: #8A5A3B; }
 .plane[data-flock="health"] { --tint: #E15759; } .plane[data-flock="learning"] { --tint: #EDC948; } .plane[data-flock="business"] { --tint: #D9B48F; }
 .plane[data-flock="art-design"] { --tint: #FF8FB1; } .plane[data-flock="social-good"] { --tint: #2EC4B6; } .plane[data-flock="environment"] { --tint: #59A14F; }
 .plane[data-flock="play-games"] { --tint: #FF5D8F; } .plane[data-flock="science"] { --tint: #B5E61D; }
-/* The bird: wings are set by the sky every frame; the far one is darker; legs only on a perch; beak and eye keep their colour */
-.plane .bw-far, .note-flier .bw-far { --fold: color-mix(in srgb, var(--sky-plane) 78%, var(--sky-plane-edge)); }
-.plane:hover .bw-far, .plane:focus-visible .bw-far, .plane.held .bw-far { --fold: color-mix(in srgb, var(--accent) 78%, var(--sky-plane-edge)); }
-.pf-beak { fill: #E0A030; }
-.plane .bird-legs { fill: none; stroke: var(--sky-plane-edge); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity .2s; }
+/* The bird: wings are set by the sky every frame; the far one is fainter; legs only on a perch */
+.bw-far { opacity: .6; }
+.plane .bird-legs { opacity: 0; transition: opacity .2s; }
+.note-flier .bird-legs { display: none; }
 .plane[data-state="perch"] .bird-legs, .plane.landing .bird-legs { opacity: 1; }
 .plane:focus-visible .body { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 50%; }
 .plane.held .body { cursor: grabbing; }

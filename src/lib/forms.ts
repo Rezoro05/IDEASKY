@@ -1,49 +1,29 @@
 /** The drawing for each stage of an idea, all facing right so flight and orientation treat them alike.
- *  All three are origami: folded facets, no outlines (of1 lightest … of4 darkest, ot = the flock's tint; coloured in site.css). Bird: an origami bird whose wings the sky moves (lib/bird-pose). */
+ *  Bold raised lines (lib/line-art; owner, 2026-10-20), coloured by the flock in site.css. Bird: its wings are groups the sky moves (lib/bird-pose). */
 import type { Stage } from "./stages";
+import { raised, spiral, svgBox } from "./line-art";
 
-const svg = (body: string): string => `<svg viewBox="-30 -30 60 60" aria-hidden="true">${body}</svg>`;
+/** In Progress: a folded paper plane, two wings and the fold between them. */
+const PAPER_PLANE = svgBox(raised(`<path d="M112,30 L14,12 L38,32 Z"/><path d="M112,30 L38,32 L30,52 Z"/><path d="M38,32 L56,31"/>`,
+  "M112,30 L14,12 L38,32 L30,52 Z"));
 
-/** In Progress: a folded paper plane, its near wing in the flock's colour (owner, 2026-10-19: one wing), the rest lit like paper (of1 lightest … of4 darkest; ot = the flock's tint; coloured in site.css). */
-const PAPER_PLANE = svg(`
-  <polygon class="pf of1" points="26,-2.2 -22.6,-18.6 -18.1,-6.3"></polygon>
-  <polygon class="pf of3" points="26,-2.2 -18.1,-6.3 -28,9.5 -14.8,2.4"></polygon>
-  <polygon class="pf ot2" points="-28,9.5 -14.8,2.4 -13.8,8.7"></polygon>
-  <polygon class="pf ot1" points="26,-2.2 -14.8,2.4 -9.2,18.6"></polygon>`);
+/** Live: an airliner: fuselage with a row of windows, swept wings, a tail fin, a spiral nose light. */
+const AIRLINER_BODY = "M110,32 C106,27 96,26 30,27 L14,14 L20,30 C16,32 16,34 22,36 L96,38 C104,38 110,36 110,32";
+const AIRPLANE = svgBox(raised(`<path d="${AIRLINER_BODY}"/><path d="M60,28 L40,10 L50,10 L76,28 M60,37 L42,54 L52,54 L78,37"/>` +
+  spiral(100, 31, 0.55) + `<path d="M50,32 h4 M58,32 h4 M66,32 h4 M74,32 h4"/>`, AIRLINER_BODY));
 
-/** Live: an airliner seen from above, folded like the bird and the paper plane: swept wings and tailplanes lit on the near side,
- *  shaded on the far side, a fuselage creased along its length, engine pods; one wing and the tail in the flock's colour (owner, 2026-10-19). */
-const AIRPLANE = svg(`
-  <polygon class="pf ot1" points="8,2.5 -9,25 -14,25 -5,2.5"></polygon>
-  <polygon class="pf ot2" points="-1,2.5 -11.5,25 -14,25 -5,2.5"></polygon>
-  <polygon class="pf of3" points="-17,2 -25,11 -28.5,11 -24,2"></polygon>
-  <polygon class="pf of4" points="0,12 -7,10.5 -7,14"></polygon>
-  <polygon class="pf of1" points="8,-2.5 -9,-25 -14,-25 -5,-2.5"></polygon>
-  <polygon class="pf of2" points="-1,-2.5 -11.5,-25 -14,-25 -5,-2.5"></polygon>
-  <polygon class="pf of1" points="-17,-2 -25,-11 -28.5,-11 -24,-2"></polygon>
-  <polygon class="pf of2" points="0,-12 -7,-10.5 -7,-14"></polygon>
-  <polygon class="pf of2" points="29,0 22,-3 -23,-3 -29,0"></polygon>
-  <polygon class="pf of3" points="29,0 -29,0 -23,3 22,3"></polygon>
-  <polygon class="pf of1" points="29,0 22,-3 22,3"></polygon>
-  <polygon class="pf ot1" points="-17,-1.2 -28,-0.5 -28,0.5 -17,1.2"></polygon>`);
+/** Idea (the first stage): a line bird, side view, spiral eye. Each wing is a group hinged on the back (the sky sets its .bw
+ *  transform every frame, so it beats); the far wing sits behind the body and is fainter. Legs show only on a perch (CSS).
+ *  Drawn a little larger, so it reads at bird size. */
+const WING = `<path d="M76,19 C78,0 62,-6 40,-5 C48,2 48,8 54,13 C46,13 46,19 56,23"/><path d="M68,10 Q60,5 52,4"/>`;
+const wing = (cls: string, hx: number, hy: number) =>
+  `<g class="bw-hinge" transform="translate(${hx} ${hy})"><g class="bw ${cls}"><g transform="translate(${-hx} ${-hy})">${raised(WING)}</g></g></g>`;
+const BIRD = svgBox(`<g transform="translate(63 26) scale(1.08) translate(-63 -26)">
+  ${wing("bw-far", 72, 19)}
+  <g class="bird-legs">${raised(`<path d="M68,46 L66,56 M74,46 L74,56 M62,56 L70,56 M70,56 L78,56"/>`)}</g>
+  ${raised(`<path d="M84,17 A10,10 0 1 1 98,31"/><path d="M84,17 C70,15 54,21 38,31"/><path d="M98,31 C94,45 72,48 54,41 C48,39 43,36 38,33"/>` +
+    `<path d="M97,22 L110,25 L98,28"/><path d="M39,31 L16,23 L22,32 L16,42 L39,33"/>` + spiral(91, 22, 0.75))}
+  ${wing("bw-near", 66, 20)}</g>`);
 
-/** Idea (the first stage): an origami bird, side view: folded facets, no outlines. Each wing is a group hinged on the back
- *  (the sky sets its .bw transform every frame, so it beats smoothly); the far wing sits behind the body and is darker.
- *  Legs show only on a perch (CSS). Drawn at 0.75 so it is smaller than the planes. */
-const wing = (cls: string) => `<g class="bw-hinge" transform="translate(-2,-4)"><g class="bw ${cls}">
-    <polygon class="pf of1" points="-1,0 10,-1 -7,-22"></polygon>
-    <polygon class="pf ot2" points="-1,0 -7,-22 -6,1"></polygon></g></g>`;
-const BIRD = svg(`<g transform="scale(0.75)">
-  ${wing("bw-far")}
-  <polygon class="pf ot1" points="-16,-2 -29,-11 -24,2"></polygon>
-  <polygon class="pf ot2" points="-16,-2 -24,2 -12,4"></polygon>
-  <g class="bird-legs"><polyline points="-1,6 -2,12 -4,12"></polyline><polyline points="4,5 3,12 1,12"></polyline></g>
-  <polygon class="pf of2" points="-16,-2 12,-8 14,0"></polygon>
-  <polygon class="pf of3" points="-16,-2 14,0 0,8"></polygon>
-  <polygon class="pf of1" points="10,-8 18,-12 20,-4"></polygon>
-  <polygon class="pf of2" points="10,-8 20,-4 14,0"></polygon>
-  <polygon class="pf-beak" points="20,-7 27,-5 20,-3"></polygon>
-  <circle class="pf-eye" cx="16" cy="-7" r="1"></circle>
-  ${wing("bw-near")}</g>`);
 /** The drawing for a stage. */
 export const formFor = (stage: Stage): string => stage === "idea" ? BIRD : stage === "implementation" ? PAPER_PLANE : AIRPLANE; // a new idea is a bird, then a paper plane, then an airplane

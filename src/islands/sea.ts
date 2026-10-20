@@ -5,7 +5,7 @@ import { OLDER_PAGE, recordNumbers } from "../lib/browse";
 import { likeScale } from "../lib/likes";
 import { fishFacing, fishTransform, spawnFish, stepSwim, type Fish } from "../lib/swim";
 import { mulberry32 } from "../lib/random";
-import { FISH_SVG } from "../lib/fish-art";
+import { fishSvg, patternFor } from "../lib/fish-art";
 import type { Bounds } from "../lib/sim";
 import type { IdeaStore } from "../boundaries/ideaStore";
 import type { Categorizer } from "../boundaries/categorizer";
@@ -106,7 +106,7 @@ export function startSea(opts: {
     a.className = arriving.has(dream.id) ? "fish arriving" : "fish"; a.href = "#"; a.dataset.slug = dream.id; a.dataset.school = schoolOf(dream);
     a.style.setProperty("--s", opts.size + "px");
     a.setAttribute("aria-label", `${name}: open the dream`);
-    a.innerHTML = `<span class="body">${FISH_SVG}</span><span class="tag"></span>`;
+    a.innerHTML = `<span class="body">${fishSvg(patternFor(dream.id))}</span><span class="tag"></span>`;
     a.querySelector(".tag")!.textContent = name;
     a.addEventListener("focus", () => { keyboardFocus(a); }); // a long press can focus it: no ring
     field.appendChild(a);
